@@ -25,11 +25,11 @@ Hand it to the **built-in Explore subagent**. It runs in its own context and ret
 
 ## 2. Plan
 
-Enter **plan mode** (`Shift+Tab`) and write the plan. No code changes before approval. If the plan turns out to be a large feature, suggest settling a spec first with `/grounded:spec`.
+Enter **plan mode** (`Shift+Tab`) and write the plan. No code changes before approval. If the plan turns out to be a large feature, suggest settling a spec first with `/checked-practices:spec`.
 
 ## 3. Implement
 
-Follow the `/grounded:tdd` loop: failing test first, confirm RED, minimum implementation, confirm GREEN.
+Follow the `/checked-practices:tdd` loop: failing test first, confirm RED, minimum implementation, confirm GREEN.
 
 All four gates are live through this stage. Assert without evidence and the evidence gate stops you; try to finish without running the checks and the completion gate does; try to neuter a test and the integrity gate does; try to rewrite history and the project guard does. **If a gate blocks you, assume the gate is right and go measure.**
 
@@ -43,7 +43,7 @@ If the screen changed, tell me to run the **built-in `/verify`** and look at it.
 
 ## 5. Finish
 
-Use `/grounded:ship` for checks, commit, and PR. If the session ends here, run `/grounded:handoff` as well.
+Use `/checked-practices:ship` for checks, commit, and PR. If the session ends here, run `/checked-practices:handoff` as well.
 
 ## Throughout
 

@@ -47,15 +47,15 @@ t() { tn "$@"; echo; }
 state_root() { printf '%s' "${NGG_STATE:-$1}"; }
 
 # 저장소 루트. 훅 입력의 cwd 는 Claude 가 cd 하면 따라간다(공식 hooks 문서: "follows cd commands").
-# cwd 에서만 .grounded.toml 을 찾으면 하위 폴더에 들어간 뒤 설정을 놓치고 완료 게이트가 조용히
-# 통과했다(V39). cwd 에서 위로 올라가며 .grounded.toml 이나 .git 이 있는 첫 폴더를 루트로 쓴다.
+# cwd 에서만 .checked-practices.toml 을 찾으면 하위 폴더에 들어간 뒤 설정을 놓치고 완료 게이트가 조용히
+# 통과했다(V39). cwd 에서 위로 올라가며 .checked-practices.toml 이나 .git 이 있는 첫 폴더를 루트로 쓴다.
 # .git 에서 멈추므로 다른 저장소나 워크트리 바깥의 설정을 빌려 쓰지 않는다. 세션을 연 폴더
 # (CLAUDE_PROJECT_DIR) 위로는 올라가지 않는다. 찾지 못하면 cwd 다. 결과는 NGG_ROOT 에 담는다.
 # 명령 안의 상대 경로는 이 루트가 아니라 cwd 기준으로 풀어야 한다. 파라미터 확장만 쓴다.
 find_root() { local d="${CWD:-$PWD}" p
   NGG_ROOT="$d"
   while :; do
-    if [ -f "$d/.grounded.toml" ] || [ -e "$d/.git" ]; then NGG_ROOT="$d"; return 0; fi
+    if [ -f "$d/.checked-practices.toml" ] || [ -e "$d/.git" ]; then NGG_ROOT="$d"; return 0; fi
     [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ "$d" = "$CLAUDE_PROJECT_DIR" ] && return 0
     p="${d%/*}"; [ -z "$p" ] && p=/
     [ "$p" = "$d" ] && return 0
@@ -80,15 +80,15 @@ quick_tool() { local r
   r="${r%%\"*}"; case "$r" in ""|*[!A-Za-z0-9_.-]*) return 1;; esac
   QT="$r"; }
 
-# 항목 하나만 끄기. .grounded.toml 의 disabled_rules 한 줄에 근거 게이트의 규칙(R0~R5)과
+# 항목 하나만 끄기. .checked-practices.toml 의 disabled_rules 한 줄에 근거 게이트의 규칙(R0~R5)과
 # 다른 게이트의 항목이 같이 온다. 환경변수는 한 사람 셸에만 있어 팀이 모르므로 파일에 둔다.
 # 막기 직전에만 부른다. 이 파일은 도구 호출마다 읽히므로 걸린 것이 없으면 설정을 읽지 않는다.
 NGG_ITEMS="done.turn done.commit done.pr ti.skip ti.assert ti.rm ti.exclude pg.noverify"
-off_list() { local conf; [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/.grounded.toml"; [ -f "$conf" ] || return 0
+off_list() { local conf; [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/.checked-practices.toml"; [ -f "$conf" ] || return 0
   sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1 | tr ',' ' '; }
 lc() { printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'; }
 # item_off <이름> — 꺼져 있으면 끈 사실을 events.log 에 남기고 0 을 돌려준다.
-# 남기지 않으면 왜 안 막았는지 나중에 알 수 없다. /grounded:status 가 이 줄을 읽는다.
+# 남기지 않으면 왜 안 막았는지 나중에 알 수 없다. /checked-practices:status 가 이 줄을 읽는다.
 item_off() { local tok sd
   for tok in $(off_list); do
     [ "$(lc "$tok")" = "$1" ] || continue
@@ -104,7 +104,7 @@ off_bad() { local tok bad=""
   done
   [ -z "$bad" ] || t ngg.offbad "${bad# }"; }
 
-# 한 번만 허용하기. 사람이 프롬프트에 "grounded allow <이름>" 을 한 줄로 쓰면 prompt.sh 가
+# 한 번만 허용하기. 사람이 프롬프트에 "checked-practices allow <이름>" 을 한 줄로 쓰면 prompt.sh 가
 # 이 파일에 적는다. 게이트는 막기 직전에 보고, 있으면 그 줄을 지우고 한 번 통과시킨다.
 # 설정으로 끄는 것과 달리 오탐 한 건만 넘긴다. 허용은 UserPromptSubmit 에서만 들어오므로
 # 모델이 쓴 글로는 풀리지 않는다. 같은 턴의 서브에이전트도 쓰도록 세션 폴더에 둔다.

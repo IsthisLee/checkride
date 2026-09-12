@@ -11,14 +11,14 @@ case "$PROMPT" in
   '<task-notification>'*) echo "continuation" >> "$s/continuations"; exit 0 ;;
 esac
 printf '%s' "$PROMPT" > "$s/prompt"
-# 한 번만 허용하기. 사람의 프롬프트마다 지난 허용을 지우고 "grounded allow <이름>" 줄을 새로 적는다.
+# 한 번만 허용하기. 사람의 프롬프트마다 지난 허용을 지우고 "checked-practices allow <이름>" 줄을 새로 적는다.
 # 백그라운드 알림은 위에서 빠져나갔다. 사람이 쓴 것이 아니므로 허용을 건드리지 않는다.
 # 줄 첫머리에 온 것만 받는다. 문장 가운데 적은 것은 인용이다. 받는 이름은 게이트 항목뿐이고
 # 근거 규칙(R0~R5)은 대상이 아니다. 프롬프트마다 도는 훅이라 allow 글자가 없으면 아무것도 띄우지 않는다.
 af="$(state_root "$d")/state/$SESSION_ID/allow"; : > "$af" 2>/dev/null
 case "$PROMPT" in *[Aa][Ll][Ll][Oo][Ww]*)
   set -f
-  for n in $(printf '%s\n' "$PROMPT" | grep -iE '^[[:space:]]*grounded[[:space:]]+allow[[:space:]]' \
+  for n in $(printf '%s\n' "$PROMPT" | grep -iE '^[[:space:]]*checked-practices[[:space:]]+allow[[:space:]]' \
       | sed -E 's/^[[:space:]]*[Gg][Rr][Oo][Uu][Nn][Dd][Ee][Dd][[:space:]]+[Aa][Ll][Ll][Oo][Ww]//' \
       | tr ',' ' ' | LC_ALL=C tr '[:upper:]' '[:lower:]'); do
     case " $NGG_ITEMS " in *" $n "*) echo "$n" >> "$af";; esac

@@ -41,9 +41,9 @@ fi
 
 # 검사 명령. 완료 게이트와 같은 순서로 찾는다.
 cmd=""; src=""
-if [ -f .grounded.toml ]; then
-  cmd=$(sed -n 's/^[[:space:]]*test_command[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' .grounded.toml | head -1)
-  [ -n "$cmd" ] && src=".grounded.toml"
+if [ -f .checked-practices.toml ]; then
+  cmd=$(sed -n 's/^[[:space:]]*test_command[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' .checked-practices.toml | head -1)
+  [ -n "$cmd" ] && src=".checked-practices.toml"
 fi
 if [ -z "$cmd" ] && [ -f package.json ]; then
   t=$(py -c 'import json;print((json.load(open("package.json")).get("scripts") or {}).get("test",""))' 2>/dev/null || true)
@@ -53,11 +53,11 @@ if [ -z "$cmd" ] && [ -f Makefile ] && grep -qE '^test:' Makefile; then cmd="mak
 if [ -z "$cmd" ] && [ -f pyproject.toml ]; then cmd="py -m pytest -q"; src="pyproject.toml"; fi
 
 appendonly=""
-[ -f .grounded.toml ] && appendonly=$(sed -n 's/^[[:space:]]*append_only[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' .grounded.toml | head -1)
+[ -f .checked-practices.toml ] && appendonly=$(sed -n 's/^[[:space:]]*append_only[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' .checked-practices.toml | head -1)
 # 끈 규칙은 세션마다 보여야 한다. 설정 파일에만 있으면 아무도 안 읽고, 그러면 환경변수로
 # 끄던 시절과 다를 것이 없다.
 disabled=""
-[ -f .grounded.toml ] && disabled=$(sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' .grounded.toml | head -1)
+[ -f .checked-practices.toml ] && disabled=$(sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' .checked-practices.toml | head -1)
 
 {
   tn rp.head "$name"

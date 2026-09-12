@@ -58,13 +58,13 @@ note() { t done.prefix "$1" >&2; }
 
 # 검사 명령을 찾는다. 저장소 설정이 먼저다.
 cmd=""; src=""
-conf="$root/.grounded.toml"
+conf="$root/.checked-practices.toml"
 if [ -f "$conf" ]; then
   cmd=$(sed -n 's/^[[:space:]]*fast_test_command[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1)
-  [ -n "$cmd" ] && src=".grounded.toml fast_test_command"
+  [ -n "$cmd" ] && src=".checked-practices.toml fast_test_command"
   if [ -z "$cmd" ]; then
     cmd=$(sed -n 's/^[[:space:]]*test_command[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1)
-    [ -n "$cmd" ] && src=".grounded.toml test_command"
+    [ -n "$cmd" ] && src=".checked-practices.toml test_command"
   fi
 fi
 if [ -z "$cmd" ] && [ -f "$root/package.json" ]; then

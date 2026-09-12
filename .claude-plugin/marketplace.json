@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "name": "claude-grounded",
+  "name": "checked-practices",
   "version": "1.0.0",
   "description": "Turns Claude Code best practices into enforced gates: no ungrounded claims, no false \"done\", no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
   "owner": {
@@ -9,15 +9,15 @@
   },
   "plugins": [
     {
-      "name": "grounded",
+      "name": "checked-practices",
       "version": "1.6.1",
       "description": "Turns Claude Code best practices into enforced gates: no ungrounded claims, no false \"done\", no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
       "author": {
         "name": "IsthisLee",
         "url": "https://github.com/IsthisLee"
       },
-      "homepage": "https://github.com/IsthisLee/claude-grounded",
-      "repository": "https://github.com/IsthisLee/claude-grounded",
+      "homepage": "https://github.com/IsthisLee/checked-practices",
+      "repository": "https://github.com/IsthisLee/checked-practices",
       "license": "MIT",
       "category": "development",
       "tags": [

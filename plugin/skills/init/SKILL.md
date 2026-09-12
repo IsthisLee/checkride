@@ -1,6 +1,6 @@
 ---
 name: init
-description: Fit claude-grounded to this repo. Finds the check command, writes .grounded.toml, and proposes append-only paths and secret-file denies.
+description: Fit checked-practices to this repo. Finds the check command, writes .checked-practices.toml, and proposes append-only paths and secret-file denies.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, AskUserQuestion
 ---
@@ -13,16 +13,16 @@ Set things up so the gates actually do work here. **Show a diff and get approval
 
 ## 1. Measure where we are
 
-If the `SessionStart` profile already loaded facts, start from those. Otherwise check for yourself: package manager (lockfile), stack, any existing `.grounded.toml`, and the permissions in `.claude/settings.json`.
+If the `SessionStart` profile already loaded facts, start from those. Otherwise check for yourself: package manager (lockfile), stack, any existing `.checked-practices.toml`, and the permissions in `.claude/settings.json`.
 
 ## 2. Settle the check command
 
-The completion gate looks in this order: `.grounded.toml` → `scripts.test` in `package.json` → a `test` target in `Makefile` → `pyproject.toml`.
+The completion gate looks in this order: `.checked-practices.toml` → `scripts.test` in `package.json` → a `test` target in `Makefile` → `pyproject.toml`.
 
 **Actually run whatever you auto-detect**, show the output, and ask whether it is right. Do not write it down without running it. If it is slow (minutes), propose a fast subset alongside it — the CLAUDE.md example in the official best practices recommends exactly that. "Prefer running single tests, and not the whole test suite, for performance."
 
 ```toml
-# .grounded.toml
+# .checked-practices.toml
 test_command = "pnpm test"
 fast_test_command = "pnpm test -- --changed"
 ```

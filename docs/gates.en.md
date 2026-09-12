@@ -1,4 +1,4 @@
-# claude-grounded — gates and commands in detail
+# checked-practices — gates and commands in detail
 
 The README stays short; the detail lives here — what each gate blocks, how to turn it off, and which document grounds it.
 
@@ -40,7 +40,7 @@ If it fails or times out, the block stands. Each verdict is logged to `${CLAUDE_
 
 Regex doesn't read intent, and in some repos one rule fires far more often than it should. Turning the whole gate off to escape it takes every other check in that gate down with it.
 
-Name it in `.grounded.toml` and only that one drops out.
+Name it in `.checked-practices.toml` and only that one drops out.
 
 ```toml
 # R2b fires on every design discussion here, and PRs get a separate human review
@@ -63,7 +63,7 @@ Comma-separate several; case doesn't matter. These are the names:
 
 Append-only has no name: without `append_only` it is already off.
 
-**Putting it in a file rather than an env var is the whole point.** An env var like `NGG_DONE=0` switches off every check in that gate at once, and in someone's shell it is invisible to the rest of the team. `.grounded.toml` is committed, so it shows up in the pull request and the reason lives in the same commit. This does not make switching something off easier; it makes switching it off **visible**. The env vars stay as an emergency switch.
+**Putting it in a file rather than an env var is the whole point.** An env var like `NGG_DONE=0` switches off every check in that gate at once, and in someone's shell it is invisible to the rest of the team. `.checked-practices.toml` is committed, so it shows up in the pull request and the reason lives in the same commit. This does not make switching something off easier; it makes switching it off **visible**. The env vars stay as an emergency switch.
 
 The fact is recorded in three places.
 
@@ -78,7 +78,7 @@ The file is read only right before a gate blocks or runs a check, so tool calls 
 Disabling a check in the file keeps it off. To get past a single false positive, write this on its own line in your next prompt:
 
 ```
-grounded allow ti.skip
+checked-practices allow ti.skip
 ```
 
 That check passes **once** within the turn, and the allowance is gone. An unused allowance is cleared by the next prompt too. When a gate blocks, it tells you what to write, item name included.
@@ -100,13 +100,13 @@ The check command is resolved in this order:
 
 | Order | Source |
 |---|---|
-| 1 | `test_command` in `.grounded.toml` at the repo root |
+| 1 | `test_command` in `.checked-practices.toml` at the repo root |
 | 2 | `scripts.test` in `package.json` → `npm test` |
 | 3 | a `test` target in `Makefile` → `make test` |
 | 4 | `pyproject.toml` → `python3 -m pytest -q` |
 
 ```toml
-# .grounded.toml
+# .checked-practices.toml
 fast_test_command = "npm test -- --changed"   # per turn
 test_command      = "npm test"                # before a commit
 ```
@@ -117,7 +117,7 @@ Three principles. **Never block on what it doesn't know** — if no check comman
 
 Disable with `NGG_DONE=0`; the timeout is `DONE_TIMEOUT` (default 180s).
 
-This repo eats its own dog food: its `.grounded.toml` points at its own test suites, so changing a hook makes the hook check itself.
+This repo eats its own dog food: its `.checked-practices.toml` points at its own test suites, so changing a hook makes the hook check itself.
 
 ### No evidence, no PR
 
@@ -165,18 +165,18 @@ This is the spot the official hook example points at.
 This guard is more precise: **new files are allowed; only edits and deletions of existing files are blocked.** You still need to write migrations.
 
 ```toml
-# .grounded.toml
+# .checked-practices.toml
 append_only = "supabase/migrations, db/migrate"
 ```
 
-With no configuration it blocks nothing. `git commit --no-verify` is blocked **only when there are commit hooks to bypass** (`.grounded.toml`, `.husky/pre-commit`, `.git/hooks/pre-commit`, or `core.hooksPath`). Installing a plugin should not change git's behaviour in repos you never configured. Disable with `NGG_GUARD=0`.
+With no configuration it blocks nothing. `git commit --no-verify` is blocked **only when there are commit hooks to bypass** (`.checked-practices.toml`, `.husky/pre-commit`, `.git/hooks/pre-commit`, or `core.hooksPath`). Installing a plugin should not change git's behaviour in repos you never configured. Disable with `NGG_GUARD=0`.
 
 ## Repo profile: facts, loaded every session
 
 The gates need to know what to enforce, and Claude needs to know what to run here. At session start a `SessionStart` hook puts about twenty lines of fact into the context.
 
 ```
-[grounded 프로필] claude-grounded  (branch main)
+[checked-practices 프로필] checked-practices  (branch main)
 패키지 매니저: pnpm
 스택: next, react, typescript, vitest
 검사 명령: pnpm test   (source: package.json scripts.test → vitest run)
@@ -219,14 +219,14 @@ The gates run on their own. What needs your judgment about *when* and *what it c
 
 | Command | What it does |
 |---|---|
-| `/grounded:spec` | Interviews you with `AskUserQuestion` before a large feature and writes `SPEC.md` |
-| `/grounded:init` | Actually runs the candidate check command, then pins it in `.grounded.toml`; proposes a baseline, append-only paths, and secret-file denies |
-| `/grounded:tdd` | Failing test first, confirm RED, minimum implementation |
-| `/grounded:ship` | Runs the checks and puts their output into the PR body as evidence |
-| `/grounded:handoff` | Writes a handoff for the next session |
-| `/grounded:status` | Measures and reports what every gate is actually doing |
-| `/grounded:auto` | Explore → plan → implement → review → ship, in order |
-| `/grounded:config` | Shows every gate item with what it blocks and where it comes from, then writes your picks to `disabled_rules` |
+| `/checked-practices:spec` | Interviews you with `AskUserQuestion` before a large feature and writes `SPEC.md` |
+| `/checked-practices:init` | Actually runs the candidate check command, then pins it in `.checked-practices.toml`; proposes a baseline, append-only paths, and secret-file denies |
+| `/checked-practices:tdd` | Failing test first, confirm RED, minimum implementation |
+| `/checked-practices:ship` | Runs the checks and puts their output into the PR body as evidence |
+| `/checked-practices:handoff` | Writes a handoff for the next session |
+| `/checked-practices:status` | Measures and reports what every gate is actually doing |
+| `/checked-practices:auto` | Explore → plan → implement → review → ship, in order |
+| `/checked-practices:config` | Shows every gate item with what it blocks and where it comes from, then writes your picks to `disabled_rules` |
 
 **The commands answer in whatever language you write in.** `SKILL.md` cannot branch on locale, so it is written in English with an instruction in the body to reply in the user's language — the same principle `msg.sh` applies to the gate's own sentences.
 

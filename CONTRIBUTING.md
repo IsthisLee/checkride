@@ -11,8 +11,8 @@
 필요한 것은 `bash`, `python3`, 그리고 Claude Code다. macOS와 Linux, 그리고 Git Bash가 있는 Windows에서 돌아간다.
 
 ```bash
-git clone https://github.com/IsthisLee/claude-grounded
-cd claude-grounded
+git clone https://github.com/IsthisLee/checked-practices
+cd checked-practices
 git config core.hooksPath .githooks   # 개인 정보 커밋을 막는 훅
 claude --plugin-dir .                 # 설치본 대신 이 폴더를 그 세션에 로드
 ```

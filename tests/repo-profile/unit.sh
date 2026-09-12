@@ -25,7 +25,7 @@ run() { python3 -c 'import json,sys; print(json.dumps({"session_id":"rp","hook_e
 # 1. 빈 폴더에서도 죽지 않는다
 P0="$T/empty"; mkdir -p "$P0"
 out=$(run "$P0"); check 0 $? "빈 폴더 → exit 0"
-printf '%s' "$out" | grep -q 'grounded'; check 0 $? "출력에 프로필 표시"
+printf '%s' "$out" | grep -q 'checked-practices'; check 0 $? "출력에 프로필 표시"
 
 # 2. 패키지 매니저를 락파일로 가린다
 P1="$T/pnpm"; mkdir -p "$P1"; printf '{"name":"web","dependencies":{"next":"15.0.0","react":"19.0.0"}}\n' > "$P1/package.json"; : > "$P1/pnpm-lock.yaml"
@@ -38,9 +38,9 @@ out=$(run "$P2")
 printf '%s' "$out" | grep -q 'npm'; check 0 $? "package-lock.json → npm 탐지"
 printf '%s' "$out" | grep -q 'vitest\|npm test'; check 0 $? "scripts.test에서 검사 명령 탐지"
 
-# 3. .grounded.toml 설정을 읽는다
+# 3. .checked-practices.toml 설정을 읽는다
 P3="$T/conf"; mkdir -p "$P3"
-printf 'test_command = "make check"\nappend_only = "supabase/migrations"\n' > "$P3/.grounded.toml"
+printf 'test_command = "make check"\nappend_only = "supabase/migrations"\n' > "$P3/.checked-practices.toml"
 out=$(run "$P3")
 printf '%s' "$out" | grep -q 'make check'; check 0 $? "설정의 test_command 표시"
 printf '%s' "$out" | grep -q 'supabase/migrations'; check 0 $? "설정의 append_only 표시"
@@ -74,18 +74,18 @@ out=$(run "$P7"); printf '%s' "$out" | grep -qi 'python\|pytest'; check 0 $? "py
 out=$(run "$P3"); printf '%s' "$out" | grep -q '게이트'; check 0 $? "켜져 있는 게이트 표시"
 
 # 메시지 언어. 프로필은 컨텍스트에 실리는 글이라 언어가 맞아야 읽힌다.
-out=$(NGG_LANG=ko run "$P3"); printf '%s' "$out" | grep -q 'grounded 프로필'; check 0 $? "ko: 한국어 머리글"
-out=$(NGG_LANG=en run "$P3"); printf '%s' "$out" | grep -q 'grounded profile'; check 0 $? "en: 영어 머리글"
+out=$(NGG_LANG=ko run "$P3"); printf '%s' "$out" | grep -q 'checked-practices 프로필'; check 0 $? "ko: 한국어 머리글"
+out=$(NGG_LANG=en run "$P3"); printf '%s' "$out" | grep -q 'checked-practices profile'; check 0 $? "en: 영어 머리글"
 out=$(NGG_LANG=en run "$P3"); nohangul "$out"; check 0 $? "en: 한글이 섞이지 않는다"
 
 # 규칙을 끈 저장소는 세션마다 그 사실이 보여야 한다. 설정 파일에만 있으면 아무도 안 읽는다.
 PD="$T/pd"; mkdir -p "$PD"
-printf 'test_command = "true"\ndisabled_rules = "R2b"\n' > "$PD/.grounded.toml"
+printf 'test_command = "true"\ndisabled_rules = "R2b"\n' > "$PD/.checked-practices.toml"
 out=$(run "$PD"); printf '%s' "$out" | grep -q 'R2b'; check 0 $? "끈 규칙을 프로필에 싣는다"
 out=$(NGG_LANG=en run "$PD"); nohangul "$out"; check 0 $? "en: 끈 규칙 줄에도 한글이 없다"
 
 PE="$T/pe"; mkdir -p "$PE"
-printf 'test_command = "true"\n' > "$PE/.grounded.toml"
+printf 'test_command = "true"\n' > "$PE/.checked-practices.toml"
 out=$(run "$PE"); printf '%s' "$out" | grep -q 'disabled_rules'; r=$?; check 1 "$r" "끈 규칙이 없으면 그 줄을 넣지 않는다"
 
 # 세션을 하위 폴더에서 열어도 저장소 루트의 설정을 싣는다. 훅 입력의 cwd 는 루트가 아닐 수 있다.

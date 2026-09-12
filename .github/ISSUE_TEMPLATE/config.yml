@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: 게이트 동작과 끄는 법 / How the gates work
-    url: https://github.com/IsthisLee/claude-grounded/blob/main/docs/gates.ko.md
+    url: https://github.com/IsthisLee/checked-practices/blob/main/docs/gates.ko.md
     about: 무엇이 왜 막히는지, 어떤 환경변수로 끄는지 먼저 확인해 주세요.
   - name: 보안 취약점 신고 / Report a vulnerability
-    url: https://github.com/IsthisLee/claude-grounded/security/advisories/new
+    url: https://github.com/IsthisLee/checked-practices/security/advisories/new
     about: 게이트를 무력화하는 입력이나 의도치 않은 명령 실행 경로는 공개 이슈 대신 여기로.

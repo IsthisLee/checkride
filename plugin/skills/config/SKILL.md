@@ -1,19 +1,19 @@
 ---
 name: config
-description: Pick which checks this repo enforces. Shows every gate item and where it comes from, then writes your choice to disabled_rules in .grounded.toml.
+description: Pick which checks this repo enforces. Shows every gate item and where it comes from, then writes your choice to disabled_rules in .checked-practices.toml.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write, AskUserQuestion
 ---
 
 # Choose what to enforce
 
-Let me pick, check by check, what claude-grounded enforces in this repo. **Everything starts on.** Turning something off is a decision written into `.grounded.toml`, so it shows up in the pull request and the team can see it.
+Let me pick, check by check, what checked-practices enforces in this repo. **Everything starts on.** Turning something off is a decision written into `.checked-practices.toml`, so it shows up in the pull request and the team can see it.
 
 **Reply in whatever language I am writing to you in,** and write config comments in that language.
 
 ## 1. Read the current state
 
-Read `.grounded.toml` at the repo root. Take the `disabled_rules` line if there is one. **That line is the only thing this command changes.** Leave every other key and comment exactly as it is.
+Read `.checked-practices.toml` at the repo root. Take the `disabled_rules` line if there is one. **That line is the only thing this command changes.** Leave every other key and comment exactly as it is.
 
 Check the environment too. If `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD` or `NGG_JUDGE` is `0`, that switch turns a whole gate off regardless of the file. Say so.
 
@@ -41,13 +41,13 @@ One table with five columns: **Gate, Name, Blocks, Source, On/Off.** Use these r
 | Test integrity | `ti.exclude` | Adding exclusions to test-runner config | EvilGenie (arXiv 2511.21654), "Modified Testing Procedures" |
 | Project guard | `pg.noverify` | `git commit --no-verify` when commit hooks exist | No external source. Skipping the repo's own checks is a human's call |
 
-Append-only paths have no name here. They are on only when `append_only` is set, and `/grounded:init` handles that.
+Append-only paths have no name here. They are on only when `append_only` is set, and `/checked-practices:init` handles that.
 
 ## 3. Ask what to turn off
 
 Use `AskUserQuestion` with multi-select, one question per gate, listing that gate's items. The question is **which to turn off**, not which to keep. It allows at most four options per question, so split the evidence gate's seven rules across two questions. If I only want to change one gate, ask about that one.
 
-Before asking, say this once: for a single false positive, writing `grounded allow <item>` on its own line in the next prompt lets one action through without turning anything off. That does not cover `R0`–`R5`.
+Before asking, say this once: for a single false positive, writing `checked-practices allow <item>` on its own line in the next prompt lets one action through without turning anything off. That does not cover `R0`–`R5`.
 
 ## 4. Write it
 
@@ -61,4 +61,4 @@ Names are comma-separated and case does not matter. Do not write a name that is 
 
 ## 5. Report
 
-The same table as step 2, with the new state. Then say where the change will be visible: in the diff of `.grounded.toml`, in the repo profile at the start of every session, and as `off=[...]` in `events.log` whenever a disabled check would have blocked.
+The same table as step 2, with the new state. Then say where the change will be visible: in the diff of `.checked-practices.toml`, in the repo profile at the start of every session, and as `off=[...]` in `events.log` whenever a disabled check would have blocked.

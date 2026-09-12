@@ -1,13 +1,13 @@
 {
-  "name": "grounded",
+  "name": "checked-practices",
   "version": "1.6.1",
   "description": "Turns Claude Code best practices into enforced gates: no ungrounded claims, no false \"done\", no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
   "author": {
     "name": "IsthisLee",
     "url": "https://github.com/IsthisLee"
   },
-  "repository": "https://github.com/IsthisLee/claude-grounded",
-  "homepage": "https://github.com/IsthisLee/claude-grounded",
+  "repository": "https://github.com/IsthisLee/checked-practices",
+  "homepage": "https://github.com/IsthisLee/checked-practices",
   "license": "MIT",
   "keywords": [
     "claude-code",

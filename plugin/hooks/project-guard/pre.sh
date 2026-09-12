@@ -8,7 +8,7 @@
 # 이 가드는 그보다 정밀하다. **새 파일 추가는 허용하고 기존 파일의 수정·삭제만 막는다.**
 # 마이그레이션은 계속 써야 하기 때문이다.
 #
-# 설정: 저장소 루트 .grounded.toml
+# 설정: 저장소 루트 .checked-practices.toml
 #   append_only = "supabase/migrations, db/migrate"
 # 설정이 없으면 아무것도 막지 않는다. 끄기: NGG_GUARD=0
 d="$(cd "$(dirname "$0")" && pwd)"; . "$d/../lib/common.sh"
@@ -18,7 +18,7 @@ IN=$(cat)
 if quick_tool && [ "$QT" = Bash ]; then case "$IN" in *rm[[:space:]\"\\]*|*mv[[:space:]\"\\]*|*commit*) ;; *) exit 0;; esac; fi
 read_in
 [ "${NGG_GUARD:-1}" = "0" ] && exit 0
-find_root; root="$NGG_ROOT"; conf="$root/.grounded.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
+find_root; root="$NGG_ROOT"; conf="$root/.checked-practices.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
 
 # block <머리> <내용> [항목]. 항목이 있으면 사람에게 한 번만 허용하는 법을 알린다.
 block() { { t pg.prefix "$1"; off_bad; echo "$2"; [ -z "${3:-}" ] || allow_hint "$3"; } >&2; exit 2; }
