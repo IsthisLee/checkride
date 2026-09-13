@@ -82,7 +82,7 @@ if [ "$n_gate" = 5 ]; then ok "훅 모듈이 다섯이다(게이트 넷 + 프로
 n_in=$(python3 "$R/tests/fuzz-inputs.py" | wc -l | tr -d ' ')
 n_hook=$(grep -oE '[a-z-]+/[a-z]+\.sh' "$R/tests/fuzz.sh" | sort -u | wc -l | tr -d ' ')
 want=$(( (n_in + 1) * n_hook ))
-if grep -q "${want}회" "$R/docs/gates.ko.md"; then ok "퍼징 횟수가 문서와 같다(${want}회)"; else bad "퍼징 횟수가 문서와 다르다(실제 ${want}회)"; fi
+if grep -q "${want}회" "$R/docs/gates.md"; then ok "퍼징 횟수가 문서와 같다(${want}회)"; else bad "퍼징 횟수가 문서와 다르다(실제 ${want}회)"; fi
 
 
 # 훅이 부르는 메시지 키와 카탈로그가 맞는지. 어긋나면 조용히 망가진다.

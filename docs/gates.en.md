@@ -2,6 +2,51 @@
 
 The README stays short; the detail lives here — what each gate blocks, how to turn it off, and which document grounds it.
 
+## In plain terms
+
+Claude Code is an AI assistant that writes code for you. It is good at the work. But now and then it says "there's no such thing" without opening the document, and "all done" without running the check.
+
+When a person does that, you just ask back, "did you check?" The trouble is that you have to ask **every** time. A person eventually forgets, and the day they forget is the day something breaks.
+
+This plugin makes that asking automatic. It is like a car that beeps when you skip the seatbelt: the driver does not have to remember, and it is fine if they cannot.
+
+## When each runs
+
+The four gates and the repo profile hook into different events. **At `Stop` (turn end) only the evidence gate and the completion gate run.** Test integrity and the project guard block at the moment an edit or Bash call is about to run, not when the turn ends. The wiring lives in `plugin/hooks/hooks.json`.
+
+| Event | Evidence | Completion | Test integrity | Project guard | Repo profile |
+|---|---|---|---|---|---|
+| `SessionStart` | | | | | loads repo facts into context |
+| `UserPromptSubmit` | reads `check allow` | | | | |
+| `PreToolUse` | every tool | Bash | Edit·Write·Bash | Edit·Write·Bash | |
+| `PostToolUse` | records Bash result as S/F | Edit·Write | | | |
+| `PostToolUseFailure` | records the Bash failure | | | | |
+| `Stop` | R0–R5 | check command | | | |
+| `SubagentStop` | R0–R5 | | | | |
+
+### R0–R5 are not all checked every turn
+
+The evidence gate's Stop rules fire only under their conditions. Most fire **only when no tool ran this turn**.
+
+| Rule | Checked when |
+|---|---|
+| R0 · R1 · R2a | only when zero tool calls this turn |
+| R3 | only when zero Bash calls |
+| R5 | only when the last Bash run failed (F) |
+| R4 | only when the previous turn was blocked and no tool ran since |
+| R2b | only when the prompt asks about local state |
+
+So on the common turn (tools used, evidence attached) nothing fires and the turn passes.
+
+### Exemptions before the rules are read
+
+The Stop hook checks two things before weighing any rule. If either matches, it never looks at the rules.
+
+- The answer is a question, or `AskUserQuestion` was used this turn. Asking is always allowed.
+- It is a nested session spawned by the judge, so the gate does not run inside itself.
+
+The post-check releases (impossible, JSON, mention, opinion) are in the [README](../README.en.md#what-does-not-get-blocked).
+
 ## Judge settings
 
 When only R2a/R2b fire, the evidence gate asks a small model whether the flagged wording is an opinion or a claim about state. The judge can only release, never block. The rules and exemptions are in the [README](../README.en.md#what-gets-blocked).

@@ -31,15 +31,36 @@ You never asked for any of it, and it is checked every time. **The point is that
 
 > **Why hooks?** The same docs answer that: "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."
 
-<p align="center"><img src="docs/demo.svg" alt="An ungrounded answer is blocked, then the model measures and answers again" width="760"></p>
+<p align="center"><img src="docs/assets/demo.en.svg" alt="An ungrounded answer is blocked, then the model measures and answers again" width="760"></p>
 
 **This plugin makes no exception for itself.** Below are real cases where the gate blocked this very agent during actual use. It tried to assert file state without looking and hit R1; it tried to pass off checkable local state as "seems like…" and hit R2b. Only after both were blocked did it measure the files and the source, then answer again.
 
-<p align="center"><img src="docs/cases.en.svg" alt="Cases where the gate actually blocked this agent" width="760"></p>
+<p align="center"><img src="docs/assets/cases.en.svg" alt="Cases where the gate actually blocked this agent" width="760"></p>
 
 Across projects in real use, the gate checked 898 answers and blocked 69 of them. R0 (answering without checking file state) and R2b (guessing at local state) account for most. The counting command and raw output are in the [verification log](docs/VERIFICATION.md#v43-적용-사례-실측).
 
 ---
+
+## Why it's needed
+
+The models keep getting better, and this failure does not go away. Opus 4.7 and 4.8, Sonnet 5, and Opus 5 landed one after another over a year, yet "all passed" without running the check stayed. It is a matter of habit, not capability, so a person has to ask "did you check?" every time. People eventually forget, and the day they forget is the day something breaks.
+
+Writing the rule into CLAUDE.md is not enough, and the official docs say why: **"Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."** did-you-check turns that sentence into a mechanism.
+
+Claude Code itself still has no feature that blocks an ungrounded answer **at the moment the turn ends**. Auto mode blocks dangerous commands before they run, and `/code-review` finds bugs when you call it, but the spot right before an answer leaves is empty. This plugin fills it.
+
+Subagents run in the background by default, and the deeper the chain grows, the less a person sees of each turn. An automatic "did you check?" is worth more the less you watch, so did-you-check runs the same check when a subagent finishes as well (`SubagentStop`).
+
+## Who it's for
+
+| For whom | Why |
+|---|---|
+| **People and teams running subagents autonomously** | It asks "did you check?" for you, in the place where nobody watches each turn |
+| **Repos many people share** | Leave a rule as a request and each person keeps it differently. A hook applies equally to everyone, and whatever `.check.toml` turns off stays in the commit for the team to see |
+| **Anyone burned by a false "done"** | If you have lost time to "passed" without running the tests, or "not found" without opening the file, that asking becomes automatic |
+| **People keeping TDD and record integrity** | It blocks adding `.skip` to force a pass, or editing a migration that already landed |
+
+A solo developer on a strong model who watches every turn may find the 256ms per turn not worth it. In that case, [turn off individual items](#turning-it-off) or enable it per repo only.
 
 ## Install
 
@@ -89,6 +110,21 @@ The last two cannot be fully separated by regex. So when *only* R2a/R2b fire, th
 It runs on about 4% of blocks; median 8s when it does (measured over 12 cases, max 9s). See [the detail doc](docs/gates.en.md#judge-settings) to turn it off or change the model.
 
 What the judge did is recorded in `events.log` as `judge=released` / `kept` / `failed` with the elapsed seconds, so you can count how often it runs or fails. Accuracy measured on 6 opinions and 6 state claims: 12/12. Re-measure it with `tests/no-guess-gate/judge-accuracy.sh`.
+
+### When it runs
+
+At `Stop` (turn end) only **two gates run: evidence and completion**. Test integrity and the project guard block only at the moment an edit or Bash call is about to run (`PreToolUse`).
+
+| Event | Gates that run |
+|---|---|
+| `SessionStart` | repo profile |
+| `UserPromptSubmit` | evidence (`check allow`) |
+| `PreToolUse` | evidence · completion (Bash) · test integrity · project guard |
+| `PostToolUse` | evidence (Bash result) · completion (Edit·Write) |
+| `Stop` | evidence (R0–R5) · completion (check command) |
+| `SubagentStop` | evidence (R0–R5) |
+
+R0–R5 are not all checked every turn; each fires only under its condition. R0, R1, and R2a fire only when zero tools ran this turn. See [the detail doc](docs/gates.en.md#when-each-runs) for the full wiring and conditions.
 
 ## When it blocks
 

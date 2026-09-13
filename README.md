@@ -31,11 +31,11 @@ Claude Code 공식 문서를 비롯한 개발 문서가 권하는 모범 사례�
 
 > **왜 훅인가.** 같은 문서가 답합니다. "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens." (권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다.)
 
-<p align="center"><img src="docs/demo.ko.svg" alt="근거 없는 답이 막히고 실측한 뒤 다시 답하는 화면" width="760"></p>
+<p align="center"><img src="docs/assets/demo.svg" alt="근거 없는 답이 막히고 실측한 뒤 다시 답하는 화면" width="760"></p>
 
 **이 플러그인은 자기 자신에게도 예외를 두지 않습니다.** 아래는 실사용에서 게이트가 이 에이전트를 실제로 막은 사례입니다. 파일을 안 보고 단정하려다 R1에 걸렸고 확인할 수 있는 로컬 상태를 "~처럼 보인다"로 넘기려다 R2b에 걸렸습니다. 둘 다 막힌 뒤에야 파일과 원문을 실측하고 다시 답했습니다.
 
-<p align="center"><img src="docs/cases.ko.svg" alt="게이트가 이 에이전트를 실제로 막은 사례" width="760"></p>
+<p align="center"><img src="docs/assets/cases.svg" alt="게이트가 이 에이전트를 실제로 막은 사례" width="760"></p>
 
 실사용 중 여러 프로젝트에서 게이트는 답을 898번 검사해 69번을 실제로 막았습니다. 파일 상태를 안 보고 답하는 R0과 로컬 상태를 추측하는 R2b가 대부분입니다. 세는 명령과 원문은 [검증 기록](docs/VERIFICATION.md#v43-적용-사례-실측)에 있습니다.
 
@@ -75,7 +75,7 @@ Claude Code 세션 안에서 두 줄입니다.
 
 **당신의 `settings.json`과 `CLAUDE.md`는 한 글자도 바뀌지 않습니다.** 설치하면 평소와 똑같습니다. 검사는 걸릴 때만 나타납니다.
 
-턴마다 약 256ms가 붙습니다. 훅별 실측은 [상세 문서](docs/gates.ko.md#얼마나-느려지나)에 있습니다.
+턴마다 약 256ms가 붙습니다. 훅별 실측은 [상세 문서](docs/gates.md#얼마나-느려지나)에 있습니다.
 
 필요한 것은 `bash`와 `python3`입니다. **macOS · Linux · Windows 셋 다 CI에서 매번 단위 테스트를 돌립니다.** 망가진 입력을 던지는 fuzz는 리눅스·macOS에서는 매번, Windows에서는 main에 올라갈 때 돕니다. Windows는 Git Bash가 있어야 합니다.
 
@@ -107,9 +107,24 @@ Claude가 답을 마치려는 순간 `Stop` 훅이 규칙 일곱 개를 봅니�
 
 마지막 둘은 정규식으로 다 가릴 수 없습니다. 그래서 R2a·R2b만 걸렸을 때는 **작은 모델에게 의견인지 상태 주장인지 묻고 의견이면 풀어 줍니다.** 이 판정은 풀어 줄 수만 있고 새로 막지 못합니다. 도구를 안 돌린 사실을 잡는 R0·R1·R3·R4는 판정 대상이 아닙니다. 결정적 바닥이 그대로 남습니다. 판정이 실패하거나 시간을 넘기면 막은 채로 둡니다.
 
-판정이 불리는 턴은 차단의 약 4%이고 불리면 중앙값 8초가 걸립니다(실측 12건, 최대 9초). 끄거나 모델을 바꾸는 법은 [상세 문서](docs/gates.ko.md#의미-판정기-설정)에 있습니다.
+판정이 불리는 턴은 차단의 약 4%이고 불리면 중앙값 8초가 걸립니다(실측 12건, 최대 9초). 끄거나 모델을 바꾸는 법은 [상세 문서](docs/gates.md#의미-판정기-설정)에 있습니다.
 
 판정기가 무엇을 했는지는 `events.log`에 남습니다. `judge=released` / `kept` / `failed`와 걸린 초가 함께 적히므로 판정이 도는지 실패하는지 셀 수 있습니다. 정확도는 의견 6건과 상태 주장 6건으로 재서 12/12였습니다. `tests/no-guess-gate/judge-accuracy.sh`로 다시 잴 수 있습니다.
+
+### 언제 도나
+
+`Stop`(턴 끝)에서 도는 것은 **근거·완료 두 게이트뿐**입니다. 테스트 무결성과 프로젝트 가드는 편집·Bash를 실행하려는 순간(`PreToolUse`)에만 막습니다.
+
+| 이벤트 | 도는 게이트 |
+|---|---|
+| `SessionStart` | 저장소 프로필 |
+| `UserPromptSubmit` | 근거(`check allow`) |
+| `PreToolUse` | 근거 · 완료(Bash) · 테스트 무결성 · 프로젝트 가드 |
+| `PostToolUse` | 근거(Bash 결과) · 완료(Edit·Write) |
+| `Stop` | 근거(R0~R5) · 완료(검사 명령) |
+| `SubagentStop` | 근거(R0~R5) |
+
+R0~R5도 매 턴 전부 검사하지 않습니다. 조건이 맞을 때만 봅니다. R0·R1·R2a는 이 턴에 도구를 하나도 안 썼을 때만 걸립니다. 자세한 배선과 조건은 [상세 문서](docs/gates.md#언제-무엇이-도나)에 있습니다.
 
 ## 막히면 어떻게 되나
 
@@ -171,7 +186,7 @@ Claude가 이런 메시지를 받습니다.
 
 | 문서 | 내용 |
 |---|---|
-| [게이트와 커맨드 상세](docs/gates.ko.md) | 게이트 넷이 무엇을 어떻게 막는지, 커맨드 여덟, 끄는 법, 근거 문서 |
+| [게이트와 커맨드 상세](docs/gates.md) | 게이트 넷이 무엇을 어떻게 막는지, 커맨드 여덟, 끄는 법, 근거 문서 |
 | [검증 기록](docs/VERIFICATION.md) | 모든 주장의 실행 명령과 출력 원문 |
 | [기여](CONTRIBUTING.md) · [보안](SECURITY.md) · [변경 이력](CHANGELOG.md) | |
 
@@ -186,7 +201,7 @@ Claude가 이런 메시지를 받습니다.
 | 테스트 무력화 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" |
 | 마이그레이션 수정 | [Hooks](https://code.claude.com/docs/en/hooks) | "Write a hook that blocks writes to the migrations folder." |
 
-Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)도 근거로 씁니다. 규칙마다 어느 문장에서 왔는지 [상세 문서](docs/gates.ko.md#근거)에 적었습니다.
+Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)도 근거로 씁니다. 규칙마다 어느 문장에서 왔는지 [상세 문서](docs/gates.md#근거)에 적었습니다.
 
 ## 비슷한 도구
 
