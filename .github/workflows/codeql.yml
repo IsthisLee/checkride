@@ -1,0 +1,41 @@
+name: CodeQL
+
+# CodeQL 은 인터프리터 언어 중 Python 을 지원한다. 이 저장소의 셸(bash)은
+# CodeQL 대상이 아니라 judge.py·fuzz-inputs.py·lint-expand.py 등 .py 파일만 본다.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '27 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: Analyze (python)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@faaca9a8f6edddba5725ffe5adefdab6669a2eca  # v3.38.0
+        with:
+          languages: python
+
+      # Python 은 인터프리터 언어라 빌드 단계가 필요 없다(autobuild 생략).
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@faaca9a8f6edddba5725ffe5adefdab6669a2eca  # v3.38.0
+        with:
+          category: "/language:python"

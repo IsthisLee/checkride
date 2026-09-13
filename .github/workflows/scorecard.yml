@@ -1,0 +1,46 @@
+name: Scorecard
+
+# OpenSSF Scorecard 를 돌려 점수를 공개 API 에 게시한다. README 의 Scorecard 뱃지가
+# 그 API 를 읽는다. 배지에 점수가 뜨려면 main 에서 한 번 이상 publish_results 로 돌아야 한다.
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '31 4 * * 1'
+  push:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # 코드 스캐닝에 SARIF 를 올린다.
+      security-events: write
+      # publish_results 가 OIDC 로 결과를 OpenSSF 에 게시한다.
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc  # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@faaca9a8f6edddba5725ffe5adefdab6669a2eca  # v3.38.0
+        with:
+          sarif_file: results.sarif
