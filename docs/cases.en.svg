@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="276" viewBox="0 0 760 276" role="img" aria-label="Cases where the gate actually blocked this agent: R0 an answer with no check, R1 a file-state assertion, R2b a guess about local state, R3 a passing claim for tests that never ran" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+  <title>did-you-check: cases where the gate actually blocked this agent</title>
+
+  <!-- table body -->
+  <rect x="8" y="8" width="744" height="260" rx="8" fill="#0d1117"/>
+  <!-- header band -->
+  <rect x="8" y="8" width="744" height="36" rx="8" fill="#161b22"/>
+  <rect x="8" y="28" width="744" height="16" fill="#161b22"/>
+
+  <!-- column separators -->
+  <line x1="78"  y1="8" x2="78"  y2="268" stroke="#21262d" stroke-width="1"/>
+  <line x1="322" y1="8" x2="322" y2="268" stroke="#21262d" stroke-width="1"/>
+  <line x1="545" y1="8" x2="545" y2="268" stroke="#21262d" stroke-width="1"/>
+  <!-- row separators -->
+  <line x1="8" y1="44"  x2="752" y2="44"  stroke="#21262d" stroke-width="1"/>
+  <line x1="8" y1="100" x2="752" y2="100" stroke="#21262d" stroke-width="1"/>
+  <line x1="8" y1="156" x2="752" y2="156" stroke="#21262d" stroke-width="1"/>
+  <line x1="8" y1="212" x2="752" y2="212" stroke="#21262d" stroke-width="1"/>
+  <!-- outer border -->
+  <rect x="8" y="8" width="744" height="260" rx="8" fill="none" stroke="#30363d" stroke-width="1"/>
+
+  <!-- header row -->
+  <text x="43"  y="30" fill="#c9d1d9" text-anchor="middle">When</text>
+  <text x="90"  y="30" fill="#c9d1d9">What the agent tried</text>
+  <text x="334" y="30" fill="#c9d1d9">What the gate blocked</text>
+  <text x="557" y="30" fill="#c9d1d9">Result</text>
+
+  <!-- row R0 -->
+  <text x="43"  y="76" fill="#ff7b72" text-anchor="middle">R0</text>
+  <text x="90"  y="68" fill="#c9d1d9">Answered "is there a</text>
+  <text x="90"  y="88" fill="#c9d1d9">test?" with no tool</text>
+  <text x="334" y="68" fill="#ff7b72">"Check it now with</text>
+  <text x="334" y="88" fill="#ff7b72">Read/Grep/Glob/Bash"</text>
+  <text x="557" y="76" fill="#7ee787">Looked it up, answered</text>
+
+  <!-- row R1 -->
+  <text x="43"  y="132" fill="#ff7b72" text-anchor="middle">R1</text>
+  <text x="90"  y="124" fill="#c9d1d9">Asserted file state</text>
+  <text x="90"  y="144" fill="#c9d1d9">without checking</text>
+  <text x="334" y="132" fill="#ff7b72">"Go check it now"</text>
+  <text x="557" y="124" fill="#7ee787">Checked the real FS →</text>
+  <text x="557" y="144" fill="#7ee787">mapped duplication</text>
+
+  <!-- row R2b -->
+  <text x="43"  y="188" fill="#ff7b72" text-anchor="middle">R2b</text>
+  <text x="90"  y="180" fill="#c9d1d9">Guessed the README's</text>
+  <text x="90"  y="200" fill="#c9d1d9">contents with "seems"</text>
+  <text x="334" y="180" fill="#ff7b72">"Measure it, then</text>
+  <text x="334" y="200" fill="#ff7b72">say what is true"</text>
+  <text x="557" y="180" fill="#7ee787">Read the README →</text>
+  <text x="557" y="200" fill="#7ee787">fixed a false claim</text>
+
+  <!-- row R3 -->
+  <text x="43"  y="244" fill="#ff7b72" text-anchor="middle">R3</text>
+  <text x="90"  y="236" fill="#c9d1d9">Claimed "tests pass"</text>
+  <text x="90"  y="256" fill="#c9d1d9">without running them</text>
+  <text x="334" y="236" fill="#ff7b72">"Actually run it and</text>
+  <text x="334" y="256" fill="#ff7b72">answer from the output"</text>
+  <text x="557" y="236" fill="#7ee787">Ran the tests for real,</text>
+  <text x="557" y="256" fill="#7ee787">pasted the output</text>
+</svg>

@@ -2754,3 +2754,53 @@ check-did-you-check
 실행: `gh release view v2.0.0`
 
 출력: `v2.0.0` 릴리스가 있고 본문이 CHANGELOG 의 2.0.0 절과 같다. 태그는 SSH 로 서명돼 있다.
+
+## V43 적용 사례 실측
+
+V42 는 격리 세션에서 상태 폴더가 만들어지는 것까지만 봤고 "**모델이 답을 낸 세션에서 게이트가
+실제로 막는지는 이 기록으로 확인하지 못했다**"고 남겼다. 그 공백을 설치본 로그로 메운다.
+로그는 이름 변경(2.0.0) 전에 설치돼 있던 판의 전역 파일이라 경로가 옛 이름(`grounded-claude-grounded`)
+아래에 있고, `did-you-check`·EJE·보안감사 등 **여러 프로젝트가 한 파일에 섞여** 쌓였다. 그래서
+아래 숫자는 이 저장소 하나가 아니라 **실사용 전반**의 것이다.
+
+먼저 측정 도구부터 의심했다. `grep 'R0'` 가 tail 에 분명히 보이는 `viol=[R0]` 줄을 두고도 0 을
+반환했다. `file` 로 보니 로그에 U+0085(NEL) 줄 종결자가 섞여 있어, 로케일을 따르는 grep 이
+라인을 잘못 갈랐다. `LC_ALL=C` 로 바이트 매칭하니 정상으로 셌다.
+
+실행:
+```
+LOG=~/.claude/plugins/data/grounded-claude-grounded/state/events.log
+LC_ALL=C grep -oaE 'viol=\[[^]]*\]' "$LOG" | wc -l                                   # 전체
+LC_ALL=C grep -oaE 'viol=\[\]' "$LOG" | wc -l                                        # 통과
+LC_ALL=C grep -oaE 'viol=\[[^]]*\]' "$LOG" | LC_ALL=C grep -avE 'viol=\[\]|exempt|면제' | wc -l   # 실제 차단
+for R in R0 R1 R2a R2b R3 R4 R5; do
+  n=$(LC_ALL=C grep -oaE 'viol=\[[^]]*\]' "$LOG" | LC_ALL=C grep -avE 'exempt|면제' | LC_ALL=C grep -c "\b$R\b")
+  printf '%-4s %s\n' "$R" "$n"
+done
+```
+
+출력:
+```
+898        # Stop·SubagentStop 이벤트 전체
+583        # 통과(viol=[])
+69         # 실제 차단(면제·통과 제외)
+R0   46
+R1   6
+R2a  4
+R2b  24
+R3   4
+R4   1
+R5   0
+```
+
+판정: 통과. 모델이 답을 낸 세션에서 게이트가 **실제로 막는다.** 898 건을 검사해 69 건을 막았고
+나머지 246 건은 면제(질문·불가·판정 등)다. 규칙별 합(85)이 69 를 넘는 것은 한 답에 여러 규칙이
+겹쳐 걸린 경우를 각각 세기 때문이다. R0(파일 상태를 안 보고 답)과 R2b(로컬 상태 추측)가 대부분이다.
+README 는 이 중 898·69 와 "R0·R2b 가 대부분"만 인용한다.
+
+README 표(`docs/cases.ko.svg`·`cases.en.svg`)의 R0·R1·R2b·R3 네 사례는 실제로 걸린 규칙(R0 46 건·
+R1 6 건·R2b 24 건·R3 4 건)을 대표하는 예시다. 로그의 `last=` 필드는 차단을 부른 메시지를 잘라 저장해
+차단 뒤의 정정까지 한 줄로 복원하지는 못하므로, 특정 로그 줄의 축자 재구성이 아니라 그 패턴의
+대표 사례로 싣는다. 표의 인용문(예: `"지금 실제로 확인하라"`·`"실측해서 단정하라"`, 영문 `"Go check it
+now"`·`"Measure it, then say what is true"`)은 모두 `plugin/hooks/lib/msg.sh` 의 `ngg.r0`·`ngg.r1`·`ngg.r2b`·
+`ngg.r3` 문자열에서 그대로 가져왔다.

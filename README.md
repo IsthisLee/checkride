@@ -1,13 +1,20 @@
 # did-you-check
 
 [![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml)
+[![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A63D2)](#설치)
+[![version](https://img.shields.io/github/v/release/IsthisLee/did-you-check?label=version&color=informational)](https://github.com/IsthisLee/did-you-check/releases)
+[![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)](#설치)
+[![external services](https://img.shields.io/badge/external%20services-none-brightgreen)](SECURITY.md)
+[![last commit](https://img.shields.io/github/last-commit/IsthisLee/did-you-check)](https://github.com/IsthisLee/did-you-check/commits)
 
 **[English](README.en.md)** · 한국어
 
 ### 모범 사례는 문서에 적혀 있다. 지켜졌는지는 아무도 검사하지 않는다.
 
-did-you-check는 그 검사를 맡는다. Claude Code 공식 문서를 비롯한 검증된 문서가 권하는 것을 **부탁이 아니라 장치**로 바꾸는 플러그인이다. 턴마다 지켰는지 보고 안 지켰으면 그 턴이 끝나지 않는다.
+did-you-check는 그 검사를 맡는다. Claude Code 공식 문서를 비롯한 개발 문서가 권하는 것을 **부탁이 아니라 장치**로 바꾸는 플러그인이다. 턴마다 지켰는지 보고 안 지켰으면 그 턴이 끝나지 않는다.
 
 | 검사하는 모범 사례 | 어긴 순간 |
 |---|---|
@@ -18,13 +25,19 @@ did-you-check는 그 검사를 맡는다. Claude Code 공식 문서를 비롯한
 | | 설정에 제외 패턴을 넣어 테스트를 뺌 → 그것도 막힌다 |
 | **쌓인 기록은 고치지 않는다** | 이미 올라간 마이그레이션을 고치려 함 → 커밋 전에 막힌다 |
 
-네 줄 모두 **공식 문서와 검증된 문서가 권하는 것**이다. 내가 정한 규칙이 아니다. 어느 문장에서 왔는지는 [근거](#근거)에 있다.
+4가지 사례 모두 **공식 문서와 개발 문서에서 권하고 있다.** 어느 문장에서 왔는지는 [근거](#근거)에 있다.
 
 한 번도 부탁하지 않았는데 매번 검사한다. **잊어도 된다는 것이 요점이다.**
 
 > **왜 훅인가.** 같은 문서가 답한다. "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens." (권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다.)
 
 <p align="center"><img src="docs/demo.ko.svg" alt="근거 없는 답이 막히고 실측한 뒤 다시 답하는 화면" width="760"></p>
+
+**이 플러그인은 자기 자신에게도 예외를 두지 않는다.** 아래는 실사용에서 게이트가 이 에이전트를 실제로 막은 사례다. 파일을 안 보고 단정하려다 R1에 걸렸고 확인할 수 있는 로컬 상태를 "~처럼 보인다"로 넘기려다 R2b에 걸렸다. 둘 다 막힌 뒤에야 파일과 원문을 실측하고 다시 답했다.
+
+<p align="center"><img src="docs/cases.ko.svg" alt="게이트가 이 에이전트를 실제로 막은 사례" width="760"></p>
+
+실사용 중 여러 프로젝트에서 게이트는 답을 898번 검사해 69번을 실제로 막았다. 파일 상태를 안 보고 답하는 R0과 로컬 상태를 추측하는 R2b가 대부분이다. 세는 명령과 원문은 [검증 기록](docs/VERIFICATION.md#v43-적용-사례-실측)에 있다.
 
 ---
 

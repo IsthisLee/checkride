@@ -1,13 +1,20 @@
 # did-you-check
 
 [![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml)
+[![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A63D2)](#install)
+[![version](https://img.shields.io/github/v/release/IsthisLee/did-you-check?label=version&color=informational)](https://github.com/IsthisLee/did-you-check/releases)
+[![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)](#install)
+[![external services](https://img.shields.io/badge/external%20services-none-brightgreen)](SECURITY.en.md)
+[![last commit](https://img.shields.io/github/last-commit/IsthisLee/did-you-check)](https://github.com/IsthisLee/did-you-check/commits)
 
 English · **[한국어](README.md)**
 
 ### The best practices are written down. Nobody checks whether they were followed.
 
-did-you-check does the checking. It turns what the Claude Code docs and other verified sources *recommend* into something the tool *enforces*: every turn is checked against them, and a turn that breaks one does not end.
+did-you-check does the checking. It turns what the Claude Code docs and other development writing *recommend* into something the tool *enforces*: every turn is checked against them, and a turn that breaks one does not end.
 
 | The practice being checked | The moment it is broken |
 |---|---|
@@ -18,13 +25,19 @@ did-you-check does the checking. It turns what the Claude Code docs and other ve
 | | Removing tests via an ignore pattern in the runner config → blocked too |
 | **Never rewrite what already landed** | Editing a migration that shipped → blocked before the commit |
 
-None of these four are house rules. Every one is **recommended by the official docs or by verified writing**, and [Sources](#sources) names the sentence each came from.
+Every one is **recommended by the official docs or by development writing**, and [Sources](#sources) names the sentence each came from.
 
 You never asked for any of it, and it is checked every time. **The point is that you get to forget.**
 
 > **Why hooks?** The same docs answer that: "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."
 
 <p align="center"><img src="docs/demo.svg" alt="An ungrounded answer is blocked, then the model measures and answers again" width="760"></p>
+
+**This plugin makes no exception for itself.** Below are real cases where the gate blocked this very agent during actual use. It tried to assert file state without looking and hit R1; it tried to pass off checkable local state as "seems like…" and hit R2b. Only after both were blocked did it measure the files and the source, then answer again.
+
+<p align="center"><img src="docs/cases.en.svg" alt="Cases where the gate actually blocked this agent" width="760"></p>
+
+Across projects in real use, the gate checked 898 answers and blocked 69 of them. R0 (answering without checking file state) and R2b (guessing at local state) account for most. The counting command and raw output are in the [verification log](docs/VERIFICATION.md#v43-적용-사례-실측).
 
 ---
 
