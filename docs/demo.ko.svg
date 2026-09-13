@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="452" viewBox="0 0 760 452" role="img" aria-label="근거 없는 답이 막히고, 모델이 실측한 뒤 다시 답하는 화면" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
+  <title>did-you-check: 근거 없는 답은 나가지 못한다</title>
+
+  <rect width="760" height="452" rx="10" fill="#0d1117"/>
+  <rect width="760" height="30" rx="10" fill="#161b22"/>
+  <rect y="20" width="760" height="10" fill="#161b22"/>
+  <circle cx="18" cy="15" r="5" fill="#ff5f56"/>
+  <circle cx="36" cy="15" r="5" fill="#ffbd2e"/>
+  <circle cx="54" cy="15" r="5" fill="#27c93f"/>
+  <text x="380" y="19" font-size="11" fill="#8b949e" text-anchor="middle">claude — did-you-check</text>
+
+  <text x="20" y="58" fill="#79c0ff">&gt; 이 폴더에 package.json 있어? 아무것도 실행하지 마.</text>
+
+  <text x="20" y="90"  fill="#8b949e">Claude</text>
+  <text x="20" y="110" fill="#c9d1d9">  아니요, 여기 package.json 없습니다.</text>
+
+  <rect x="14" y="126" width="732" height="122" rx="6" fill="#161b22" stroke="#f85149" stroke-width="1"/>
+  <text x="28" y="148" fill="#ff7b72">⛔ 근거 없는 결론 게이트 [R0 R1]. 턴을 끝낼 수 없다.</text>
+  <text x="28" y="168" fill="#c9d1d9">   - R0: 사용자가 이 디렉터리/파일/코드의 상태를 물었는데 도구를</text>
+  <text x="28" y="188" fill="#c9d1d9">     한 번도 실행하지 않았다. 지금 Read/Grep/Glob/Bash로 확인하라.</text>
+  <text x="28" y="208" fill="#c9d1d9">   - R1: 도구 실행 없이 특정 경로/파일의 상태를 단정했다. (…)</text>
+  <text x="28" y="228" fill="#8b949e">   막힌 답은 이미 화면에 남아 사용자가 읽었다. (…)</text>
+
+  <text x="20" y="278" fill="#7ee787">  $ ls package.json</text>
+  <text x="20" y="298" fill="#8b949e">  ls: package.json: No such file or directory</text>
+
+  <text x="20" y="330" fill="#8b949e">Claude</text>
+  <text x="20" y="350" fill="#c9d1d9">  ls 로 확인했습니다. package.json 이 없습니다.</text>
+
+  <line x1="14" y1="372" x2="746" y2="372" stroke="#21262d" stroke-width="1"/>
+  <text x="20" y="394" fill="#8b949e">압박 프롬프트 24개로 잰 결과: 도구를 한 번도 안 부른 답이</text>
+  <text x="20" y="414" fill="#8b949e">게이트 없이 <tspan fill="#d29922">75%</tspan> → 게이트로 <tspan fill="#7ee787">42%</tspan>. 답당 도구 호출 0.3 → 1.0.</text>
+</svg>

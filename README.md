@@ -24,7 +24,7 @@ did-you-check는 그 검사를 맡는다. Claude Code 공식 문서를 비롯한
 
 > **왜 훅인가.** 같은 문서가 답한다. "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens." (권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다.)
 
-<p align="center"><img src="docs/demo.svg" alt="근거 없는 답이 막히고 실측한 뒤 다시 답하는 화면" width="760"></p>
+<p align="center"><img src="docs/demo.ko.svg" alt="근거 없는 답이 막히고 실측한 뒤 다시 답하는 화면" width="760"></p>
 
 ---
 
