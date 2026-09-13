@@ -1,13 +1,13 @@
 {
-  "name": "checked-practices",
-  "version": "1.6.1",
-  "description": "Turns Claude Code best practices into enforced gates: no ungrounded claims, no false \"done\", no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
+  "name": "check",
+  "version": "2.0.0",
+  "description": "Checks whether the Claude Code best practices were actually followed, and blocks the turn when they were not: no claim without evidence, no \"done\" without a passing check, no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
   "author": {
     "name": "IsthisLee",
     "url": "https://github.com/IsthisLee"
   },
-  "repository": "https://github.com/IsthisLee/checked-practices",
-  "homepage": "https://github.com/IsthisLee/checked-practices",
+  "repository": "https://github.com/IsthisLee/did-you-check",
+  "homepage": "https://github.com/IsthisLee/did-you-check",
   "license": "MIT",
   "keywords": [
     "claude-code",

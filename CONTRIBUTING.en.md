@@ -11,8 +11,8 @@ Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 You need `bash`, `python3`, and Claude Code. It runs on macOS, Linux, and Windows — Windows through Git Bash.
 
 ```bash
-git clone https://github.com/IsthisLee/checked-practices
-cd checked-practices
+git clone https://github.com/IsthisLee/did-you-check
+cd did-you-check
 git config core.hooksPath .githooks   # blocks commits carrying personal paths
 claude --plugin-dir .                 # load this folder in that session instead of the installed copy
 ```

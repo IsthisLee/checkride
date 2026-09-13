@@ -15,7 +15,7 @@
 
 **네트워크로 나가는 것은 판정기 하나뿐이고, 그것도 당신의 Claude Code를 거친다.** 외부 서비스로 보내는 것은 없다. 판정기를 끄려면 `NGG_JUDGE=0`이다.
 
-`events.log`가 남기는 것은 프롬프트 일부와 답의 처음 80자다. 민감한 내용을 다루는 저장소라면 `${CLAUDE_PLUGIN_DATA}/state/`를 주기적으로 지우거나 게이트를 그 저장소에서 끄면 된다(`claude plugin disable checked-practices@checked-practices --scope project`).
+`events.log`가 남기는 것은 프롬프트 일부와 답의 처음 80자다. 민감한 내용을 다루는 저장소라면 `${CLAUDE_PLUGIN_DATA}/state/`를 주기적으로 지우거나 게이트를 그 저장소에서 끄면 된다(`claude plugin disable check@did-you-check --scope project`).
 
 ## 설치할 것을 직접 확인하는 법
 
@@ -24,8 +24,8 @@
 **릴리스 태그는 서명돼 있다.** 받아서 검증할 수 있다.
 
 ```bash
-git clone https://github.com/IsthisLee/checked-practices
-cd checked-practices
+git clone https://github.com/IsthisLee/did-you-check
+cd did-you-check
 git tag -v v1.4.1        # Good "git" signature 가 나와야 한다
 ```
 

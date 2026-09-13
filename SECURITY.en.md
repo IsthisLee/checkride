@@ -15,7 +15,7 @@ Hooks **run shell commands as you.** Installing this plugin means trusting that 
 
 **The judge is the only thing that leaves this machine, and it goes through your own Claude Code.** Nothing is sent to any external service. Turn the judge off with `NGG_JUDGE=0`.
 
-What `events.log` keeps is part of the prompt and the first 80 characters of the answer. In a repo handling sensitive material, clear `${CLAUDE_PLUGIN_DATA}/state/` periodically or switch the gate off for that repo (`claude plugin disable checked-practices@checked-practices --scope project`).
+What `events.log` keeps is part of the prompt and the first 80 characters of the answer. In a repo handling sensitive material, clear `${CLAUDE_PLUGIN_DATA}/state/` periodically or switch the gate off for that repo (`claude plugin disable check@did-you-check --scope project`).
 
 ## Checking for yourself what you are installing
 
@@ -24,8 +24,8 @@ This plugin runs a shell as you, so you should be able to verify what you are ge
 **Release tags are signed.** Fetch and verify.
 
 ```bash
-git clone https://github.com/IsthisLee/checked-practices
-cd checked-practices
+git clone https://github.com/IsthisLee/did-you-check
+cd did-you-check
 git tag -v v1.4.1        # should print Good "git" signature
 ```
 

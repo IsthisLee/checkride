@@ -380,11 +380,11 @@ printf '%s' '{"session_id":"t23","hook_event_name":"Stop","stop_hook_active":fal
   | NGG_JUDGE=0 NGG_STATE="$K23" "$W/stop.sh" 2>/dev/null; check 0 $? "R5: 답 전체가 JSON 이면 면제"
 
 # 24. 저장소별 규칙 끄기. 오탐을 만나면 환경변수로 통째로 끄거나 플러그인을 끄는 수밖에 없었다.
-#     환경변수는 한 사람 셸에만 있어 팀이 모른다. .checked-practices.toml 에 적으면 PR 에 보이고 리뷰 대상이 된다.
+#     환경변수는 한 사람 셸에만 있어 팀이 모른다. .check.toml 에 적으면 PR 에 보이고 리뷰 대상이 된다.
 #     끄기를 쉽게 만드는 변경이 아니라 끄는 행위를 보이게 만드는 변경이다.
 P24="$T/p24"; mkdir -p "$P24"; K24="$T/k24"
 mk24() { printf '{"session_id":"t24","hook_event_name":"Stop","stop_hook_active":false,"cwd":"%s","last_assistant_message":"%s"}' "$P24" "$1"; }
-conf24() { if [ -n "$1" ]; then printf 'disabled_rules = "%s"\n' "$1" > "$P24/.checked-practices.toml"; else rm -f "$P24/.checked-practices.toml"; fi; }
+conf24() { if [ -n "$1" ]; then printf 'disabled_rules = "%s"\n' "$1" > "$P24/.check.toml"; else rm -f "$P24/.check.toml"; fi; }
 NOFILE="이 디렉터리에는 package.json 파일이 없다."
 # R0 는 사용자가 이 디렉터리 상태를 물었을 때만 걸린다. 프롬프트를 남겨 두 규칙이 다 걸리게 한다.
 printf '{"session_id":"t24","hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"이 디렉터리에 package.json 있어?"}' "$P24" \
@@ -427,20 +427,20 @@ conf24 "R0, R1"
 printf '{"session_id":"t24b","hook_event_name":"Stop","stop_hook_active":false,"cwd":"%s","last_assistant_message":"%s"}' "$T" "$NOFILE" \
   | NGG_STATE="$T/k24b" "$W/stop.sh" 2>/dev/null; check 2 $? "규칙 끄기: cwd 가 다르면 그 설정을 쓰지 않는다"
 
-# 25. 한 번만 허용하기. 사람이 프롬프트에 "checked-practices allow <이름>" 을 한 줄로 쓰면 그 턴에 한 번 통과한다.
+# 25. 한 번만 허용하기. 사람이 프롬프트에 "check allow <이름>" 을 한 줄로 쓰면 그 턴에 한 번 통과한다.
 #     설정으로 끄는 것과 달리 오탐 한 건만 넘긴다. 허용은 사용자 프롬프트에서만 들어온다.
 K25="$T/k25"; AF="$K25/state/t25/allow"
 up25() { printf '{"session_id":"t25","hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"%s"}' "$T" "$1" | NGG_STATE="$K25" "$W/prompt.sh"; }
-up25 '테스트 픽스처라서 괜찮다\nchecked-practices allow ti.skip'
-grep -qx 'ti.skip' "$AF" 2>/dev/null; check 0 $? "허용: 프롬프트의 checked-practices allow 줄을 적어 둔다"
-up25 'CHECKED-PRACTICES ALLOW done.pr, ti.rm'
+up25 '테스트 픽스처라서 괜찮다\ncheck allow ti.skip'
+grep -qx 'ti.skip' "$AF" 2>/dev/null; check 0 $? "허용: 프롬프트의 check allow 줄을 적어 둔다"
+up25 'CHECK ALLOW done.pr, ti.rm'
 grep -qx 'done.pr' "$AF" 2>/dev/null && grep -qx 'ti.rm' "$AF"; check 0 $? "허용: 대소문자를 가리지 않고 여럿을 받는다"
 grep -qx 'ti.skip' "$AF" 2>/dev/null; r=$?; check 1 "$r" "허용: 새 프롬프트가 오면 지난 허용은 사라진다"
 printf '{"session_id":"t25","hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"<task-notification>x</task-notification>"}' "$T" | NGG_STATE="$K25" "$W/prompt.sh"
 grep -qx 'done.pr' "$AF" 2>/dev/null; check 0 $? "허용: 백그라운드 알림은 사람의 프롬프트가 아니라 허용을 지우지 않는다"
-up25 '문장 가운데 checked-practices allow ti.skip 이라고 적었다'
+up25 '문장 가운데 check allow ti.skip 이라고 적었다'
 [ -s "$AF" ]; r=$?; check 1 "$r" "허용: 줄 첫머리가 아니면 허용이 아니다"
-up25 'checked-practices allow R2b, ti.nope'
+up25 'check allow R2b, ti.nope'
 [ -s "$AF" ]; r=$?; check 1 "$r" "허용: 근거 규칙과 없는 이름은 받지 않는다"
 
 # 26. 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 disabled_rules 를 읽는다.

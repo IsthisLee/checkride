@@ -40,8 +40,8 @@ done
 check 0 0 "인자를 받는 넷은 \$ARGUMENTS를 쓴다"
 
 # 내장과 겹치는 것을 새로 만들지 않았는지 (전수 조사 결정)
-for bad in "checked-practices:plan" "checked-practices:explore" "checked-practices:review" "checked-practices:verify" "checked-practices:commit"; do
-  ls -d "$G/${bad#checked-practices:}" >/dev/null 2>&1 && { echo "❌ 내장과 겹치는 스킬 존재: $bad"; fail=$((fail+1)); }
+for bad in "check:plan" "check:explore" "check:review" "check:verify" "check:commit"; do
+  ls -d "$G/${bad#check:}" >/dev/null 2>&1 && { echo "❌ 내장과 겹치는 스킬 존재: $bad"; fail=$((fail+1)); }
 done
 check 0 0 "내장과 겹치는 스킬 없음(plan·explore·review·verify·commit)"
 

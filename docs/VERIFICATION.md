@@ -2641,3 +2641,57 @@ $ tests/fuzz.sh
 
 - 훅의 `if` 필드를 쓰면 프로세스조차 띄우지 않을 수 있다. V39에 적은 이유로 쓰지 않았다.
 - Edit·Write 경로는 그대로다. 본문을 파이썬으로 비교해야 해서 빠른 경로가 없다.
+
+## V41 이름 변경(did-you-check) — 테스트 먼저, 그다음 훅
+
+이름을 바꾸는 변경이라 기계적 치환으로 끝날 수 있었다. 그래서 테스트를 먼저 새 이름으로
+바꾸고 실패를 본 뒤 훅을 고쳤다. RED 를 보지 않으면 치환이 실제로 걸리는 자리를 지나쳤는지
+알 수 없다.
+
+실행: 테스트만 새 이름으로 바꾼 뒤 다섯 스위트
+
+출력:
+```
+no-guess-gate   실패 11건
+done-gate       실패 21건
+test-integrity  실패 8건
+project-guard   실패 24건
+repo-profile    실패 6건
+```
+
+판정: RED 70건. 설정 파일 이름·커맨드 접두사·허용 줄·프로필 머리글이 모두 걸렸다.
+
+실행: 훅·스킬·매니페스트·문서를 고친 뒤 전체
+
+출력:
+```
+lib             전부 통과
+no-guess-gate   실패 0건
+done-gate       실패 0건
+test-integrity  실패 0건
+project-guard   실패 0건
+repo-profile    실패 0건
+skills-unit     실패 0건
+attack-surface  전부 통과
+invariants      전부 통과
+fuzz         실행 240회 · 실패 0건
+shellcheck   지적 없음
+validate     ✔ Validation passed
+```
+
+판정: 통과.
+
+실행: `git grep -n -i grounded` 와 `git grep -n checked-practices` (이력 기록 제외)
+
+출력: 0건. 남은 `grounded` 는 CHANGELOG·VERIFICATION 의 옛 기록과 영어 단어(`ungrounded`,
+`grounded in`)뿐이다.
+
+실행: 매니페스트에서 설치 ID 를 만들어 본다
+
+출력:
+```
+마켓플레이스: did-you-check / 플러그인: check / plugin.json: check
+설치 ID: check@did-you-check
+```
+
+판정: 통과. 실제 설치로 확인한 것은 V42 다.

@@ -22,7 +22,7 @@ edit() { python3 -c 'import json,sys; print(json.dumps({"session_id":"pg","hook_
 bash_() { python3 -c 'import json,sys; print(json.dumps({"session_id":"pg","hook_event_name":"PreToolUse","cwd":sys.argv[1],"tool_name":"Bash","tool_input":{"command":sys.argv[2]}},ensure_ascii=False))' "$1" "$2"; }
 P="$T/proj"; mkdir -p "$P/supabase/migrations" "$P/src"
 printf 'create table a();\n' > "$P/supabase/migrations/0001_init.sql"
-printf 'append_only = "supabase/migrations, db/migrate"\n' > "$P/.checked-practices.toml"
+printf 'append_only = "supabase/migrations, db/migrate"\n' > "$P/.check.toml"
 
 # 1. 설정이 없으면 아무것도 막지 않는다
 P0="$T/noconf"; mkdir -p "$P0/supabase/migrations"; printf 'x\n' > "$P0/supabase/migrations/0001.sql"
@@ -60,7 +60,7 @@ edit "$P" Edit "$P/supabase/migrations/0001_init.sql" | NGG_GUARD=0 "$W/pre.sh" 
 #    설치만 했는데 남의 저장소의 git 동작이 바뀌면 과하다.
 P8="$T/plain"; mkdir -p "$P8"
 bash_ "$P8" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 0 $? "설정도 커밋 훅도 없음 → --no-verify 통과"
-bash_ "$P" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? ".checked-practices.toml 있으면 → 차단"
+bash_ "$P" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? ".check.toml 있으면 → 차단"
 P9="$T/husky"; mkdir -p "$P9/.husky"; printf '#!/bin/sh\nnpm test\n' > "$P9/.husky/pre-commit"
 bash_ "$P9" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? ".husky/pre-commit 있으면 → 차단"
 P10="$T/githook"; mkdir -p "$P10/.git/hooks"; printf '#!/bin/sh\n' > "$P10/.git/hooks/pre-commit"; chmod +x "$P10/.git/hooks/pre-commit"
@@ -92,7 +92,7 @@ bash_ "$P" 'git commit -m x' | "$W/pre.sh" 2>/dev/null; check 0 $? "인용: 평�
 
 # 항목 하나만 끄기. NGG_GUARD=0 은 append-only 까지 같이 끈다.
 PX="$T/off"; mkdir -p "$PX/supabase/migrations"; printf 'x\n' > "$PX/supabase/migrations/0001.sql"
-printf 'append_only = "supabase/migrations"\ndisabled_rules = "pg.noverify"\n' > "$PX/.checked-practices.toml"
+printf 'append_only = "supabase/migrations"\ndisabled_rules = "pg.noverify"\n' > "$PX/.check.toml"
 bash_ "$PX" "git commit --no-verify -m x" | NGG_STATE="$T/pgs" "$W/pre.sh" 2>/dev/null; check 0 $? "끄기: pg.noverify 를 끄면 --no-verify 를 막지 않는다"
 grep -q 'off=\[pg.noverify\]' "$T/pgs/state/events.log"; check 0 $? "끄기: 끈 사실이 events.log 에 남는다"
 edit "$PX" Edit "$PX/supabase/migrations/0001.sql" | NGG_STATE="$T/pgs" "$W/pre.sh" 2>/dev/null; check 2 $? "끄기: pg.noverify 만 끄면 append-only 는 그대로다"
@@ -101,9 +101,9 @@ edit "$PX" Edit "$PX/supabase/migrations/0001.sql" | NGG_STATE="$T/pgs" "$W/pre.
 AL="$T/allow"; mkdir -p "$AL/state/pg"; printf 'pg.noverify\n' > "$AL/state/pg/allow"
 bash_ "$P" "git commit --no-verify -m x" | NGG_STATE="$AL" "$W/pre.sh" 2>/dev/null; check 0 $? "허용: pg.noverify 를 허용하면 한 번 통과한다"
 bash_ "$P" "git commit --no-verify -m x" | NGG_STATE="$AL" "$W/pre.sh" 2>"$T/eal"; check 2 $? "허용: 두 번째는 막는다"
-grep -q 'checked-practices allow pg.noverify' "$T/eal"; check 0 $? "허용: 막을 때 사람이 허용하는 법을 알린다"
+grep -q 'check allow pg.noverify' "$T/eal"; check 0 $? "허용: 막을 때 사람이 허용하는 법을 알린다"
 
-# 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 .checked-practices.toml 을 쓴다.
+# 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 .check.toml 을 쓴다.
 edit "$P/src" Edit "$P/supabase/migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더에서도 append-only 수정을 막는다"
 bash_ "$P/supabase" "rm migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더 기준 상대 경로 삭제도 막는다"
 bash_ "$P/src" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더에서도 --no-verify 를 막는다"

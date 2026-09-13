@@ -41,15 +41,15 @@ grep -q 'a.ts' "$S/state/t1/changed"; check 0 $? "바꾼 파일 경로 기록"
 printf '%s' "$(stop t1 "$P")" | NGG_STATE="$S" "$W/stop.sh" 2>"$T/e3"; check 0 $? "검사 명령 없음 → exit 0"
 grep -q '검사 명령' "$T/e3"; check 0 $? "stderr에 안내(막지는 않음)"
 
-# 4. .checked-practices.toml의 test_command를 쓴다. 통과하면 턴이 끝난다
+# 4. .check.toml의 test_command를 쓴다. 통과하면 턴이 끝난다
 P2=$(newproj p2); S2="$T/s2"
-printf 'test_command = "true"\n' > "$P2/.checked-practices.toml"
+printf 'test_command = "true"\n' > "$P2/.check.toml"
 printf '%s' "$(post t2 "$P2" "$P2/src/a.ts")" | NGG_STATE="$S2" "$W/post.sh"
 printf '%s' "$(stop t2 "$P2")" | NGG_STATE="$S2" "$W/stop.sh" 2>/dev/null; check 0 $? "검사 통과 → exit 0"
 
 # 5. 검사가 실패하면 턴을 막고 출력 꼬리를 준다
 P3=$(newproj p3); S3="$T/s3"
-printf 'test_command = "echo FAIL_MARKER_LINE >&2; exit 1"\n' > "$P3/.checked-practices.toml"
+printf 'test_command = "echo FAIL_MARKER_LINE >&2; exit 1"\n' > "$P3/.check.toml"
 printf '%s' "$(post t3 "$P3" "$P3/src/a.ts")" | NGG_STATE="$S3" "$W/post.sh"
 printf '%s' "$(stop t3 "$P3")" | NGG_STATE="$S3" "$W/stop.sh" 2>"$T/e5"; check 2 $? "검사 실패 → exit 2"
 grep -q '완료 게이트' "$T/e5"; check 0 $? "stderr에 완료 게이트 헤더"
@@ -57,7 +57,7 @@ grep -q 'FAIL_MARKER_LINE' "$T/e5"; check 0 $? "stderr에 검사 출력 꼬리"
 
 # 6. 문서만 고친 턴은 대상이 아니다
 P4=$(newproj p4); S4="$T/s4"
-printf 'test_command = "exit 1"\n' > "$P4/.checked-practices.toml"
+printf 'test_command = "exit 1"\n' > "$P4/.check.toml"
 printf '%s' "$(post t4 "$P4" "$P4/docs/README.md")" | NGG_STATE="$S4" "$W/post.sh"
 printf '%s' "$(stop t4 "$P4")" | NGG_STATE="$S4" "$W/stop.sh" 2>/dev/null; check 0 $? "문서만 변경 → 검사 안 함, exit 0"
 
@@ -79,21 +79,21 @@ printf '%s' "$(stop t3 "$P3")" | NGG_DONE=0 NGG_STATE="$S3" "$W/stop.sh" 2>/dev/
 
 # 10. 통과한 뒤에는 changed를 비워 다음 턴에 다시 돌지 않게 한다
 P7=$(newproj p7); S7="$T/s7"
-printf 'test_command = "true"\n' > "$P7/.checked-practices.toml"
+printf 'test_command = "true"\n' > "$P7/.check.toml"
 printf '%s' "$(post t7 "$P7" "$P7/src/a.ts")" | NGG_STATE="$S7" "$W/post.sh"
 printf '%s' "$(stop t7 "$P7")" | NGG_STATE="$S7" "$W/stop.sh" 2>/dev/null
 empty "$S7/state/t7/changed"; check 0 $? "통과 후 changed 비움"
 
 # 11. 검사가 오래 걸리면 막지 않고 알린다 (조용한 실패 금지)
 P8=$(newproj p8); S8="$T/s8"
-printf 'test_command = "sleep 5"\n' > "$P8/.checked-practices.toml"
+printf 'test_command = "sleep 5"\n' > "$P8/.check.toml"
 printf '%s' "$(post t8 "$P8" "$P8/src/a.ts")" | NGG_STATE="$S8" "$W/post.sh"
 printf '%s' "$(stop t8 "$P8")" | DONE_TIMEOUT=1 NGG_STATE="$S8" "$W/stop.sh" 2>"$T/e11"; check 0 $? "검사 시간초과 → 막지 않음"
 grep -q '시간' "$T/e11"; check 0 $? "stderr에 시간초과 안내"
 
 # 12. cwd 밖 경로는 무시한다 (다른 저장소 파일을 근거로 검사하지 않는다)
 P9=$(newproj p9); S9="$T/s9"
-printf 'test_command = "exit 1"\n' > "$P9/.checked-practices.toml"
+printf 'test_command = "exit 1"\n' > "$P9/.check.toml"
 printf '%s' "$(post t9 "$P9" "$T/elsewhere/x.ts")" | NGG_STATE="$S9" "$W/post.sh"
 printf '%s' "$(stop t9 "$P9")" | NGG_STATE="$S9" "$W/stop.sh" 2>/dev/null; check 0 $? "cwd 밖 파일만 변경 → 검사 안 함"
 
@@ -101,14 +101,14 @@ printf '%s' "$(stop t9 "$P9")" | NGG_STATE="$S9" "$W/stop.sh" 2>/dev/null; check
 #     공식 CLAUDE.md 예시: "Prefer running single tests, and not the whole test suite, for performance."
 #     fast_test_command이 있으면 턴 끝에는 그것만 쓰고, 전체는 커밋 직전에 한 번 돌린다.
 PA=$(newproj pa); SA="$T/sa"
-printf 'fast_test_command = "echo FAST; true"\ntest_command = "echo FULL; true"\n' > "$PA/.checked-practices.toml"
+printf 'fast_test_command = "echo FAST; true"\ntest_command = "echo FULL; true"\n' > "$PA/.check.toml"
 printf '%s' "$(post ta "$PA" "$PA/src/a.ts")" | NGG_STATE="$SA" "$W/post.sh"
 printf '%s' "$(stop ta "$PA")" | NGG_STATE="$SA" "$W/stop.sh" 2>/dev/null; check 0 $? "빠른 검사 통과 → exit 0"
 grep -q FAST "$SA/state/ta/done-out"; check 0 $? "턴 끝에는 fast_test_command를 돌린다"
 grep -q FULL "$SA/state/ta/done-out"; r=$?; check 1 "$r" "턴 끝에 전체 검사는 돌리지 않는다"
 
 PB=$(newproj pb); SB="$T/sb"
-printf 'fast_test_command = "true"\ntest_command = "echo FULLFAIL >&2; exit 1"\n' > "$PB/.checked-practices.toml"
+printf 'fast_test_command = "true"\ntest_command = "echo FULLFAIL >&2; exit 1"\n' > "$PB/.check.toml"
 printf '%s' "$(post tb "$PB" "$PB/src/a.ts")" | NGG_STATE="$SB" "$W/post.sh"
 printf '%s' "$(stop tb "$PB")" | NGG_STATE="$SB" "$W/stop.sh" 2>/dev/null; check 0 $? "빠른 검사만 보므로 턴은 끝난다"
 commit() { printf '{"session_id":"%s","hook_event_name":"PreToolUse","cwd":"%s","tool_name":"Bash","tool_input":{"command":"%s"}}' "$1" "$2" "$3"; }
@@ -118,19 +118,19 @@ printf '%s' "$(commit tb "$PB" "git status")" | NGG_STATE="$SB" "$W/pre.sh" 2>/d
 
 # 분리하지 않았으면 커밋 때 두 번 돌리지 않는다
 PC=$(newproj pc); SC="$T/sc"
-printf 'test_command = "echo ONCE >&2; exit 1"\n' > "$PC/.checked-practices.toml"
+printf 'test_command = "echo ONCE >&2; exit 1"\n' > "$PC/.check.toml"
 printf '%s' "$(commit tc "$PC" "git commit -m x")" | NGG_STATE="$SC" "$W/pre.sh" 2>/dev/null; check 0 $? "fast 분리 없으면 커밋 때 중복 검사 안 함"
 
 # 14. 느린 검사는 분리하라고 알린다
 PD=$(newproj pd); SD="$T/sd"
-printf 'test_command = "sleep 2"\n' > "$PD/.checked-practices.toml"
+printf 'test_command = "sleep 2"\n' > "$PD/.check.toml"
 printf '%s' "$(post td "$PD" "$PD/src/a.ts")" | NGG_STATE="$SD" "$W/post.sh"
 printf '%s' "$(stop td "$PD")" | DONE_SLOW=1 NGG_STATE="$SD" "$W/stop.sh" 2>"$T/e14"; check 0 $? "느려도 통과는 통과"
 grep -q 'fast_test_command' "$T/e14"; check 0 $? "느리면 fast_test_command 분리를 권한다"
 
 # 메시지 언어. 같은 실패가 두 언어에서 같게 걸리고 문장만 바뀐다.
 PL="$T/lang"; mkdir -p "$PL/src"; printf 'x\n' > "$PL/src/a.ts"
-printf 'test_command = "exit 1"\n' > "$PL/.checked-practices.toml"
+printf 'test_command = "exit 1"\n' > "$PL/.check.toml"
 for L in ko en; do
   SL="$T/sl-$L"
   printf '%s' "$(post "tl$L" "$PL" "$PL/src/a.ts")" | NGG_STATE="$SL" "$W/post.sh"
@@ -273,51 +273,51 @@ nohangul "$(cat "$T/epr-en")"; check 0 $? "PR en: 한글이 섞이지 않는다"
 # 16. 항목 하나만 끄기. disabled_rules 가 근거 게이트 밖의 항목 이름도 받는다.
 #     환경변수 NGG_DONE=0 은 세 검사를 한꺼번에 끄고 팀에 보이지 않는다.
 PO=$(newrepo proff src/a.ts)
-printf 'disabled_rules = "done.pr"\n' > "$PO/.checked-practices.toml"
+printf 'disabled_rules = "done.pr"\n' > "$PO/.check.toml"
 prrun q1 "$PO" "gh pr create --title t --body '통과'"; check 0 $? "끄기: done.pr 을 끄면 PR 본문을 보지 않는다"
 grep -q 'off=\[done.pr\]' "$T/prs/state/events.log"; check 0 $? "끄기: 끈 사실이 events.log 에 남는다"
 # 오타는 조용히 넘어가면 안 된다. 껐다고 믿는데 안 꺼진 상태가 제일 나쁘다.
-printf 'disabled_rules = "done.pt"\n' > "$PO/.checked-practices.toml"
+printf 'disabled_rules = "done.pt"\n' > "$PO/.check.toml"
 prrun q2 "$PO" "gh pr create --title t --body '통과'"; check 2 $? "끄기: 없는 이름은 아무것도 끄지 않는다"
 grep -q 'done.pt' "$T/epr"; check 0 $? "끄기: 없는 이름을 막을 때 알린다"
 
 PT=$(newproj pturn); ST="$T/sturn"
-printf 'test_command = "exit 1"\ndisabled_rules = "done.turn"\n' > "$PT/.checked-practices.toml"
+printf 'test_command = "exit 1"\ndisabled_rules = "done.turn"\n' > "$PT/.check.toml"
 printf '%s' "$(post tt "$PT" "$PT/src/a.ts")" | NGG_STATE="$ST" "$W/post.sh"
 printf '%s' "$(stop tt "$PT")" | NGG_STATE="$ST" "$W/stop.sh" 2>/dev/null; check 0 $? "끄기: done.turn 을 끄면 턴 끝 검사를 돌리지 않는다"
 
 PM=$(newproj pcommit); SM="$T/scommit"
-printf 'fast_test_command = "true"\ntest_command = "exit 1"\ndisabled_rules = "done.commit"\n' > "$PM/.checked-practices.toml"
+printf 'fast_test_command = "true"\ntest_command = "exit 1"\ndisabled_rules = "done.commit"\n' > "$PM/.check.toml"
 printf '%s' "$(commit tm "$PM" "git commit -m x")" | NGG_STATE="$SM" "$W/pre.sh" 2>/dev/null; check 0 $? "끄기: done.commit 을 끄면 커밋 전 검사를 돌리지 않는다"
 # 한 항목을 끈 것이 다른 항목까지 끄면 안 된다.
-printf 'fast_test_command = "true"\ntest_command = "exit 1"\ndisabled_rules = "done.pr"\n' > "$PM/.checked-practices.toml"
+printf 'fast_test_command = "true"\ntest_command = "exit 1"\ndisabled_rules = "done.pr"\n' > "$PM/.check.toml"
 printf '%s' "$(commit tm "$PM" "git commit -m x")" | NGG_STATE="$SM" "$W/pre.sh" 2>/dev/null; check 2 $? "끄기: done.pr 만 끄면 커밋 전 검사는 그대로다"
 
 # 17. 한 번만 허용하기. 허용 목록은 prompt.sh 가 사람의 프롬프트에서만 적는다. 여기서는 그 결과를 둔다.
 mkdir -p "$T/prs/state/a1"; printf 'done.pr\n' > "$T/prs/state/a1/allow"
 prrun a1 "$PRC" "gh pr create --title t --body '통과'"; check 0 $? "허용: done.pr 을 허용하면 PR 이 한 번 열린다"
 prrun a1 "$PRC" "gh pr create --title t --body '통과'"; check 2 $? "허용: 두 번째는 막는다"
-grep -q 'checked-practices allow done.pr' "$T/epr"; check 0 $? "허용: 막을 때 사람이 허용하는 법을 알린다"
+grep -q 'check allow done.pr' "$T/epr"; check 0 $? "허용: 막을 때 사람이 허용하는 법을 알린다"
 
 PW=$(newproj pallow); SW="$T/sallow"
-printf 'test_command = "exit 1"\n' > "$PW/.checked-practices.toml"
+printf 'test_command = "exit 1"\n' > "$PW/.check.toml"
 mkdir -p "$SW/state/tw"; printf 'done.turn\n' > "$SW/state/tw/allow"
 printf '%s' "$(post tw "$PW" "$PW/src/a.ts")" | NGG_STATE="$SW" "$W/post.sh"
 printf '%s' "$(stop tw "$PW")" | NGG_STATE="$SW" "$W/stop.sh" 2>/dev/null; check 0 $? "허용: done.turn 을 허용하면 검사가 실패해도 턴이 한 번 끝난다"
 printf '%s' "$(stop tw "$PW")" | NGG_STATE="$SW" "$W/stop.sh" 2>/dev/null; check 2 $? "허용: 다음 턴 끝에서는 다시 막는다"
 
 # 18. 저장소 루트는 cwd 가 아니다. 훅 입력의 cwd 는 Claude 가 cd 하면 따라간다(공식 hooks 문서).
-#     cwd 에서만 .checked-practices.toml 을 찾으면 하위 폴더에 들어간 뒤 검사를 돌리지 않고 조용히 통과했다.
+#     cwd 에서만 .check.toml 을 찾으면 하위 폴더에 들어간 뒤 검사를 돌리지 않고 조용히 통과했다.
 PS=$(newproj psub); SSB="$T/ssub"; mkdir -p "$PS/src" "$PS/pkg/api"
-printf 'test_command = "echo ROOTCHECK >&2; exit 1"\n' > "$PS/.checked-practices.toml"
+printf 'test_command = "echo ROOTCHECK >&2; exit 1"\n' > "$PS/.check.toml"
 printf '%s' "$(post r1 "$PS/pkg/api" "$PS/src/a.ts")" | NGG_STATE="$SSB" "$W/post.sh"
 printf '%s' "$(stop r1 "$PS/pkg/api")" | NGG_STATE="$SSB" "$W/stop.sh" 2>"$T/esub"; check 2 $? "루트: 하위 폴더에 있어도 저장소 설정으로 검사한다"
 grep -q ROOTCHECK "$T/esub"; check 0 $? "루트: 루트의 검사 명령을 돌린다"
-printf 'fast_test_command = "true"\ntest_command = "echo FULLROOT >&2; exit 1"\n' > "$PS/.checked-practices.toml"
+printf 'fast_test_command = "true"\ntest_command = "echo FULLROOT >&2; exit 1"\n' > "$PS/.check.toml"
 printf '%s' "$(commit r2 "$PS/pkg/api" "git commit -m x")" | NGG_STATE="$SSB" "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더에서 커밋해도 전체 검사를 돌린다"
 # .git 이 있는 곳에서 멈춘다. 다른 저장소의 경계를 넘어 그 위의 설정을 빌려 쓰지 않는다.
 PN=$(newproj pnest); mkdir -p "$PN/inner/src"; git init -q "$PN/inner"
-printf 'test_command = "exit 1"\n' > "$PN/.checked-practices.toml"
+printf 'test_command = "exit 1"\n' > "$PN/.check.toml"
 printf '%s' "$(post r3 "$PN/inner" "$PN/inner/src/a.ts")" | NGG_STATE="$SSB" "$W/post.sh"
 printf '%s' "$(stop r3 "$PN/inner")" | NGG_STATE="$SSB" "$W/stop.sh" 2>/dev/null; check 0 $? "루트: .git 경계를 넘어 위의 설정을 쓰지 않는다"
 # 명령 안의 상대 경로는 셸이 있는 cwd 기준이다. 루트 기준으로 풀면 다른 파일을 읽는다.
@@ -326,7 +326,7 @@ prrun r4 "$PRC/sub" "gh pr create --title t --body-file body-sub.md"; check 2 $?
 
 # 19. 서브에이전트가 고친 코드도 턴 끝 검사 대상이다. post.sh 가 agent-<id> 폴더에 적어 메인 턴이 보지 못했다.
 PE=$(newproj pagent); SE="$T/sagent"
-printf 'test_command = "exit 1"\n' > "$PE/.checked-practices.toml"
+printf 'test_command = "exit 1"\n' > "$PE/.check.toml"
 printf '{"session_id":"ag","hook_event_name":"PostToolUse","cwd":"%s","agent_id":"sub1","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$PE" "$PE/src/a.ts" | NGG_STATE="$SE" "$W/post.sh"
 printf '%s' "$(stop ag "$PE")" | NGG_STATE="$SE" "$W/stop.sh" 2>/dev/null; check 2 $? "서브에이전트: 서브에이전트의 편집도 메인 턴 끝에 검사한다"
 

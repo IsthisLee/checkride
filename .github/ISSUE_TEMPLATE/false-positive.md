@@ -30,4 +30,4 @@ For example: "it was a design opinion, so there is no local state to check", or 
 - OS:
 - Claude Code 버전 / version:
 - `NGG_JUDGE` 켜짐 / 꺼짐 · on / off:
-- `.checked-practices.toml`의 `disabled_rules` (있다면 / if any):
+- `.check.toml`의 `disabled_rules` (있다면 / if any):

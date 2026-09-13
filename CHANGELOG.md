@@ -4,6 +4,25 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-13
+
+### 바뀐 것 — 이름
+
+- **이름이 did-you-check 다.** grounded 는 LLM 을 다루는 사람에게만 뜻이 통했다. 맥락 없이 이름만 준 모델에게 무엇을 하는 플러그인일지 물었더니 예전 후보는 "추천 항목을 체크해 두는 할 일 목록" 으로 읽혔다. 검사를 강제한다는 뜻은 전해지지 않았다. 이름이 하는 일을 말하게 만든다.
+- **사용자가 직접 치는 것이 넷 다 바뀐다.** 호환 장치는 두지 않는다.
+  - 설치: `/plugin marketplace add IsthisLee/did-you-check` 다음 `/plugin install check@did-you-check`
+  - 커맨드: `/check:init` 등 여덟
+  - 설정 파일: `.grounded.toml` → `.check.toml`
+  - 한 번 허용: 프롬프트에 `check allow <항목>`
+  - 상태 폴더: `~/.claude/plugins/data/check-did-you-check/`
+- **옛 `.grounded.toml` 은 읽지 않는다.** 그 파일만 남은 저장소는 `test_command`·`append_only`·`disabled_rules` 를 잃고 완료 게이트가 "검사 명령을 찾지 못했다" 로 지나간다. 파일 이름만 바꾸면 그대로 동작한다.
+- 이력인 CHANGELOG 와 `docs/VERIFICATION.md` 의 옛 이름은 그대로 둔다. 그때 그 이름으로 잰 기록이라 고치면 기록이 아니게 된다.
+
+### 변경
+
+- **README 를 모범 사례 준수 검사 관점으로 다시 썼다.** 첫 표가 "이런 일이 생기면" 이 아니라 **검사하는 모범 사례**를 세로로 놓고 그 옆에 어긴 순간을 붙인다. 네 줄이 모두 공식 문서나 검증된 문서에서 왔다는 것과 어느 문장에서 왔는지를 README 안에서 바로 보이게 근거 표를 옮겨 왔다. 한국어·영어·설치본 셋 다 고쳤다.
+- **설치본 README 의 상태 폴더 경로가 틀려 있었다.** `grounded-inline` 이라고 적었는데 그것은 `--plugin-dir` 로 띄웠을 때의 이름이다. 마켓플레이스로 설치하면 `<플러그인>-<마켓플레이스>` 다.
+
 ## [1.6.1] - 2026-09-11
 
 ### 수정

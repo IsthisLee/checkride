@@ -1,4 +1,4 @@
-# checked-practices — 게이트와 커맨드 상세
+# did-you-check — 게이트와 커맨드 상세
 
 README는 짧게 두고 자세한 것은 여기 적는다. 각 게이트가 무엇을 어떻게 막는지, 무엇으로 끄는지, 근거가 어느 문서인지.
 
@@ -48,7 +48,7 @@ Claude Code에는 판단이 필요한 자리에 쓰는 [프롬프트 훅](https:
 
 정규식은 의도를 다 읽지 못한다. 어떤 저장소에서는 한 규칙이 유난히 자주 오탐을 낸다. 그렇다고 게이트를 통째로 끄면 같은 게이트의 나머지 검사도 같이 죽는다.
 
-`.checked-practices.toml`에 이름을 적으면 그것만 빠진다.
+`.check.toml`에 이름을 적으면 그것만 빠진다.
 
 ```toml
 # 이 저장소에서는 R2b가 설계 논의마다 걸리고, PR은 사람이 따로 검토해서 끈다
@@ -71,7 +71,7 @@ disabled_rules = "R2b, done.pr"
 
 append-only에는 이름이 없다. `append_only`를 적지 않으면 원래 꺼져 있다.
 
-**환경변수 대신 파일에 두는 이유가 요점이다.** `NGG_DONE=0` 같은 환경변수는 그 게이트의 검사를 한꺼번에 끄고, 누가 자기 셸에 박아 두면 팀은 그 사실을 모른다. `.checked-practices.toml`은 저장소에 커밋되므로 PR에 보이고, 왜 껐는지 같은 커밋에 적힌다. 끄는 것을 쉽게 만드는 장치가 아니라 **끄는 행위를 보이게 만드는 장치**다. 환경변수는 급할 때 쓰는 스위치로 남겨 두었다.
+**환경변수 대신 파일에 두는 이유가 요점이다.** `NGG_DONE=0` 같은 환경변수는 그 게이트의 검사를 한꺼번에 끄고, 누가 자기 셸에 박아 두면 팀은 그 사실을 모른다. `.check.toml`은 저장소에 커밋되므로 PR에 보이고, 왜 껐는지 같은 커밋에 적힌다. 끄는 것을 쉽게 만드는 장치가 아니라 **끄는 행위를 보이게 만드는 장치**다. 환경변수는 급할 때 쓰는 스위치로 남겨 두었다.
 
 껐다는 사실은 세 곳에 남는다.
 
@@ -86,7 +86,7 @@ append-only에는 이름이 없다. `append_only`를 적지 않으면 원래 꺼
 설정으로 끄면 그 검사는 계속 꺼져 있다. 오탐 한 건만 넘기고 싶을 때는 다음 프롬프트에 이렇게 한 줄을 쓴다.
 
 ```
-checked-practices allow ti.skip
+check allow ti.skip
 ```
 
 그 턴 안에서 해당 검사가 **한 번** 통과하고 허용은 바로 사라진다. 쓰지 않은 허용도 다음 프롬프트가 오면 사라진다. 게이트가 막을 때 무엇을 쓰면 되는지 항목 이름과 함께 알려 준다.
@@ -109,13 +109,13 @@ Probity의 `enforceTdd`에서 가져온 방식이다. "reply in the session aski
 
 | 순서 | 출처 |
 |---|---|
-| 1 | 저장소 루트의 `.checked-practices.toml`에 적은 `test_command` |
+| 1 | 저장소 루트의 `.check.toml`에 적은 `test_command` |
 | 2 | `package.json`의 `scripts.test` → `npm test` |
 | 3 | `Makefile`의 `test` 타깃 → `make test` |
 | 4 | `pyproject.toml` → `python3 -m pytest -q` |
 
 ```toml
-# .checked-practices.toml
+# .check.toml
 fast_test_command = "npm test -- --changed"   # 턴 끝에는 이것만
 test_command      = "npm test"                # 커밋 직전에 이것
 ```
@@ -126,7 +126,7 @@ test_command      = "npm test"                # 커밋 직전에 이것
 
 끄려면 `NGG_DONE=0`, 제한 시간은 `DONE_TIMEOUT`(기본 180초)이다.
 
-이 저장소도 스스로에게 적용한다. `.checked-practices.toml`이 자기 테스트를 가리키고 있어서, 훅을 고치면 훅이 자기를 검사한다.
+이 저장소도 스스로에게 적용한다. `.check.toml`이 자기 테스트를 가리키고 있어서, 훅을 고치면 훅이 자기를 검사한다.
 
 ### PR 본문에 근거가 있어야 PR을 연다
 
@@ -176,18 +176,18 @@ Kent Beck이 에이전트의 부정행위로 지목한 것을 그대로 막는�
 이 가드는 그보다 정밀하다. **새 파일 추가는 허용하고 기존 파일의 수정·삭제만 막는다.** 마이그레이션은 계속 써야 하기 때문이다.
 
 ```toml
-# .checked-practices.toml
+# .check.toml
 append_only = "supabase/migrations, db/migrate"
 ```
 
-설정이 없으면 아무것도 막지 않는다. `git commit --no-verify`는 **건너뛸 커밋 훅이 실제로 있을 때만** 막는다(`.checked-practices.toml`, `.husky/pre-commit`, `.git/hooks/pre-commit`, `core.hooksPath` 중 하나). 설치만 했는데 남의 저장소의 git 동작이 바뀌면 과하기 때문이다. 끄려면 `NGG_GUARD=0`이다.
+설정이 없으면 아무것도 막지 않는다. `git commit --no-verify`는 **건너뛸 커밋 훅이 실제로 있을 때만** 막는다(`.check.toml`, `.husky/pre-commit`, `.git/hooks/pre-commit`, `core.hooksPath` 중 하나). 설치만 했는데 남의 저장소의 git 동작이 바뀌면 과하기 때문이다. 끄려면 `NGG_GUARD=0`이다.
 
 ## 저장소 프로필: 세션마다 사실을 실어 준다
 
 게이트는 무엇을 막을지 알아야 하고, Claude는 이 저장소에서 무엇을 돌려야 하는지 알아야 한다. 세션이 시작될 때 `SessionStart` 훅이 스무 줄 안팎의 사실을 컨텍스트에 넣는다.
 
 ```
-[checked-practices 프로필] checked-practices  (브랜치 main)
+[check 프로필] did-you-check  (브랜치 main)
 패키지 매니저: pnpm
 스택: next, react, typescript, vitest
 검사 명령: pnpm test   (출처: package.json scripts.test → vitest run)
@@ -231,14 +231,14 @@ append-only 경로: supabase/migrations
 
 | 커맨드 | 하는 일 |
 |---|---|
-| `/checked-practices:spec` | 큰 기능 전에 `AskUserQuestion`으로 나를 인터뷰해 `SPEC.md`를 쓴다 |
-| `/checked-practices:init` | 검사 명령을 실제로 돌려 보고 `.checked-practices.toml`에 확정. 기준선·append-only·비밀 파일 차단 제안 |
-| `/checked-practices:tdd` | 실패 테스트 먼저, RED 확인, 최소 구현 |
-| `/checked-practices:ship` | 검사를 돌리고 그 출력을 PR 본문에 근거로 넣는다 |
-| `/checked-practices:handoff` | 다음 세션이 읽을 인수인계를 쓴다 |
-| `/checked-practices:status` | 게이트 상태를 전부 실측해 보고한다 |
-| `/checked-practices:auto` | 탐색 → 계획 → 구현 → 검토 → 배포를 순서대로 |
-| `/checked-practices:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적는다 |
+| `/check:spec` | 큰 기능 전에 `AskUserQuestion`으로 나를 인터뷰해 `SPEC.md`를 쓴다 |
+| `/check:init` | 검사 명령을 실제로 돌려 보고 `.check.toml`에 확정. 기준선·append-only·비밀 파일 차단 제안 |
+| `/check:tdd` | 실패 테스트 먼저, RED 확인, 최소 구현 |
+| `/check:ship` | 검사를 돌리고 그 출력을 PR 본문에 근거로 넣는다 |
+| `/check:handoff` | 다음 세션이 읽을 인수인계를 쓴다 |
+| `/check:status` | 게이트 상태를 전부 실측해 보고한다 |
+| `/check:auto` | 탐색 → 계획 → 구현 → 검토 → 배포를 순서대로 |
+| `/check:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적는다 |
 
 **커맨드는 내가 쓴 언어로 답한다.** `SKILL.md`는 로케일로 가를 수 없는 파일이라 영어로 쓰고, 본문에 사용자의 언어로 답하라는 지시를 박아 두었다. 게이트 문장이 `msg.sh`에서 갈리는 것과 같은 원칙이다.
 

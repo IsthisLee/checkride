@@ -41,18 +41,18 @@ echo "── 스킬 ──"
 # -p 모드에는 답할 사람이 없다. 인터뷰하는 스킬(init·spec)은 묻고 멈추는 것이 맞는 동작이다.
 # 그래서 "파일을 썼나" 가 아니라 "설계대로 행동했나" 를 본다.
 
-run init 'Read,Glob,Grep,Bash,Write,Edit' "/checked-practices:init"
+run init 'Read,Glob,Grep,Bash,Write,Edit' "/check:init"
 grep -qE 'npm test|test_command|검사 명령' "$T/out.init"; check 0 $? "init: 검사 명령을 찾아 보고한다"
 grep -qE '\?|물|선택|결정|제안' "$T/out.init"; check 0 $? "init: 쓰기 전에 사용자에게 묻는다(설계대로)"
 
-run status 'Read,Glob,Grep,Bash' "/checked-practices:status"
+run status 'Read,Glob,Grep,Bash' "/check:status"
 grep -qE '게이트|gate' "$T/out.status"; check 0 $? "status: 게이트 상태를 보고한다"
 
-run spec 'AskUserQuestion,Read,Glob,Grep,Write' "/checked-practices:spec 곱셈 함수를 더한다"
+run spec 'AskUserQuestion,Read,Glob,Grep,Write' "/check:spec 곱셈 함수를 더한다"
 if [ -f "$P/SPEC.md" ]; then check 0 0 "spec: SPEC.md 를 쓰거나 인터뷰한다"
 else grep -qE '\?|물|질문|확인' "$T/out.spec"; check 0 $? "spec: SPEC.md 를 쓰거나 인터뷰한다"; fi
 
-run handoff 'Read,Glob,Grep,Bash,Write' "/checked-practices:handoff"
+run handoff 'Read,Glob,Grep,Bash,Write' "/check:handoff"
 [ -f "$P/HANDOFF.md" ]; check 0 $? "handoff: HANDOFF.md 를 쓴다(묻지 않는 스킬)"
 echo "── 일부러 돌리지 않은 것 ──"
 echo "   ship: 커밋·푸시·PR 을 만든다. 인수 테스트가 남의 저장소에 쓰면 안 된다."

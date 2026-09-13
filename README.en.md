@@ -1,26 +1,28 @@
-# claude-grounded
+# did-you-check
 
-[![test](https://github.com/IsthisLee/claude-grounded/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/claude-grounded/actions/workflows/test.yml)
+[![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 English · **[한국어](README.md)**
 
-### A rule you asked for politely gets followed nine times out of ten. The tenth one is the incident.
+### The best practices are written down. Nobody checks whether they were followed.
 
-claude-grounded removes that tenth one. It turns what the Claude Code docs *recommend* into something the tool *enforces*.
+did-you-check does the checking. It turns what the Claude Code docs *recommend* into something the tool *enforces*: every turn is checked against them, and a turn that breaks one does not end.
 
-| When this happens | This is what happens |
+| The practice being checked | The moment it is broken |
 |---|---|
-| "There's no such file" — without opening anything | That answer never leaves |
-| "All done" — without running the tests | The check runs, and a failure keeps the turn open |
-| Opening a PR whose body only says "tests pass" | The PR does not open until the command and its output are in it |
-| Adding `.skip` to a test to make it pass | The edit itself is refused |
-| Removing tests by adding an ignore pattern to the runner config | Blocked too |
-| Editing a migration that already landed | Blocked before the commit |
+| **Never claim what you did not check** | "There's no such file" — without opening anything → that answer never leaves |
+| **Show evidence instead of asserting success** | "All done" — without running the tests → the check runs, and a failure keeps the turn open |
+| | Opening a PR whose body only says "tests pass" → the PR does not open until the command and its output are in it |
+| **Never disable or delete a test** | Adding `.skip` to make it pass → the edit itself is refused |
+| | Removing tests via an ignore pattern in the runner config → blocked too |
+| **Never rewrite what already landed** | Editing a migration that shipped → blocked before the commit |
 
-You never asked for any of it, and it happens every time. **The point is that you get to forget.**
+None of these four are house rules. Every one is **recommended by the official docs or by verified writing**, and [Sources](#sources) names the sentence each came from.
 
-> **The whole roadmap ships:** four gates, the repo profile, and eight commands. This document describes only what is real.
+You never asked for any of it, and it is checked every time. **The point is that you get to forget.**
+
+> **Why hooks?** The same docs answer that: "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."
 
 <p align="center"><img src="docs/demo.svg" alt="An ungrounded answer is blocked, then the model measures and answers again" width="760"></p>
 
@@ -31,13 +33,13 @@ You never asked for any of it, and it happens every time. **The point is that yo
 Two lines inside a Claude Code session.
 
 ```
-/plugin marketplace add IsthisLee/claude-grounded
-/plugin install grounded@claude-grounded
+/plugin marketplace add IsthisLee/did-you-check
+/plugin install check@did-you-check
 ```
 
 You receive 25 files under `plugin/`, and release tags are signed. [SECURITY.en.md](SECURITY.en.md#checking-for-yourself-what-you-are-installing) shows how to check.
 
-**Your `settings.json` and `CLAUDE.md` are not touched.** After installing, everything looks the same. The gate only shows up when it fires.
+**Your `settings.json` and `CLAUDE.md` are not touched.** After installing, everything looks the same. The check only shows up when it fires.
 
 It adds about 256ms per turn. Per-hook numbers are in [the detail doc](docs/gates.en.md#what-it-costs).
 
@@ -121,17 +123,17 @@ Hit a false positive? [Open an issue](../../issues/new?template=false-positive.m
 
 | Goal | Command |
 |---|---|
-| Off in this repo | `claude plugin disable grounded@claude-grounded --scope project` |
+| Off in this repo | `claude plugin disable check@did-you-check --scope project` |
 | Off for me only | Same, with `--scope local` |
 | Semantic judge only | `NGG_JUDGE=0` |
-| Pick checks from a table with their sources | `/grounded:config` |
-| One rule or check only | `disabled_rules = "R2b, done.pr"` in `.grounded.toml` |
-| Get past one false positive | `grounded allow ti.skip` on its own line in your next prompt |
+| Pick checks from a table with their sources | `/check:config` |
+| One rule or check only | `disabled_rules = "R2b, done.pr"` in `.check.toml` |
+| Get past one false positive | `check allow ti.skip` on its own line in your next prompt |
 | Every hook, not just this plugin | `"disableAllHooks": true` in settings |
 | Raise the 8-block cap | `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` |
-| Remove entirely | `claude plugin uninstall grounded@claude-grounded` |
+| Remove entirely | `claude plugin uninstall check@did-you-check` |
 
-State lives in `~/.claude/plugins/data/grounded-inline/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
+State lives in `~/.claude/plugins/data/check-did-you-check/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
 
 ## Read more
 
@@ -141,7 +143,18 @@ State lives in `~/.claude/plugins/data/grounded-inline/` and is safe to delete. 
 | [Verification log](docs/VERIFICATION.md) | Every claim with the exact command and its raw output |
 | [Contributing](CONTRIBUTING.en.md) · [Security](SECURITY.en.md) · [Changelog](CHANGELOG.md) | |
 
-Grounded in [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations), [Best practices](https://code.claude.com/docs/en/best-practices), [Hooks](https://code.claude.com/docs/en/hooks), Kent Beck's [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes), and Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/). Every rule cites the sentence it came from, in [the detail doc](docs/gates.en.md).
+## Sources
+
+Every practice this plugin checks names the sentence it came from. A rule with no source does not ship.
+
+| Check | Source | Sentence |
+|---|---|---|
+| Claims without evidence (R0, R1, R2a, R2b, R4) | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | "If it can't find a quote, it must retract the claim" |
+| False "done" (R3), end-of-turn check, PR body | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
+| Disabled tests | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" |
+| Rewritten migrations | [Hooks](https://code.claude.com/docs/en/hooks) | "Write a hook that blocks writes to the migrations folder." |
+
+Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) is a source too. Every rule cites its sentence in [the detail doc](docs/gates.en.md#sources).
 
 ## Related
 
@@ -153,7 +166,7 @@ This space has several tools, and most of them block a **tool call** (`PreToolUs
 | [Probity](https://github.com/nizos/probity) · [TDD Guard](https://github.com/nizos/tdd-guard) | TDD violations and forbidden patterns | Before the call |
 | [failproofai](https://github.com/FailproofAI/failproofai) | Records every run and enforces rules | Around the call |
 | [Stop That Shit](https://github.com/lennney/stop-that-shit) | Unrequested hashes, checksums, scope creep (Codex/GPT) | Before the call |
-| **claude-grounded** | **Ungrounded conclusions, false "done", PRs without evidence, disabled tests** | **When the turn tries to end, and before the call** |
+| **did-you-check** | **Ungrounded conclusions, false "done", PRs without evidence, disabled tests** | **When the turn tries to end, and before the call** |
 
 Each description is taken from that project's own words.
 

@@ -19,7 +19,7 @@ Willison's anti-pattern warning is the reason this command exists.
 ## The order
 
 1. **Read `git status` and `git diff` first.** Do not open a PR without knowing what you changed.
-2. **Run the checks.** `test_command` from `.checked-practices.toml`, or whatever this repo uses. Keep the output. If it fails, stop here and fix it — the completion gate will block you anyway.
+2. **Run the checks.** `test_command` from `.check.toml`, or whatever this repo uses. Keep the output. If it fails, stop here and fix it — the completion gate will block you anyway.
 3. Run lint and type-checking too if they are separate.
 4. Write the commit message. Put **what changed and why** in the body. Follow the repo's format.
 5. Push and open the PR with `gh pr create`.
