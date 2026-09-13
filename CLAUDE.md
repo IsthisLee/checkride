@@ -4,7 +4,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 
 ## 검사 명령
 
-- `tests/lib/unit.sh` — 메시지 카탈로그 25건. 두 언어의 키가 맞는지, 언어 결정 순서(NGG_LANG · .check.toml lang · 로케일)가 맞는지, 카탈로그가 사라져도 조용히 통과하지 않는지 본다.
+- `tests/lib/unit.sh` — 메시지 카탈로그 26건. 두 언어의 키가 맞는지, 언어 결정 순서(NGG_LANG · .check.toml lang · 로케일)가 맞는지, 카탈로그가 사라져도 조용히 통과하지 않는지 본다.
 - `tests/no-guess-gate/unit.sh` — 근거 게이트 150건. 모델을 부르지 않는다.
 - `tests/done-gate/unit.sh` — 완료 게이트 81건. PR 본문 근거 21건 포함.
 - `tests/test-integrity/unit.sh` — 테스트 무결성 68건.
@@ -12,7 +12,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `tests/repo-profile/unit.sh` — 저장소 프로필 23건.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 9건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 422건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 423건.**
 - `tests/fuzz.sh` — 망가진 입력을 열 훅에 던져 조용히 통과하지 않는지 본다. 모델을 부르지 않는다.
 - `tests/no-guess-gate/selftest.sh` — 실제 프롬프트 회귀 12케이스. Haiku를 부르고 몇 분 걸린다.
 - `tests/no-guess-gate/ab.sh` — 게이트 켠 채와 끈 채를 비교해 효과를 잰다. `SET=hard`가 압박 프롬프트.
@@ -52,7 +52,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - **테스트가 훅에 넣는 입력 JSON 은 `printf` 로 만든다.** Git Bash 는 네이티브 파이썬에 POSIX 경로를 **인자로** 넘길 때 `C:/Users/...` 로 바꾼다. 그러면 `cwd` 만 Windows 경로가 되고 `changed` 는 `/tmp/...` 로 남아 접두가 안 맞고, 게이트가 코드 파일을 0개로 세어 조용히 통과한다. **로컬에서는 안 보이고 Windows CI 에서만 빨갛다.** 파이프로 넘기는 것은 변환되지 않으므로 무방하다.
 - **정규식의 대괄호 안에 멀티바이트 문자를 넣지 않는다.** `[.!?。]`처럼 쓰면 `LC_ALL=C`에서 `grep`·`sed`가 바이트로 매칭해 한국어 글자를 한가운데서 자르고 R1이 조용히 안 걸린다. 교체(`|`)로 쓴다.
 - **메시지 언어는 로케일을 따른다.** `NGG_LANG`이 우선하고 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 본다. `ko` 계열이면 한국어, 그 외에는 영어다. 단위 테스트는 머리에서 `NGG_LANG=ko`를 못 박아 기계마다 결과가 달라지지 않게 한다.
-- **테스트는 주변 환경에 기대지 않는다.** `unit.sh`가 머리에서 `NGG_*`를 `unset`한다. 게이트가 자식에게 물려주는 변수 때문에 폴백 검사가 조용히 뒤집힌 적이 있다.
+- **테스트는 주변 환경에 기대지 않는다.** `unit.sh`가 머리에서 `NGG_*`를 `unset`한다. 게이트가 자식에게 물려주는 변수 때문에 폴백 검사가 조용히 뒤집힌 적이 있다. **테스트를 돌리는 폴더도 환경이다.** `tests/lib/unit.sh`의 `run`은 `CWD`를 빈 폴더로 준다. 이 저장소 `.check.toml`에 `lang`을 넣자 로케일 폴백 검사 네 건이 뒤집힌 적이 있다.
 - 요구 사항: bash, python3. macOS · Linux · Windows 셋 다 CI 매트릭스에 있다. Windows는 Git Bash가 있어야 한다.
 - **우리 파이썬 호출에는 `py`를 쓴다.** Windows 파이썬은 기본 인코딩이 UTF-8이 아니라 한국어가 지나가면 죽는다. `common.sh`의 `py()`가 `PYTHONUTF8=1`을 붙인다. 전역으로 export하지 않는 이유는 `done-gate`가 남의 테스트 명령을 그대로 돌리기 때문이다.
 

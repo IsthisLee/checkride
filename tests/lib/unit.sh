@@ -11,13 +11,16 @@ unset NGG_LANG NGG_L NGG_MSG_LOADED
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 G="$ROOT/plugin/hooks/lib"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+mkdir -p "$T/nocwd"
 fail=0
 check() { if [ "$1" = "$2" ]; then echo "✅ $3"; else echo "❌ $3 (기대=$1 실측=$2)"; fail=$((fail+1)); fi; }
 # 훅과 같은 방식으로 부른다. 첫 인자는 환경변수 묶음, 나머지는 부를 함수와 인자다.
 # 로케일은 늘 비우고 시작한다. 이 기계의 LANG이 결과를 흔들면 테스트가 기계마다 달라진다.
+# CWD 도 빈 폴더로 준다. 주지 않으면 테스트를 돌리는 저장소의 .check.toml 을 읽는다.
+# 묶음에 CWD 가 있으면 env 에서 뒤에 오는 그 값이 이긴다.
 run() { local e="$1"; shift
   # shellcheck disable=SC2086,SC2016  # $e는 일부러 쪼개고, 안쪽 bash가 받을 $1·$@는 펼치지 않는다
-  env -u LANG -u LC_ALL -u LC_MESSAGES -u LC_CTYPE $e bash -c '. "$1"/common.sh; shift; "$@"' _ "$G" "$@"; }
+  env -u LANG -u LC_ALL -u LC_MESSAGES -u LC_CTYPE CWD="$T/nocwd" $e bash -c '. "$1"/common.sh; shift; "$@"' _ "$G" "$@"; }
 
 # 1. 키가 두 언어에 다 있는가. 한쪽만 있으면 그 언어에서 키 이름이 새어 나간다.
 nko=$(sed -n '/^msg_ko()/,/^msg_en()/p' "$G/msg.sh" | sed -n 's/^  \([a-z][a-z0-9.]*\)).*/\1/p' | sort -u | wc -l | tr -d ' ')
@@ -60,6 +63,10 @@ out=$(run "CWD=$LP_KO" t rp.on);                            check "켜짐" "$out
 out=$(run "CWD=$LP_EN LANG=ko_KR.UTF-8" t rp.on);           check "on"   "$out" ".check.toml lang=en 이 한국어 로케일을 이긴다"
 out=$(run "CWD=$LP_KO LANG=en_US.UTF-8" t rp.on);           check "켜짐" "$out" ".check.toml lang=ko 가 영어 로케일을 이긴다"
 out=$(run "NGG_LANG=en CWD=$LP_KO" t rp.on);                check "on"   "$out" "NGG_LANG 이 .check.toml lang 을 이긴다"
+
+# 3c. 테스트를 돌리는 폴더의 .check.toml 이 위 결과를 흔들지 않는다. CWD 를 주지 않은 run 이
+#     둘러싼 저장소의 lang 을 읽어, 이 저장소에 lang = "ko" 를 넣자 3의 네 건이 뒤집혔다(2026-09-14).
+out=$(cd "$LP_KO" && run "LANG=en_US.UTF-8" t rp.on);       check "on"   "$out" "CWD 를 안 주면 둘러싼 .check.toml 의 lang 을 읽지 않는다"
 
 # 4. 없는 키는 조용히 사라지지 않고 키 이름이 나온다.
 out=$(run "NGG_LANG=ko" t no.such.key); check "no.such.key" "$out" "없는 키는 키 이름을 내보낸다"
