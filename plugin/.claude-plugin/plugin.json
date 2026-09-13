@@ -1,6 +1,6 @@
 {
   "name": "check",
-  "version": "2.0.0",
+  "version": "1.7.0",
   "description": "Checks whether the best practices in the Claude Code docs and other verified sources were actually followed, and blocks the turn when they were not: no claim without evidence, no \"done\" without a passing check, no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
   "author": {
     "name": "IsthisLee",
