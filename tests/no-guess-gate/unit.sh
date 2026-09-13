@@ -272,14 +272,15 @@ printf '{"session_id":"t16","hook_event_name":"Stop","stop_hook_active":false,"l
 printf '%s' "$P16" | NGG_STATE="$K16" "$W/prompt.sh"
 nodir "$K16/state/t16/nonexistent"; [ -s "$K16/state/t16/changed" ] && { echo "❌ 턴 닫힌 뒤 첫 프롬프트: changed 초기화"; fail=$((fail+1)); } || echo "✅ 턴 닫힌 뒤 첫 프롬프트: changed 초기화"
 
-# 17. 차단 메시지는 "이미 나간 답은 화면에 남는다"를 알려야 한다.
-#     이 안내가 없어서 Claude가 답을 통째로 다시 써 사용자가 같은 글을 두 번 읽었다(실측 14건).
+# 17. 차단 메시지는 "이미 나간 답은 화면에 남는다"를 알리고, 최종 답을 자족적으로 다시 쓰게 해야 한다.
+#     델타만 이어 쓰게 했더니 최종 답이 앞 답에 기대는 조각이 되어 내용 파악이 어려웠다. 사용자 요청으로
+#     정책을 뒤집어, 실측을 반영한 완결된 최종 답을 다시 쓰게 한다(마지막 답 하나만 읽어도 전부 파악).
 K17="$T/dup"; P17='{"session_id":"t17","hook_event_name":"UserPromptSubmit","prompt":"이 디렉터리에 package.json 있어?"}'
 printf '%s' "$P17" | NGG_STATE="$K17" "$W/prompt.sh"
 printf '{"session_id":"t17","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"package.json 파일이 없다."}' | NGG_STATE="$K17" "$W/stop.sh" 2>"$T/e17"
 grep -q '화면' "$T/e17"; check 0 $? "차단 메시지: 앞 답이 화면에 남는다고 알림"
-grep -qE '다시 쓰지|반복하지|되풀이' "$T/e17"; check 0 $? "차단 메시지: 통째로 다시 쓰지 말라고 지시"
-grep -qE '달라진|바뀐|정정' "$T/e17"; check 0 $? "차단 메시지: 달라진 것만 쓰라고 지시"
+grep -qE '다시 써|완결|자체로' "$T/e17"; check 0 $? "차단 메시지: 최종 답을 자족적으로 다시 쓰라고 지시"
+grep -qE '반영|마지막 답|전부|담' "$T/e17"; check 0 $? "차단 메시지: 실측을 반영해 최종 답에 다 담으라고 지시"
 lines=$(grep -c . "$T/e17"); lt "$lines" 12; check 0 $? "차단 메시지 ${lines}줄 < 12 (길면 안 읽는다)"
 
 # 18. 판정기가 돌았는지 로그로 알 수 있어야 한다. 지금은 풀어 준 경우만 보이고
