@@ -103,7 +103,7 @@ Claude가 이런 메시지를 받는다.
 
 그리고 같은 턴에서 파일을 읽거나 명령을 돌린 뒤 다시 답한다.
 
-메시지는 로케일을 따른다. `LC_ALL`·`LC_MESSAGES`·`LANG`이 한국어면 한국어로, 그 밖에는 영어로 나온다. `NGG_LANG=ko`나 `NGG_LANG=en`으로 못 박을 수 있다.
+메시지는 로케일을 따른다. `LC_ALL`·`LC_MESSAGES`·`LANG`이 한국어면 한국어로, 그 밖에는 영어로 나온다. 저장소마다 `.check.toml`에 `lang = "ko"`로 못 박을 수 있고, `/check:config`로 고를 수도 있다. 우선순위는 `NGG_LANG` 환경변수 > `.check.toml`의 `lang` > 로케일이다.
 
 **갇히지 않는다.** 공식 문서대로 8회 연속 차단되면 Claude Code가 훅을 무시하고 턴을 끝낸다.
 

@@ -1,6 +1,6 @@
 ---
 name: config
-description: Pick which checks this repo enforces. Shows every gate item and where it comes from, then writes your choice to disabled_rules in .check.toml.
+description: Pick which checks this repo enforces and set the gate's language. Shows every gate item and where it comes from, then writes your choice to disabled_rules (and lang) in .check.toml.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write, AskUserQuestion
 ---
@@ -13,9 +13,9 @@ Let me pick, check by check, what did-you-check enforces in this repo. **Everyth
 
 ## 1. Read the current state
 
-Read `.check.toml` at the repo root. Take the `disabled_rules` line if there is one. **That line is the only thing this command changes.** Leave every other key and comment exactly as it is.
+Read `.check.toml` at the repo root. Take the `disabled_rules` line and the `lang` line if they are there. **Those two lines are the only things this command changes.** Leave every other key and comment exactly as it is.
 
-Check the environment too. If `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD` or `NGG_JUDGE` is `0`, that switch turns a whole gate off regardless of the file. Say so.
+Check the environment too. If `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD` or `NGG_JUDGE` is `0`, that switch turns a whole gate off regardless of the file. Say so. If `NGG_LANG` is `ko` or `en`, it forces the gate's language regardless of the file; say so, because `lang` in the file has no effect while it is set.
 
 ## 2. Show every item
 
@@ -59,6 +59,16 @@ Show the `disabled_rules` line before and after, and get a yes before writing. T
 
 Names are comma-separated and case does not matter. Do not write a name that is not in the table above; the gates report unknown names but turn nothing off.
 
-## 5. Report
+## 5. Language
 
-The same table as step 2, with the new state. Then say where the change will be visible: in the diff of `.check.toml`, in the repo profile at the start of every session, and as `off=[...]` in `events.log` whenever a disabled check would have blocked.
+The gate speaks the repo's language. Resolve the current one in this order and tell me which applies:
+
+1. `NGG_LANG` (`ko`/`en`) if set — an environment override the file cannot change.
+2. `lang` in `.check.toml` (`ko`/`en`) if set.
+3. Otherwise the locale (`LC_ALL` > `LC_MESSAGES` > `LANG`): a `ko*` locale gives Korean, anything else English.
+
+Offer to pin it with `AskUserQuestion`: Korean, English, or follow the locale. On a choice, change only the `lang` line in `.check.toml` — add or replace `lang = "ko"` / `lang = "en"`, or remove the line to follow the locale. Get a yes before writing, and show the line before and after. If `NGG_LANG` is set, note that the file change takes effect only once it is unset.
+
+## 6. Report
+
+The same table as step 2, with the new state, and the gate's effective language. Then say where the change will be visible: in the diff of `.check.toml`, in the repo profile at the start of every session, and as `off=[...]` in `events.log` whenever a disabled check would have blocked.

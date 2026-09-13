@@ -105,7 +105,7 @@ this session'). (…)
 
 Claude then reads the file or runs the command in the same turn and answers again.
 
-Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. `NGG_LANG=ko` or `NGG_LANG=en` overrides that.
+Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `.check.toml`, or pick it with `/check:config`. Precedence: `NGG_LANG` env > `.check.toml` `lang` > locale.
 
 **You can't get stuck.** Per the official docs, Claude Code overrides the hook and ends the turn after 8 consecutive blocks.
 

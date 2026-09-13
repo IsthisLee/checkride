@@ -52,6 +52,15 @@ out=$(run "" t rp.on);                                       check "on"   "$out"
 out=$(run "LANG=ja_JP.UTF-8" t rp.on);                      check "on"   "$out" "모르는 로케일이면 영어"
 out=$(run "NGG_LANG=fr" t rp.on);                           check "on"   "$out" "모르는 NGG_LANG이면 영어"
 
+# 3b. .check.toml 의 lang 키. 우선순위: NGG_LANG > .check.toml lang > 로케일.
+#     차단해서 메시지를 낼 때만 읽는다. CWD 로 .check.toml 이 있는 폴더를 가리켜 find_root 가 잡게 한다.
+LP_KO="$T/lp_ko"; mkdir -p "$LP_KO"; printf 'lang = "ko"\n' > "$LP_KO/.check.toml"
+LP_EN="$T/lp_en"; mkdir -p "$LP_EN"; printf 'lang = "en"\n' > "$LP_EN/.check.toml"
+out=$(run "CWD=$LP_KO" t rp.on);                            check "켜짐" "$out" ".check.toml lang=ko → 한국어"
+out=$(run "CWD=$LP_EN LANG=ko_KR.UTF-8" t rp.on);           check "on"   "$out" ".check.toml lang=en 이 한국어 로케일을 이긴다"
+out=$(run "CWD=$LP_KO LANG=en_US.UTF-8" t rp.on);           check "켜짐" "$out" ".check.toml lang=ko 가 영어 로케일을 이긴다"
+out=$(run "NGG_LANG=en CWD=$LP_KO" t rp.on);                check "on"   "$out" "NGG_LANG 이 .check.toml lang 을 이긴다"
+
 # 4. 없는 키는 조용히 사라지지 않고 키 이름이 나온다.
 out=$(run "NGG_LANG=ko" t no.such.key); check "no.such.key" "$out" "없는 키는 키 이름을 내보낸다"
 

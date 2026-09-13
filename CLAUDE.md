@@ -4,7 +4,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 
 ## 검사 명령
 
-- `tests/lib/unit.sh` — 메시지 카탈로그 21건. 두 언어의 키가 맞는지, 언어 결정 순서가 맞는지, 카탈로그가 사라져도 조용히 통과하지 않는지 본다.
+- `tests/lib/unit.sh` — 메시지 카탈로그 25건. 두 언어의 키가 맞는지, 언어 결정 순서(NGG_LANG · .check.toml lang · 로케일)가 맞는지, 카탈로그가 사라져도 조용히 통과하지 않는지 본다.
 - `tests/no-guess-gate/unit.sh` — 근거 게이트 150건. 모델을 부르지 않는다.
 - `tests/done-gate/unit.sh` — 완료 게이트 81건. PR 본문 근거 21건 포함.
 - `tests/test-integrity/unit.sh` — 테스트 무결성 68건.
@@ -12,7 +12,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `tests/repo-profile/unit.sh` — 저장소 프로필 23건.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 9건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 418건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 422건.**
 - `tests/fuzz.sh` — 망가진 입력을 열 훅에 던져 조용히 통과하지 않는지 본다. 모델을 부르지 않는다.
 - `tests/no-guess-gate/selftest.sh` — 실제 프롬프트 회귀 12케이스. Haiku를 부르고 몇 분 걸린다.
 - `tests/no-guess-gate/ab.sh` — 게이트 켠 채와 끈 채를 비교해 효과를 잰다. `SET=hard`가 압박 프롬프트.

@@ -34,7 +34,9 @@ ngg_lang
 # tn은 줄바꿈 없이 찍는다. 키가 없으면 키를 그대로 내보내 조용히 사라지지 않게 한다.
 tn() { [ -n "${NGG_MSG_LOADED:-}" ] || {
     # shellcheck source=plugin/hooks/lib/msg.sh
-    . "$NGG_LIB/msg.sh"; NGG_MSG_LOADED=1; }
+    . "$NGG_LIB/msg.sh"; NGG_MSG_LOADED=1
+    # 차단해서 메시지를 처음 낼 때만 .check.toml 의 lang 을 본다(env 다음, 로케일보다 셈).
+    ngg_lang_cfg; }
   # M 은 여기서 비운다. msg 가 없을 때(카탈로그 파일이 사라진 경우) msg 안의 초기화에 기대면
   # 앞 호출의 값이 남아 모든 줄이 같은 키로 나온다.
   local k="$1"; shift; M=""
@@ -86,6 +88,15 @@ quick_tool() { local r
 NGG_ITEMS="done.turn done.commit done.pr ti.skip ti.assert ti.rm ti.exclude pg.noverify"
 off_list() { local conf; [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/.check.toml"; [ -f "$conf" ] || return 0
   sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1 | tr ',' ' '; }
+
+# .check.toml 의 lang 으로 NGG_L 을 덮는다. NGG_LANG 이 있으면 건드리지 않는다(env 가 이긴다).
+# 로케일보다 세다. off_list 처럼 막기 직전에만 부른다. 도구 호출마다 읽지 않는다.
+# NGG_L 은 msg.sh 가 읽는다. 파일이 갈려 있어 shellcheck 가 쓰임을 못 본다.
+# shellcheck disable=SC2034
+ngg_lang_cfg() { local conf cl; case "${NGG_LANG:-}" in ko|en) return 0;; esac
+  [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/.check.toml"; [ -f "$conf" ] || return 0
+  cl=$(sed -n 's/^[[:space:]]*lang[[:space:]]*=[[:space:]]*"\{0,1\}\([A-Za-z_.-]*\)"\{0,1\}[[:space:]]*$/\1/p' "$conf" | head -1)
+  case "$cl" in ko|ko_*|ko.*) NGG_L=ko;; en|en_*|en.*) NGG_L=en;; esac; }
 lc() { printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'; }
 # item_off <이름> — 꺼져 있으면 끈 사실을 events.log 에 남기고 0 을 돌려준다.
 # 남기지 않으면 왜 안 막았는지 나중에 알 수 없다. /check:status 가 이 줄을 읽는다.
