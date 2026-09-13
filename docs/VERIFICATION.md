@@ -2804,3 +2804,75 @@ R1 6 건·R2b 24 건·R3 4 건)을 대표하는 예시다. 로그의 `last=` 필
 대표 사례로 싣는다. 표의 인용문(예: `"지금 실제로 확인하라"`·`"실측해서 단정하라"`, 영문 `"Go check it
 now"`·`"Measure it, then say what is true"`)은 모두 `plugin/hooks/lib/msg.sh` 의 `ngg.r0`·`ngg.r1`·`ngg.r2b`·
 `ngg.r3` 문자열에서 그대로 가져왔다.
+
+## V46 메시지 테스트가 둘러싼 저장소의 `.check.toml` 을 읽지 않게 했다
+
+이 저장소의 `.check.toml` 에 `lang = "ko"` 를 넣으면 `tests/lib/unit.sh` 의 로케일 폴백 검사 네 건이
+`기대=on 실측=켜짐` 으로 뒤집혔다. `run()` 이 로케일 변수는 지우지만 `CWD` 를 주지 않아, 게이트의
+`find_root` 가 테스트를 돌리는 폴더에서 위로 올라가 저장소의 `.check.toml` 을 찾고 `lang` 을 읽기 때문이다.
+
+먼저 측정 도구부터 의심했다. HEAD 를 `git worktree` 로 떠서 전 묶음을 돌리자 `no-guess-gate` 뒤로
+"파일 없음" 이 이어졌다. 테스트가 아니라 워크트리를 관리하는 앱이 새 워크트리를 치운 것이었다
+(`<scratchpad>/.orca-worktree-trash` 가 그 시각에 생겼고 `git worktree list` 에서 사라졌다).
+워크트리 대신 `git clone --local` 복사본으로 다시 쟀다.
+
+실행:
+```
+D="$(mktemp -d)/red"; git clone -q --local . "$D"
+printf '\nlang = "ko"\n' >> "$D/.check.toml"; cd "$D"
+for s in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do bash "tests/$s/unit.sh" 2>&1 | tail -1; done
+for s in skills-unit attack-surface invariants; do bash "tests/$s.sh" 2>&1 | tail -1; done
+```
+
+출력:
+```
+lib             실패 4건
+no-guess-gate   실패 0건
+done-gate       실패 0건
+test-integrity  실패 0건
+project-guard   실패 0건
+repo-profile    실패 0건
+skills-unit     실패 0건
+attack-surface  전부 통과
+invariants      전부 통과
+```
+
+영향은 `lib` 하나다. 먼저 3c 를 넣었다. `lang = "ko"` 가 든 폴더 안에서 `CWD` 없이 `run` 을 부르면
+영어가 나와야 한다. 구현을 고치기 전에 돌렸다.
+
+```
+tests/lib/unit.sh 2>&1 | grep -E '❌|실패'
+❌ CWD 를 안 주면 둘러싼 .check.toml 의 lang 을 읽지 않는다 (기대=on 실측=켜짐)
+실패 1건
+```
+
+`run()` 이 `CWD` 를 빈 폴더(`$T/nocwd`)로 주게 고쳤다. 묶음에 `CWD` 가 있으면 `env` 에서 뒤에 오는 그 값이
+이기므로 3b 는 그대로 `.check.toml` 을 가리킨다.
+
+```
+tests/lib/unit.sh                                   # 이 저장소
+✅ CWD 를 안 주면 둘러싼 .check.toml 의 lang 을 읽지 않는다
+전부 통과  (검사 26건)
+
+# HEAD 복사본에 고친 unit.sh 를 덮고 lang = "ko" 를 넣은 뒤
+복사본 .check.toml lang 줄: 1
+전부 통과
+
+shellcheck -x -s bash tests/lib/unit.sh
+(경고 없음)
+
+test_command 전체
+rc=0  소요=54s  검사 423건(✅+❌ 줄)
+```
+
+판정: 통과. 이 저장소에 `lang` 을 넣어도 메시지 테스트가 흔들리지 않는다. 합계는 422건에서 423건이 됐다.
+
+커밋 `8b4d32a` 본문은 이 기록을 V45 라고 적었다. 같은 파일에 다른 V45 가 있어 V46 으로 남긴다.
+기록을 그 커밋에 함께 넣으려던 스크립트가 번호 충돌을 잡고도 멈추지 않아(`set -e` 를 걸었지만 이어서 돌았다)
+수정만 먼저 커밋됐다. 커밋된 트리만으로도 검사가 통과하는지 따로 쟀다.
+
+```
+git clone -q --local . "$(mktemp -d)/head"   # f890b6d
+test_command 전체
+rc=0  소요=53s  검사 423건
+```
