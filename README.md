@@ -168,6 +168,6 @@ Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guide
 
 설명은 각 저장소가 스스로 적은 설명문을 옮긴 것이다.
 
-## 라이선스
+---
 
-MIT.
+<p align="center">Built with <a href="https://code.claude.com">Claude Code</a> · <a href="LICENSE">MIT</a></p>

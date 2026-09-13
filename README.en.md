@@ -170,6 +170,6 @@ This space has several tools, and most of them block a **tool call** (`PreToolUs
 
 Each description is taken from that project's own words.
 
-## License
+---
 
-MIT.
+<p align="center">Built with <a href="https://code.claude.com">Claude Code</a> · <a href="LICENSE">MIT</a></p>
