@@ -41,7 +41,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `plugin/hooks/lib/common.sh` — 모든 훅이 공유하는 입력 파서와 메시지 함수 `t`·`tn`, 항목 끄기(`item_off`)와 한 번 허용(`allow_once`). 허용 목록은 `no-guess-gate/prompt.sh`가 사용자 프롬프트에서만 적는다. `no-guess-gate/pre.sh`는 도구 호출마다 돌아 파라미터 확장만 쓰는 빠른 경로가 따로 있다.
 - `plugin/hooks/lib/msg.sh` — 사람과 모델에게 나가는 문장 46개를 한국어와 영어로 담는다. 차단이 일어날 때만 읽는다. **훅 안에 문장을 직접 쓰지 않는다.** 한쪽 언어에만 넣으면 `tests/lib/unit.sh`가 잡는다.
 - `plugin/hooks/no-guess-gate/stop.sh` — 규칙 R0~R5와 면제 다섯. `judge.py`가 R2a·R2b만 걸렸을 때 의견인지 상태 주장인지 작은 모델에게 묻는다(`NGG_JUDGE_MODEL`, 기본 haiku).
-- `.check.toml` 이 읽는 키는 넷이다. `test_command`·`fast_test_command`(완료 게이트), `append_only`(프로젝트 가드), `disabled_rules`(근거 게이트의 규칙과 다른 게이트의 항목을 하나씩 끄기. 이름 목록은 `common.sh`의 `NGG_ITEMS`). **파서는 한 줄에 키 하나다.** macOS 기본 파이썬(3.9)에 `tomllib` 이 없어 온전한 TOML 파서를 쓰지 않는다.
+- `.check.toml` 이 읽는 키는 다섯이다. `test_command`·`fast_test_command`(완료 게이트), `append_only`(프로젝트 가드), `disabled_rules`(근거 게이트의 규칙과 다른 게이트의 항목을 하나씩 끄기. 이름 목록은 `common.sh`의 `NGG_ITEMS`), `lang`(게이트 메시지 언어. `common.sh`의 `ngg_lang_cfg`가 차단 메시지를 낼 때만 읽고, `NGG_LANG`이 있으면 무시한다). **파서는 한 줄에 키 하나다.** macOS 기본 파이썬(3.9)에 `tomllib` 이 없어 온전한 TOML 파서를 쓰지 않는다.
 - `plugin/hooks/done-gate/` — 코드를 고친 턴에 저장소 검사를 돌린다. 이 저장소의 `.check.toml`이 자기 테스트를 가리킨다.
 - `plugin/hooks/test-integrity/` — 테스트 무력화 편집, 테스트 파일 삭제, 러너 설정의 제외 추가를 막는다.
 - `plugin/hooks/project-guard/` — `append_only` 경로의 기존 파일 수정·삭제와 `--no-verify` 커밋을 막는다.
@@ -51,7 +51,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - **중괄호 없는 변수 뒤에 한글을 붙이지 않는다.** `"$n개"`는 bash가 `n개`를 변수 이름으로 읽고, `set -u` 아래서는 그 자리에서 죽는다. 실패 분기에 있으면 통과할 때는 안 보이다가 정작 실패를 알려야 할 때 죽는다. **이 저장소에서 세 번 났다.** `${n}개`로 쓴다. `tests/invariants.sh`가 전수로 막는다.
 - **테스트가 훅에 넣는 입력 JSON 은 `printf` 로 만든다.** Git Bash 는 네이티브 파이썬에 POSIX 경로를 **인자로** 넘길 때 `C:/Users/...` 로 바꾼다. 그러면 `cwd` 만 Windows 경로가 되고 `changed` 는 `/tmp/...` 로 남아 접두가 안 맞고, 게이트가 코드 파일을 0개로 세어 조용히 통과한다. **로컬에서는 안 보이고 Windows CI 에서만 빨갛다.** 파이프로 넘기는 것은 변환되지 않으므로 무방하다.
 - **정규식의 대괄호 안에 멀티바이트 문자를 넣지 않는다.** `[.!?。]`처럼 쓰면 `LC_ALL=C`에서 `grep`·`sed`가 바이트로 매칭해 한국어 글자를 한가운데서 자르고 R1이 조용히 안 걸린다. 교체(`|`)로 쓴다.
-- **메시지 언어는 로케일을 따른다.** `NGG_LANG`이 우선하고 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 본다. `ko` 계열이면 한국어, 그 외에는 영어다. 단위 테스트는 머리에서 `NGG_LANG=ko`를 못 박아 기계마다 결과가 달라지지 않게 한다.
+- **메시지 언어는 로케일을 따른다.** `NGG_LANG`이 우선하고, 없으면 `.check.toml`의 `lang`, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 본다. `ko` 계열이면 한국어, 그 외에는 영어다. 단위 테스트는 머리에서 `NGG_LANG=ko`를 못 박아 기계마다 결과가 달라지지 않게 한다.
 - **테스트는 주변 환경에 기대지 않는다.** `unit.sh`가 머리에서 `NGG_*`를 `unset`한다. 게이트가 자식에게 물려주는 변수 때문에 폴백 검사가 조용히 뒤집힌 적이 있다. **테스트를 돌리는 폴더도 환경이다.** `tests/lib/unit.sh`의 `run`은 `CWD`를 빈 폴더로 준다. 이 저장소 `.check.toml`에 `lang`을 넣자 로케일 폴백 검사 네 건이 뒤집힌 적이 있다.
 - 요구 사항: bash, python3. macOS · Linux · Windows 셋 다 CI 매트릭스에 있다. Windows는 Git Bash가 있어야 한다.
 - **우리 파이썬 호출에는 `py`를 쓴다.** Windows 파이썬은 기본 인코딩이 UTF-8이 아니라 한국어가 지나가면 죽는다. `common.sh`의 `py()`가 `PYTHONUTF8=1`을 붙인다. 전역으로 export하지 않는 이유는 `done-gate`가 남의 테스트 명령을 그대로 돌리기 때문이다.
