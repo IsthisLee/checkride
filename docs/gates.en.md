@@ -241,6 +241,9 @@ Every rule cites where it came from. No rule ships without one.
 | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | R0, R1, R2a, R2b, R4 and the exemptions. *"If it can't find a quote, it must retract the claim."* R2a was narrowed to zero-tool turns to match *"Allow Claude to say I don't know."* |
 | [Best practices](https://code.claude.com/docs/en/best-practices) | R3, the completion gate's Stop-hook approach, and the PR body check (`done.pr`). *"Have Claude show evidence rather than asserting success."* |
 | [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | exit 2 blocking, the 8-block cap, timeouts, and using a model where judgment is needed. The `PostToolUseFailure` event R5 uses to learn a command failed |
+| Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | The test-integrity gate. *"cheating, for example by disabling or deleting tests."* |
+
+The sources are not only Anthropic's docs. Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) is a source too.
 
 The reason for using hooks at all is in the docs too:
 

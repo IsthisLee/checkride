@@ -7,7 +7,7 @@ English · **[한국어](README.md)**
 
 ### The best practices are written down. Nobody checks whether they were followed.
 
-did-you-check does the checking. It turns what the Claude Code docs *recommend* into something the tool *enforces*: every turn is checked against them, and a turn that breaks one does not end.
+did-you-check does the checking. It turns what the Claude Code docs and other verified sources *recommend* into something the tool *enforces*: every turn is checked against them, and a turn that breaks one does not end.
 
 | The practice being checked | The moment it is broken |
 |---|---|

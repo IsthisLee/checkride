@@ -253,6 +253,9 @@ append-only 경로: supabase/migrations
 | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | R0·R1·R2a·R2b·R4와 면제. "If it can't find a quote, it must retract the claim" (인용을 못 찾으면 그 주장을 철회해야 한다). R2a는 "Allow Claude to say I don't know"(모른다고 말하게 하라)에 맞춰 도구를 한 번도 안 쓴 경우로 좁혔다 |
 | [Best practices](https://code.claude.com/docs/en/best-practices) | R3, 완료 게이트의 Stop 훅 방식, PR 본문 검사(`done.pr`). "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라) |
 | [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | exit 2 차단, 8회 상한, 타임아웃, 판단이 필요한 결정은 모델에게. R5가 실패한 명령을 알아내는 `PostToolUseFailure` 이벤트 |
+| Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | 테스트 무결성 게이트. "cheating, for example by disabling or deleting tests" (부정행위, 이를테면 테스트를 비활성화하거나 지우기) |
+
+Anthropic 공식 문서만 근거로 삼지 않는다. Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)도 근거로 쓴다.
 
 훅을 쓰는 이유도 문서에 있다.
 
