@@ -2695,3 +2695,62 @@ validate     ✔ Validation passed
 ```
 
 판정: 통과. 실제 설치로 확인한 것은 V42 다.
+
+## V42 새 이름으로 실제 설치
+
+매니페스트가 옳다고 설치가 되는 것은 아니다. 격리한 설정 폴더(`CLAUDE_CONFIG_DIR`)에
+빈 상태에서 마켓플레이스를 걸고 설치했다. 빈 폴더를 준 세션이 `No marketplaces configured`
+라고 답하는 것을 먼저 확인해, 내 설정을 보고 있는 것이 아님을 못 박았다.
+
+실행: `claude plugin marketplace add IsthisLee/did-you-check`
+
+출력:
+```
+Cloning repository (timeout: 120s): git@github.com:IsthisLee/did-you-check.git
+Clone complete, validating marketplace…
+✔ Successfully added marketplace: did-you-check (declared in user settings)
+```
+
+실행: `claude plugin install check@did-you-check` 다음 `claude plugin list`
+
+출력:
+```
+✔ Successfully installed plugin: check@did-you-check (scope: user)
+
+Installed plugins:
+  ❯ check@did-you-check
+    Version: 2.0.0
+    Scope: user
+    Status: ✔ enabled
+```
+
+판정: 통과. `installed_plugins.json` 의 `gitCommitSha` 가 daaef88 로 릴리스 커밋과 같다.
+
+실행: 설치본에 실제로 실린 파일 수
+
+출력:
+```
+설치 payload(cache) 파일 수: 25
+payload 최상위: check
+마켓플레이스 클론 파일 수(저장소 통째): 67
+설치본에 실린 스킬: auto config handoff init ship spec status tdd
+```
+
+판정: 통과. README 가 적은 "plugin/ 25개 파일" 과 같다. **다만 마켓플레이스를 걸면
+저장소 전체(67개)가 `plugins/marketplaces/` 아래로 복제된다.** 도는 것은 설치본 25개뿐이지만
+디스크에는 테스트와 문서도 함께 남는다. 이 동작은 이름 변경 전과 같다.
+
+실행: 격리한 설정으로 세션을 한 번 띄운 뒤 상태 폴더 이름
+
+출력:
+```
+check-did-you-check
+```
+
+판정: 통과. README 가 적은 `~/.claude/plugins/data/check-did-you-check/` 와 같다.
+그 세션은 로그인이 없어 `Not logged in` 으로 끝났지만, 훅이 돌아 상태 폴더는 만들어졌다.
+**모델이 답을 낸 세션에서 게이트가 실제로 막는지는 이 기록으로 확인하지 못했다.**
+
+실행: `gh release view v2.0.0`
+
+출력: `v2.0.0` 릴리스가 있고 본문이 CHANGELOG 의 2.0.0 절과 같다. 태그는 SSH 로 서명돼 있다.
