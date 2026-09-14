@@ -2805,6 +2805,101 @@ R1 6 건·R2b 24 건·R3 4 건)을 대표하는 예시다. 로그의 `last=` 필
 now"`·`"Measure it, then say what is true"`)은 모두 `plugin/hooks/lib/msg.sh` 의 `ngg.r0`·`ngg.r1`·`ngg.r2b`·
 `ngg.r3` 문자열에서 그대로 가져왔다.
 
+## V44 `/check:config` 언어 옵션에 전역 범위를 더했다
+
+언어 옵션이 `.check.toml` 의 `lang` 만 쓸 수 있어서, 모든 저장소에 한국어를 걸려면 `NGG_LANG` 을 손으로
+넣어야 했다. 5단계가 언어를 고른 뒤 쓸 곳(이 저장소 / 전역)을 한 번 더 묻게 바꿨다. 전역을 고르면
+`~/.claude/settings.json` 의 `env.NGG_LANG` 키 하나만 바꾼다. 그 파일에는 토큰이 있을 수 있어 통째로
+출력하지 않게 했다.
+
+작업 중에 테스트 격리 결함이 드러났다. 이 저장소의 `.check.toml` 에 `lang = "ko"` 를 넣자
+`tests/lib/unit.sh` 가 4건 실패했다. 같은 테스트를 HEAD 워크트리에서 돌리면 전부 통과한다.
+`run()` 이 로케일 변수만 지우고 `CWD` 를 정하지 않아, 게이트가 저장소 루트의 `.check.toml` 을 찾아
+`lang` 을 읽기 때문이다. 전역 `NGG_LANG` 이 같은 일을 하므로 저장소의 `lang` 줄은 지웠다.
+**격리 결함 자체는 고치지 않았다.** 누가 이 저장소에 `lang` 을 넣으면 같은 4건이 다시 깨진다.
+
+실행:
+```
+tests/lib/unit.sh 2>&1 | grep '❌'                 # lang = "ko" 가 있을 때
+git worktree add --detach <scratchpad>/head-wt HEAD
+( cd <scratchpad>/head-wt && tests/lib/unit.sh 2>&1 | tail -1 )
+# lang 줄 제거 뒤
+tests/skills-unit.sh 2>&1 | tail -1
+bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"; echo "rc=$?"
+```
+
+출력:
+```
+❌ LC_ALL이 LANG을 이긴다 (기대=on 실측=켜짐)
+❌ 로케일이 없으면 영어 (기대=on 실측=켜짐)
+❌ 모르는 로케일이면 영어 (기대=on 실측=켜짐)
+❌ 모르는 NGG_LANG이면 영어 (기대=on 실측=켜짐)
+전부 통과                                          # HEAD 워크트리
+실패 0건                                           # skills-unit (description 191자)
+rc=0  소요=53s                                     # test_command 전체
+```
+
+판정: 통과. 스킬 정의 검사(영어, description 200자 이하, 사용자 언어로 답하기)와 전체 검사가 통과한다.
+**확인하지 못한 것이 둘 있다.** 스킬의 새 질문 흐름은 모델이 있어야 돌아서 이 기록에서 실행하지 않았다.
+`settings.json` 에 `env` 를 넣은 뒤 같은 세션의 Bash 에서 `printenv NGG_LANG` 이 `ko` 를 돌려줬다(세션 시작 때는
+unset). 새 세션을 열지 않아도 도구 환경에는 닿는다. did-you-check 훅 프로세스의 환경은 직접 찍어 보지 않았다.
+
+## V45 배선 표의 근거 게이트 칸을 고치고 훅 지연을 다시 쟀다
+
+배경: README와 상세 문서의 "언제 도나" 표가 `PreToolUse` 줄에 근거 게이트를 괄호 설명 없이 적었다.
+다른 줄은 역할을 괄호로 적어서, 이 줄만 근거 게이트가 도구 호출 전에 막는 것처럼 읽혔다.
+실제로 `no-guess-gate/pre.sh` 는 도구 이름을 한 줄 남기고 끝나며 막는 경로(`exit 2`)가 없다.
+다른 세션이 쓴 문제 정리에 이 오독이 그대로 들어가 있었고, 그 정리를 옮긴 비교가 틀린 결론을 냈다.
+
+변경: `README.md`·`README.en.md` 122행, `docs/gates.md`·`docs/gates.en.md` 21행의 칸 하나씩. 제목과 앵커는 그대로다.
+
+실행:
+```
+printf '{"session_id":"probe1","tool_name":"Edit","tool_input":{"file_path":"/tmp/x.ts","old_string":"a","new_string":"b"}}' \
+  | NGG_STATE=<scratchpad>/ngg-pre-probe bash plugin/hooks/no-guess-gate/pre.sh; echo "exit=$?"
+grep -cE 'exit 2' plugin/hooks/no-guess-gate/pre.sh
+tests/invariants.sh; echo "exit=$?"
+```
+
+출력:
+```
+exit=0                  # stdout·stderr 없음. 상태 파일 state/probe1/tools 에 "Edit" 한 줄
+0
+전부 통과
+exit=0
+```
+
+지연 실측. 스크래치패드의 python 하네스로 훅마다 30회 돌려 중앙값·최댓값(ms)을 쟀다. 상태 폴더는 임시로 두고
+`NGG_*` 를 지웠다. 입력은 같은 세션으로 Read(README.md), Bash(`ls -la`), Edit(README.md `a`→`b`),
+Stop(도구를 쓴 턴의 한국어 산문 답, 위반 없음) 순서다. 커밋·PR 명령 경로는 재지 않았다.
+```
+기준: bash 빈 실행                 6.8    20.6
+기준: python3 빈 실행             23.6    27.1
+Read  | no-guess-gate/pre.sh      14.1    21.4
+Bash  | no-guess-gate/pre.sh      15.3    69.3
+Bash  | test-integrity/pre.sh     10.3    22.3
+Bash  | project-guard/pre.sh      11.6    17.5
+Bash  | done-gate/pre.sh          11.1    24.3
+Bash  | bashres.sh (Post)         15.4    18.9
+Edit  | no-guess-gate/pre.sh      15.1    20.5
+Edit  | test-integrity/pre.sh     46.9    70.8
+Edit  | project-guard/pre.sh      40.5    66.2
+Edit  | done-gate/post.sh (Post)  39.1    75.0
+Stop  | no-guess-gate/stop.sh    133.9   243.9
+Stop  | done-gate/stop.sh         70.9    99.2
+합계(순차로 셌을 때): Read 14 · Bash 64 · Edit 142 · Stop 205
+```
+
+판정: 문서 수정은 통과. Read 한 번의 근거 게이트 비용 14.1ms 는 앞선 지연 측정 기록의 18.7ms 와 같은 수준이라
+빠른 경로가 유지된다. 공식 hooks 문서가 "All matching hooks run in parallel." 이라 적으므로 도구 호출의 체감 지연은
+합이 아니라 가장 느린 훅이다(Edit 46.9ms). Edit 경로 세 훅과 Stop 두 훅의 시간은 대부분 python 기동이다
+(`read_in` 이 모든 입력을 python 으로 파싱하고, `stop.sh` 는 `xform` 과 JSON 면제 검사에서 python 을 두 번 더 띄운다).
+
+관련 관찰: V44 가 확인하지 못한 `env` 전달. 같은 세션 안에서 `settings.json` 에 `env` 를 넣은 뒤 셸 환경에
+값이 보였고, ecc 플러그인의 편집 게이트는 처음 만지는 파일을 막지 않았으며 그 상태 파일(`~/.gateguard/state-<세션>.json`)에
+편집 기록이 없었다. 새 세션을 열지 않아도 플러그인 훅(ecc)에 닿았다는 뜻이다.
+**did-you-check 훅 프로세스의 환경은 직접 찍어 보지 않았다.**
+
 ## V46 메시지 테스트가 둘러싼 저장소의 `.check.toml` 을 읽지 않게 했다
 
 이 저장소의 `.check.toml` 에 `lang = "ko"` 를 넣으면 `tests/lib/unit.sh` 의 로케일 폴백 검사 네 건이

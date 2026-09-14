@@ -119,7 +119,7 @@ At `Stop` (turn end) only **two gates run: evidence and completion**. Test integ
 |---|---|
 | `SessionStart` | repo profile |
 | `UserPromptSubmit` | evidence (`check allow`) |
-| `PreToolUse` | evidence · completion (Bash) · test integrity · project guard |
+| `PreToolUse` | evidence (records tools) · completion (Bash) · test integrity · project guard |
 | `PostToolUse` | evidence (Bash result) · completion (Edit·Write) |
 | `Stop` | evidence (R0–R5) · completion (check command) |
 | `SubagentStop` | evidence (R0–R5) |
@@ -141,7 +141,7 @@ this session'). (…)
 
 Claude then reads the file or runs the command in the same turn and answers again.
 
-Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `.check.toml`, or pick it with `/check:config`. Precedence: `NGG_LANG` env > `.check.toml` `lang` > locale.
+Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `.check.toml`, or for every repo with `NGG_LANG` in the `env` block of `~/.claude/settings.json`. `/check:config` lets you pick either. Precedence: `NGG_LANG` env > `.check.toml` `lang` > locale, so the global value beats a repo's `lang`.
 
 **You can't get stuck.** Per the official docs, Claude Code overrides the hook and ends the turn after 8 consecutive blocks.
 

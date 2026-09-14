@@ -18,7 +18,7 @@ The four gates and the repo profile hook into different events. **At `Stop` (tur
 |---|---|---|---|---|---|
 | `SessionStart` | | | | | loads repo facts into context |
 | `UserPromptSubmit` | reads `check allow` | | | | |
-| `PreToolUse` | every tool | Bash | Edit·Write·Bash | Edit·Write·Bash | |
+| `PreToolUse` | records every tool name (never blocks) | Bash | Edit·Write·Bash | Edit·Write·Bash | |
 | `PostToolUse` | records Bash result as S/F | Edit·Write | | | |
 | `PostToolUseFailure` | records the Bash failure | | | | |
 | `Stop` | R0–R5 | check command | | | |
@@ -271,7 +271,7 @@ The gates run on their own. What needs your judgment about *when* and *what it c
 | `/check:handoff` | Writes a handoff for the next session |
 | `/check:status` | Measures and reports what every gate is actually doing |
 | `/check:auto` | Explore → plan → implement → review → ship, in order |
-| `/check:config` | Shows every gate item with what it blocks and where it comes from, then writes your picks to `disabled_rules` |
+| `/check:config` | Shows every gate item with what it blocks and where it comes from, then writes your picks to `disabled_rules`. Also pins the gate's language, per repo (`lang` in `.check.toml`) or globally (`env.NGG_LANG` in `~/.claude/settings.json`) |
 
 **The commands answer in whatever language you write in.** `SKILL.md` cannot branch on locale, so it is written in English with an instruction in the body to reply in the user's language — the same principle `msg.sh` applies to the gate's own sentences.
 

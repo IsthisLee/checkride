@@ -18,7 +18,7 @@ Claude Code는 코드를 대신 써 주는 AI 조수다. 일은 잘한다. 그�
 |---|---|---|---|---|---|
 | `SessionStart` | | | | | 저장소 사실을 컨텍스트에 싣는다 |
 | `UserPromptSubmit` | `check allow`를 읽는다 | | | | |
-| `PreToolUse` | 모든 도구 | Bash | Edit·Write·Bash | Edit·Write·Bash | |
+| `PreToolUse` | 모든 도구의 이름을 남긴다(막지 않는다) | Bash | Edit·Write·Bash | Edit·Write·Bash | |
 | `PostToolUse` | Bash 결과를 S/F로 남긴다 | Edit·Write | | | |
 | `PostToolUseFailure` | Bash 실패를 남긴다 | | | | |
 | `Stop` | R0~R5 | 검사 명령 | | | |
@@ -275,7 +275,7 @@ append-only 경로: supabase/migrations
 | `/check:handoff` | 다음 세션이 읽을 인수인계를 쓴다 |
 | `/check:status` | 게이트 상태를 전부 실측해 보고한다 |
 | `/check:auto` | 탐색 → 계획 → 구현 → 검토 → 배포를 순서대로 |
-| `/check:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적는다 |
+| `/check:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적는다. 게이트 언어도 저장소(`.check.toml`의 `lang`)나 전역(`~/.claude/settings.json`의 `env.NGG_LANG`)에 고정한다 |
 
 **커맨드는 내가 쓴 언어로 답한다.** `SKILL.md`는 로케일로 가를 수 없는 파일이라 영어로 쓰고, 본문에 사용자의 언어로 답하라는 지시를 박아 두었다. 게이트 문장이 `msg.sh`에서 갈리는 것과 같은 원칙이다.
 

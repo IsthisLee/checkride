@@ -41,7 +41,7 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 
 ## 메시지 언어
 
-`NGG_LANG=ko` 또는 `en`. 주지 않으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 보고 `ko` 계열일 때만 한국어다.
+`NGG_LANG=ko` 또는 `en`. 주지 않으면 `.check.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 보고 `ko` 계열일 때만 한국어다. 저장소마다 정하려면 `.check.toml`에 `lang`을, 모든 저장소에 걸려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 둔다. `/check:config`로 둘 다 고를 수 있다.
 
 ## 끄기
 
