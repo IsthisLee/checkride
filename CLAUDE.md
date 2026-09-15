@@ -5,14 +5,14 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 ## 검사 명령
 
 - `tests/lib/unit.sh` — 메시지 카탈로그 26건. 두 언어의 키가 맞는지, 언어 결정 순서(NGG_LANG · .check.toml lang · 로케일)가 맞는지, 카탈로그가 사라져도 조용히 통과하지 않는지 본다.
-- `tests/no-guess-gate/unit.sh` — 근거 게이트 150건. 모델을 부르지 않는다.
+- `tests/no-guess-gate/unit.sh` — 근거 게이트 179건. `rb.write` 29건 포함. 모델을 부르지 않는다.
 - `tests/done-gate/unit.sh` — 완료 게이트 81건. PR 본문 근거 21건 포함.
 - `tests/test-integrity/unit.sh` — 테스트 무결성 68건.
 - `tests/project-guard/unit.sh` — 프로젝트 가드 44건.
 - `tests/repo-profile/unit.sh` — 저장소 프로필 23건.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 9건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 423건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 452건.**
 - `tests/fuzz.sh` — 망가진 입력을 열 훅에 던져 조용히 통과하지 않는지 본다. 모델을 부르지 않는다.
 - `tests/no-guess-gate/selftest.sh` — 실제 프롬프트 회귀 12케이스. Haiku를 부르고 몇 분 걸린다.
 - `tests/no-guess-gate/ab.sh` — 게이트 켠 채와 끈 채를 비교해 효과를 잰다. `SET=hard`가 압박 프롬프트.
@@ -38,7 +38,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 
 - `plugin/hooks/hooks.json` — SessionStart · UserPromptSubmit · PreToolUse(넷) · PostToolUse · Stop(둘) · SubagentStop 배선. 상태는 `${CLAUDE_PLUGIN_DATA}`.
 - `plugin/hooks/no-guess-gate/bashres.sh` — `PostToolUse`·`PostToolUseFailure`(Bash)에서 이 턴의 Bash 결과를 `S`/`F`로 남긴다. R5가 마지막 글자만 본다.
-- `plugin/hooks/lib/common.sh` — 모든 훅이 공유하는 입력 파서와 메시지 함수 `t`·`tn`, 항목 끄기(`item_off`)와 한 번 허용(`allow_once`). 허용 목록은 `no-guess-gate/prompt.sh`가 사용자 프롬프트에서만 적는다. `no-guess-gate/pre.sh`는 도구 호출마다 돌아 파라미터 확장만 쓰는 빠른 경로가 따로 있다.
+- `plugin/hooks/lib/common.sh` — 모든 훅이 공유하는 입력 파서와 메시지 함수 `t`·`tn`, 항목 끄기(`item_off`)와 한 번 허용(`allow_once`). 허용 목록은 `no-guess-gate/prompt.sh`가 사용자 프롬프트에서만 적는다. `no-guess-gate/pre.sh`는 도구 호출마다 돌아 파라미터 확장만 쓰는 빠른 경로가 따로 있다. 이 훅이 `rb.write`(이번 세션에 읽지 않은 기존 파일을 Write로 덮어쓰기)를 막는다. 파이썬은 Write와 파일을 보는 Bash에서만 띄우고, 읽은 기록은 세션 폴더의 `seen`에 남긴다(턴마다 비우지 않는다).
 - `plugin/hooks/lib/msg.sh` — 사람과 모델에게 나가는 문장 46개를 한국어와 영어로 담는다. 차단이 일어날 때만 읽는다. **훅 안에 문장을 직접 쓰지 않는다.** 한쪽 언어에만 넣으면 `tests/lib/unit.sh`가 잡는다.
 - `plugin/hooks/no-guess-gate/stop.sh` — 규칙 R0~R5와 면제 다섯. `judge.py`가 R2a·R2b만 걸렸을 때 의견인지 상태 주장인지 작은 모델에게 묻는다(`NGG_JUDGE_MODEL`, 기본 haiku).
 - `.check.toml` 이 읽는 키는 다섯이다. `test_command`·`fast_test_command`(완료 게이트), `append_only`(프로젝트 가드), `disabled_rules`(근거 게이트의 규칙과 다른 게이트의 항목을 하나씩 끄기. 이름 목록은 `common.sh`의 `NGG_ITEMS`), `lang`(게이트 메시지 언어. `common.sh`의 `ngg_lang_cfg`가 차단 메시지를 낼 때만 읽고, `NGG_LANG`이 있으면 무시한다). **파서는 한 줄에 키 하나다.** macOS 기본 파이썬(3.9)에 `tomllib` 이 없어 온전한 TOML 파서를 쓰지 않는다.

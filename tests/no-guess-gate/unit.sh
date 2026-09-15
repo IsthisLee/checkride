@@ -440,9 +440,9 @@ grep -qx 'ti.skip' "$AF" 2>/dev/null; r=$?; check 1 "$r" "허용: 새 프롬프�
 printf '{"session_id":"t25","hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"<task-notification>x</task-notification>"}' "$T" | NGG_STATE="$K25" "$W/prompt.sh"
 grep -qx 'done.pr' "$AF" 2>/dev/null; check 0 $? "허용: 백그라운드 알림은 사람의 프롬프트가 아니라 허용을 지우지 않는다"
 up25 '문장 가운데 check allow ti.skip 이라고 적었다'
-[ -s "$AF" ]; r=$?; check 1 "$r" "허용: 줄 첫머리가 아니면 허용이 아니다"
+empty "$AF"; check 0 $? "허용: 줄 첫머리가 아니면 허용이 아니다"
 up25 'check allow R2b, ti.nope'
-[ -s "$AF" ]; r=$?; check 1 "$r" "허용: 근거 규칙과 없는 이름은 받지 않는다"
+empty "$AF"; check 0 $? "허용: 근거 규칙과 없는 이름은 받지 않는다"
 
 # 26. 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 disabled_rules 를 읽는다.
 #     훅 입력의 cwd 는 Claude 가 cd 하면 따라간다(공식 hooks 문서).
@@ -450,5 +450,55 @@ mkdir -p "$P24/sub"; conf24 "R0, R1"
 printf '{"session_id":"t26","hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"이 디렉터리에 package.json 있어?"}' "$P24/sub" | NGG_STATE="$K24" "$W/prompt.sh"
 printf '{"session_id":"t26","hook_event_name":"Stop","stop_hook_active":false,"cwd":"%s","last_assistant_message":"%s"}' "$P24/sub" "$NOFILE" \
   | NGG_STATE="$K24" "$W/stop.sh" 2>/dev/null; check 0 $? "루트: 하위 폴더에서도 루트의 disabled_rules 로 규칙을 끈다"
+
+# 27. rb.write: 이번 세션에 읽지 않은 기존 파일을 Write 로 통째로 덮어쓰지 못한다.
+#     공식 도구 레퍼런스: "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read."
+#     v2.1.228 부터 최신 모델은 읽지 않은 기존 파일도 Write 로 덮어쓸 수 있다. 되돌리기 어려운 이 자리만 다시 막는다.
+RB="$T/rb"; RBS="$T/rbs"; mkdir -p "$RB/sub" "$RB/폴더 공백"
+printf 'keep\n' > "$RB/old.txt"; printf 'keep\n' > "$RB/old2.txt"; : > "$RB/empty.txt"; printf 'keep\n' > "$RB/폴더 공백/한글.txt"
+rbw() { printf '{"session_id":"%s","hook_event_name":"PreToolUse","tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s","content":"x"}}' "$1" "$RB" "$2" | NGG_STATE="$RBS" "$W/pre.sh"; }
+rbr() { printf '{"session_id":"%s","hook_event_name":"PreToolUse","tool_name":"Read","cwd":"%s","tool_input":{"file_path":"%s"}}' "$1" "$RB" "$2" | NGG_STATE="$RBS" "$W/pre.sh"; }
+rbb() { printf '{"session_id":"%s","hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"%s","tool_input":{"command":"%s"}}' "$1" "$RB" "$2" | NGG_STATE="$RBS" "$W/pre.sh"; }
+rbw w1 "$RB/old.txt" 2>"$T/rb1"; check 2 $? "rb.write: 읽지 않은 기존 파일을 덮어쓰려 하면 exit 2"
+grep -q '읽은 적 없는 기존 파일' "$T/rb1"; check 0 $? "rb.write: 막은 이유를 한국어로 알린다"
+grep -q 'check allow rb.write' "$T/rb1"; check 0 $? "rb.write: 한 번 허용하는 법을 알린다"
+rbw w2 "$RB/new.txt" 2>/dev/null; check 0 $? "rb.write: 새 파일은 막지 않는다"
+rbw w3 "$RB/empty.txt" 2>/dev/null; check 0 $? "rb.write: 빈 파일은 잃을 것이 없어 막지 않는다"
+rbr w4 "$RB/old.txt"; rbw w4 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: Read 로 읽은 뒤에는 통과"
+rbr w5a "$RB/old.txt"; rbw w5b "$RB/old.txt" 2>/dev/null; check 2 $? "rb.write: 다른 세션에서 읽은 것은 치지 않는다"
+printf '{"session_id":"w6","hook_event_name":"UserPromptSubmit","prompt":"a"}' | NGG_STATE="$RBS" "$W/prompt.sh"
+rbr w6 "$RB/old.txt"
+printf '{"session_id":"w6","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"읽었다."}' | NGG_STATE="$RBS" "$W/stop.sh" 2>/dev/null
+printf '{"session_id":"w6","hook_event_name":"UserPromptSubmit","prompt":"b"}' | NGG_STATE="$RBS" "$W/prompt.sh"
+rbw w6 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: 앞 턴에서 읽은 것도 친다(턴마다 비우지 않는다)"
+rbb w7 "cat old.txt"; rbw w7 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: cat 으로 본 파일은 읽은 것으로 친다"
+rbb w8 "head -n 5 old.txt"; rbw w8 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: head -n 으로 본 파일"
+rbb w9 "sed -n '1,5p' old.txt"; rbw w9 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: sed -n 'X,Yp' 로 본 파일"
+rbb w10 "grep keep old.txt"; rbw w10 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: grep 으로 본 파일"
+rbb w11 "cat old.txt | head"; rbw w11 "$RB/old.txt" 2>/dev/null; check 2 $? "rb.write: 파이프로 본 것은 치지 않는다(공식 규칙과 같게)"
+rbb w12 "cat old.txt empty.txt"; rbw w12 "$RB/old.txt" 2>/dev/null; check 2 $? "rb.write: 여러 파일을 한꺼번에 본 것은 치지 않는다"
+rbw w13 "$RB/made.txt" 2>/dev/null; printf 'mine\n' > "$RB/made.txt"; rbw w13 "$RB/made.txt" 2>/dev/null; check 0 $? "rb.write: 이번 세션에 직접 쓴 파일은 다시 덮어쓸 수 있다"
+rbr w14 "$RB/sub/../old.txt"; rbw w14 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: 경로 표기가 달라도 같은 파일이면 친다"
+rbr w15 "$RB/폴더 공백/한글.txt"; rbw w15 "$RB/폴더 공백/한글.txt" 2>/dev/null; check 0 $? "rb.write: 공백·한글이 든 경로도 기록한다"
+NP="$T/nopy"; mkdir -p "$NP"; printf '#!/bin/sh\nexit 1\n' > "$NP/python3"; chmod +x "$NP/python3"
+printf '{"session_id":"w16","hook_event_name":"PreToolUse","tool_name":"Read","cwd":"%s","tool_input":{"file_path":"%s"}}' "$RB" "$RB/old.txt" | PATH="$NP:$PATH" NGG_STATE="$RBS" "$W/pre.sh"; check 0 $? "rb.write: Read 기록은 파이썬 없이 끝난다"
+grep -qFx "$RB/old.txt" "$RBS/state/w16/seen"; check 0 $? "rb.write: 파이썬 없이도 읽은 경로가 남는다"
+printf '{"session_id":"w17","hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"%s","tool_input":{"command":"ls -la"}}' "$RB" | PATH="$NP:$PATH" NGG_STATE="$RBS" "$W/pre.sh"; check 0 $? "rb.write: 보기 명령이 아닌 Bash 는 파이썬 없이 끝난다"
+rbr w18 "$RB/old.txt"
+printf '{"session_id":"w18","agent_id":"a1","hook_event_name":"PreToolUse","tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s","content":"x"}}' "$RB" "$RB/old.txt" \
+  | NGG_STATE="$RBS" "$W/pre.sh" 2>/dev/null; check 2 $? "rb.write: 메인이 읽은 것을 서브에이전트가 읽은 것으로 치지 않는다"
+RBC="$T/rbc"; mkdir -p "$RBC"; printf 'keep\n' > "$RBC/old.txt"; printf 'disabled_rules = "rb.write"\n' > "$RBC/.check.toml"
+printf '{"session_id":"w19","hook_event_name":"PreToolUse","tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s","content":"x"}}' "$RBC" "$RBC/old.txt" \
+  | NGG_STATE="$RBS" "$W/pre.sh" 2>/dev/null; check 0 $? "rb.write: disabled_rules 로 끄면 막지 않는다"
+grep -q 'off=\[rb.write\]' "$RBS/state/events.log"; check 0 $? "rb.write: 끈 사실이 events.log 에 남는다"
+mkdir -p "$RBS/state/w20"; printf 'rb.write\n' > "$RBS/state/w20/allow"
+rbw w20 "$RB/old.txt" 2>/dev/null; check 0 $? "rb.write: 사람이 한 번 허용하면 통과한다"
+rbw w20 "$RB/old2.txt" 2>/dev/null; check 2 $? "rb.write: 허용은 한 번 쓰면 사라진다"
+printf '{"session_id":"w21","hook_event_name":"PreToolUse","tool_name":"Write","cwd":"%s","tool_input":{"file_path":"%s","content":"x"}}' "$RB" "$RB/old.txt" \
+  | NGG_LANG=en NGG_STATE="$RBS" "$W/pre.sh" 2>"$T/rb21"; check 2 $? "rb.write: en 에서도 exit 2"
+grep -q 'have not read this session' "$T/rb21"; check 0 $? "rb.write: en 메시지"
+nohangul "$(cat "$T/rb21")"; check 0 $? "rb.write: en 메시지에 한글이 섞이지 않는다"
+printf '{"session_id":"w22","hook_event_name":"PreToolUse","tool_name":"Edit","cwd":"%s","tool_input":{"file_path":"%s","old_string":"keep","new_string":"kept"}}' "$RB" "$RB/old.txt" | NGG_STATE="$RBS" "$W/pre.sh"
+rbw w22 "$RB/old.txt" 2>/dev/null; check 2 $? "rb.write: Edit 로 일부만 고친 것은 파일 전체를 읽은 것으로 치지 않는다"
 
 echo; echo "실패 ${fail}건"; exit "$fail"

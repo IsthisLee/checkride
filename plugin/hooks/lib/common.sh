@@ -85,7 +85,7 @@ quick_tool() { local r
 # 항목 하나만 끄기. .check.toml 의 disabled_rules 한 줄에 근거 게이트의 규칙(R0~R5)과
 # 다른 게이트의 항목이 같이 온다. 환경변수는 한 사람 셸에만 있어 팀이 모르므로 파일에 둔다.
 # 막기 직전에만 부른다. 이 파일은 도구 호출마다 읽히므로 걸린 것이 없으면 설정을 읽지 않는다.
-NGG_ITEMS="done.turn done.commit done.pr ti.skip ti.assert ti.rm ti.exclude pg.noverify"
+NGG_ITEMS="rb.write done.turn done.commit done.pr ti.skip ti.assert ti.rm ti.exclude pg.noverify"
 off_list() { local conf; [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/.check.toml"; [ -f "$conf" ] || return 0
   sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1 | tr ',' ' '; }
 

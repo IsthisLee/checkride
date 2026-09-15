@@ -10,7 +10,7 @@
 |---|---|---|
 | 매 프롬프트·도구 호출·턴 종료에 셸 스크립트 실행 | `hooks/hooks.json` → `hooks/no-guess-gate/*.sh` | 스크립트가 바뀌면 임의 코드가 돈다 |
 | Claude의 마지막 답 전문을 읽음 | `stop.sh`가 훅 입력의 `last_assistant_message`를 받음 | 답에 담긴 내용이 판정 로직을 지난다 |
-| 프롬프트·도구 이름·판정 로그를 파일에 씀 | `${CLAUDE_PLUGIN_DATA}/state/` | 프롬프트 앞부분과 답 80자가 `events.log`에 남는다 |
+| 프롬프트·도구 이름·읽은 파일 경로·판정 로그를 파일에 씀 | `${CLAUDE_PLUGIN_DATA}/state/` | 프롬프트 앞부분과 답 80자가 `events.log`에, 이번 세션에 읽은 파일의 경로가 세션 폴더의 `seen`에 남는다 |
 | 모델 호출 (선택) | `judge.py`가 `claude -p --model haiku` 실행 | 걸린 문장이 모델에 전달된다 |
 
 **네트워크로 나가는 것은 판정기 하나뿐이고, 그것도 당신의 Claude Code를 거친다.** 외부 서비스로 보내는 것은 없다. 판정기를 끄려면 `NGG_JUDGE=0`이다.

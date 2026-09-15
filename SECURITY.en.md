@@ -10,7 +10,7 @@ Hooks **run shell commands as you.** Installing this plugin means trusting that 
 |---|---|---|
 | Runs a shell script on every prompt, tool call, and turn end | `hooks/hooks.json` → `hooks/no-guess-gate/*.sh` | If a script changes, arbitrary code runs |
 | Reads Claude's full final answer | `stop.sh` receives `last_assistant_message` from the hook input | Whatever is in that answer passes through the decision logic |
-| Writes prompts, tool names, and verdicts to files | `${CLAUDE_PLUGIN_DATA}/state/` | The start of the prompt and 80 characters of the answer land in `events.log` |
+| Writes prompts, tool names, read file paths, and verdicts to files | `${CLAUDE_PLUGIN_DATA}/state/` | The start of the prompt and 80 characters of the answer land in `events.log`; the paths of files read this session land in `seen` in the session folder |
 | Calls a model (optional) | `judge.py` runs `claude -p --model haiku` | The flagged sentences are sent to the model |
 
 **The judge is the only thing that leaves this machine, and it goes through your own Claude Code.** Nothing is sent to any external service. Turn the judge off with `NGG_JUDGE=0`.

@@ -34,6 +34,7 @@ One table with five columns: **Gate, Name, Blocks, Source, On/Off.** Use these r
 | Evidence | `R3` | Claiming tests passed with zero Bash calls | Best practices |
 | Evidence | `R4` | Ending again with no tool call after a block | Reduce hallucinations |
 | Evidence | `R5` | Claiming success when the last command failed | Hooks docs, built on the `PostToolUseFailure` event |
+| Evidence | `rb.write` | Overwriting an existing file with Write before reading it this session | Tools reference, "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." Newer models may skip the read, so only whole-file overwrites are blocked again |
 | Completion | `done.turn` | Ending a turn that changed code before the check passes | Best practices, "As a deterministic gate: a Stop hook runs your check as a script and blocks the turn from ending until it passes." |
 | Completion | `done.commit` | Committing before the full check passes | Kent Beck, "Only commit when ALL tests are passing." |
 | Completion | `done.pr` | Opening a PR whose body has no command output | Best practices, "Have Claude show evidence rather than asserting success" |
@@ -47,7 +48,7 @@ Append-only paths have no name here. They are on only when `append_only` is set,
 
 ## 3. Ask what to turn off
 
-Use `AskUserQuestion` with multi-select, one question per gate, listing that gate's items. The question is **which to turn off**, not which to keep. It allows at most four options per question, so split the evidence gate's seven rules across two questions. If I only want to change one gate, ask about that one.
+Use `AskUserQuestion` with multi-select, one question per gate, listing that gate's items. The question is **which to turn off**, not which to keep. It allows at most four options per question, so split the evidence gate's eight items across two questions. If I only want to change one gate, ask about that one.
 
 Before asking, say this once: for a single false positive, writing `check allow <item>` on its own line in the next prompt lets one action through without turning anything off. That does not cover `R0`–`R5`.
 
