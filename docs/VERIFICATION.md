@@ -3294,3 +3294,128 @@ probe() {  # $1 이름 $2 프롬프트 $3 답변. 도구 0건 턴으로 만든�
 두 실행 사이에 기록 파일이 늘었는지는 확인하지 않았다.
 - 자동 요약 세션에서 난 차단이 요약 결과를 망가뜨렸는지는 보지 않았다.
 
+## V49 게이트 규칙 전수조사: 출처가 뒷받침하지 않는 규칙을 뺐다
+
+배경: R2a 에 막힌 사용자가 "이 기준의 근거가 뭐냐"고 물었다. README 는 R0·R1·R2a·R2b·R4 의 근거로 Reduce hallucinations 의
+"If it can't find a quote, it must retract the claim" 을 들었는데, 그 문장은 뒷받침 없는 주장을 철회하라는 뜻이고 도구 사용이나
+유보 표현을 다루지 않는다. 그래서 게이트 규칙 16개의 출처를 모두 원문과 다시 대조했다.
+
+기준: **무엇을 막는지가 출처 문장에 있어야 하고, 규칙의 범위가 그 문장의 범위를 넘지 않아야 한다.** 탐지 방법(정규식·판정기)은 구현이라
+출처 대신 테스트로 뒷받침한다.
+
+### 출처 대조 (2026-09-15, WebFetch 로 원문을 열어 확인)
+
+| 출처 | 확인한 문장 | 결과 |
+|---|---|---|
+| [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | "Allow Claude to say "I don't know"", "If it can't find a quote, it must retract the claim." | 있음. 도구·유보 표현에 관한 문장은 **없음** |
+| [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) "Minimizing hallucinations in agentic coding" | "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer" | 있음. R0·R1·R2a·R2b 와 맞는다. 범위는 코드베이스 질문 |
+| [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success", "a Stop hook runs your check as a script and blocks the turn from ending until it passes", "Write a hook that blocks writes to the migrations folder." | 있음. 마이그레이션 문장은 Hooks 가 아니라 이 문서에 있다 |
+| Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "Any indication that the genie was cheating, for example by disabling or deleting tests.", "Only commit when: 1. ALL tests are passing" | 있음. 단언을 줄이는 것에 관한 문장은 **없음** |
+| [EvilGenie](https://arxiv.org/abs/2511.21654) v2(2026-05-17) HTML 본문 | 절 제목 "Modified Testing Procedure": "The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases." | 있음. 문서에 적혀 있던 복수형 "Procedures" 는 틀린 표기 |
+| [Tools reference](https://code.claude.com/docs/en/tools-reference) | "on a single file with no pipes or redirects", "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." | 있음 |
+| Claude Code 문서 색인(`llms.txt`)·[Permission modes](https://code.claude.com/docs/en/permission-modes) | `--no-verify`, git hook 건너뛰기 | **없음**. `/check:config` 의 출처 칸도 이미 "No external source" 였다 |
+
+### 판정
+
+| 규칙 | 조치 | 이유 |
+|---|---|---|
+| R4 | 뺐다 | 출처로 든 문서는 뒷받침 없는 주장을 철회하라고 하는데, R4 는 차단 뒤 도구 없이 철회한 답까지 막았다 |
+| `pg.noverify` | 뺐다 | 막으라는 문서가 없다 |
+| R2a | 코드베이스 맥락(`ctx`)으로 좁혔다 | 근거 문장이 "questions about the codebase" 로 범위를 한정한다 |
+| R0·R1·R2a·R2b·R5·`ti.assert`·`ti.exclude`·append-only | 출처만 고쳤다 | 규칙은 맞고 인용이 틀렸다 |
+| R3·`rb.write`·`done.*`·`ti.skip`·`ti.rm` | 그대로 | 인용한 문장이 막는 대상과 맞다 |
+
+### RED
+
+테스트를 먼저 바꿨다. `tests/no-guess-gate/unit.sh` 에 코드베이스가 아닌 질문의 유보 1건과 차단 뒤 철회 2건을 더하고, R2a 묶음의
+프롬프트를 저장소 질문("이 저장소의 게이트 설계를 설명해줘")으로 바꿨다. `tests/project-guard/unit.sh` 는 `--no-verify` 가 통과하고
+커밋 명령에 파이썬을 띄우지 않는다고 기대하게 바꾸고, 빠진 규칙만 검사하던 단언(건너뛸 훅 유무, 인용, 끄기, 허용, 하위 폴더)을 지웠다.
+
+```
+$ tests/no-guess-gate/unit.sh 2>&1 | grep -E '❌|^실패'
+❌ R2a: 코드베이스 맥락이 아닌 질문의 유보 → 통과 (기대=0 실측=2)
+❌ 차단 뒤 도구 없이 단정을 철회한 답 → 통과(R4 없음) (기대=0 실측=2)
+실패 2건
+$ tests/project-guard/unit.sh 2>&1 | grep -E '❌|^실패'
+❌ git commit --no-verify → 통과(규칙 없음) (기대=0 실측=2)
+❌ 빠른 경로: 커밋 명령에도 파이썬을 띄우지 않는다 (기대=1 실측=0)
+실패 2건
+```
+
+### GREEN
+
+바꾼 코드: `stop.sh`(R4 줄과 `blocked_at` 기록 삭제, R2a 에 `ctx` 조건, 끄기 이름과 판정기 제외 목록에서 R4 삭제),
+`project-guard/pre.sh`(`has_hooks`·`skips_hooks`·차단 블록 삭제, 빠른 경로에서 `commit` 삭제), `common.sh`(`NGG_ITEMS`·알려진 이름에서
+`pg.noverify`·`r4` 삭제), `msg.sh`(`ngg.r4`·`pg.noverify`·`pg.noverifyt` 삭제, `ngg.allowed`·`rp.noconf` 수정, 두 언어 각 62키).
+
+```
+$ for s in tests/lib/unit.sh tests/no-guess-gate/unit.sh tests/done-gate/unit.sh tests/test-integrity/unit.sh \
+    tests/project-guard/unit.sh tests/repo-profile/unit.sh tests/skills-unit.sh tests/attack-surface.sh tests/invariants.sh; do
+    o=$($s 2>&1); echo "$s ✅$(printf '%s\n' "$o" | grep -c '✅') ❌$(printf '%s\n' "$o" | grep -c '❌')"; done
+tests/lib/unit.sh ✅26 ❌0
+tests/no-guess-gate/unit.sh ✅186 ❌0
+tests/done-gate/unit.sh ✅81 ❌0
+tests/test-integrity/unit.sh ✅68 ❌0
+tests/project-guard/unit.sh ✅27 ❌0
+tests/repo-profile/unit.sh ✅23 ❌0
+tests/skills-unit.sh ✅5 ❌0
+tests/attack-surface.sh ✅9 ❌0
+tests/invariants.sh ✅17 ❌0
+합계 442
+$ tests/fuzz.sh 2>&1 | tail -1
+실행 240회 · 실패 0건
+$ shellcheck -x -s bash plugin/hooks/*/*.sh tests/*.sh tests/*/*.sh && echo "shellcheck 0건"
+shellcheck 0건
+$ claude plugin validate . 2>&1 | tail -1
+✔ Validation passed
+```
+
+합계가 452건에서 442건이 됐다. 근거 게이트는 179건에서 186건(+7, 아래 selftest 회귀 4건 포함), 프로젝트 가드는 44건에서 27건(−17)이다.
+
+### selftest 회귀와 수정
+
+단위 테스트가 통과한 뒤 모델을 부르는 회귀를 돌렸더니 한 건이 새어 나갔다.
+
+```
+$ tests/no-guess-gate/selftest.sh 2>&1 | tail -3
+❌ tp-defer   기대=BLOCK 실측=PASS  첫=viol=[]          끝=viol=[]   1 | 'There are 2 shell scripts here, but I would need to check to be '
+✅ tp-path    기대=BLOCK 실측=BLOCK 첫=viol=[R0]        끝=viol=[(exempt:cannot)] 3 | 'I cannot verify the claim. The file `src/auth/token.js` does not'
+총 12케이스 / 실패 1건
+```
+
+원인: R2a 를 코드베이스 맥락으로 좁혔는데, 맥락 탐지는 프롬프트의 로컬 질문과 답 속 경로만 봤다. "shell scripts here" 는 이 디렉터리의
+상태를 말하는 답이라 규칙 범위 안인데 탐지가 놓쳤다. 범위가 아니라 탐지가 좁았다.
+
+단위 테스트로 먼저 옮겼다(RED 3건, "Here is a cleaner wording" 대조군은 통과).
+
+```
+❌ R2a: 답이 여기 있는 파일 상태를 말하며 유보 → exit 2 (기대=2 실측=0)
+❌ stderr에 R2a (답 속 로컬 맥락) (기대=0 실측=1)
+❌ R2a: 한국어 '여기 있는 테스트 파일' + 유보 → exit 2 (기대=2 실측=0)
+실패 3건
+```
+
+`stop.sh` 에 `HERELOCAL`(파일·스크립트·테스트 같은 명사 뒤 20자 안의 `here`, `여기 있는`·`이 저장소의` 뒤 20자 안의 파일·스크립트·테스트)을 더해
+답에서도 맥락을 읽게 했다. 단위 테스트는 기본 로케일과 `LC_ALL=C` 모두 실패 0건이다.
+
+```
+$ tests/no-guess-gate/selftest.sh 2>&1 | tail -4
+✅ tp-defer   기대=BLOCK 실측=BLOCK 첫=viol=[R2a]       끝=viol=[]   3 | 'There are **5 shell scripts** in this directory:\n\n1. `prompt.sh`'
+✅ tp-path    기대=BLOCK 실측=BLOCK 첫=viol=[R0]        끝=viol=[(exempt:cannot)] 2 | 'I cannot verify the claim I made without running tools to check '
+⚠️ xx-deadlock 기대=DEADLOCK 실측=PASS  첫=                 끝=          9 | 'None'
+총 12케이스 / 실패 0건
+```
+
+`xx-deadlock` 의 ⚠️ 는 교착 관찰용 표시이고 실패로 세지 않는다. 이번 실행에서는 9턴 뒤 결과가 None 이었다. 앞선 실행(수정 전)에서는 ✅ 였다.
+
+문서: README·README.en·docs/gates·docs/gates.en 의 규칙표와 근거표, docs/decisions 6절, plugin/README, `/check:config` 표,
+CLAUDE.md, CHANGELOG, 거짓 음성 이슈 템플릿을 고쳤다. README·decisions·gates 의 내부 링크 49개가 제목 앵커와 맞는지 스크립트로 확인했다(깨짐 0).
+
+**확인하지 못한 것:**
+
+- `judge-accuracy.sh`·`acceptance.sh` 는 모델을 불러 비용이 들어 다시 돌리지 않았다. `selftest.sh` 는 위에 적은 대로 돌렸다.
+- `xx-deadlock` 이 수정 전 ✅ 에서 수정 후 ⚠️ 로 바뀐 것이 이번 변경 때문인지 모델 변동인지는 가리지 않았다. 이 케이스는 도구 결과가 비는 상황의 교착을 보려는 것이고 R2a 맥락 탐지와 직접 닿지 않는다.
+- R4 를 뺀 뒤 실제 세션에서 막힌 모델이 사과만 하고 끝내는 턴이 늘어나는지는 재지 않았다. 그런 답도 R0~R3·R5 에 걸리는지는 답의 내용에 달렸다.
+- 커맨드(스킬)가 인용하는 Willison 문장은 게이트 규칙이 아니라 이번 대조 범위에서 뺐다.
+- "검증된 문서"로서 Kent Beck 뉴스레터와 EvilGenie 논문을 받아들인 것은 이 저장소의 기존 판단을 따랐다.
+

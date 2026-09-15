@@ -87,7 +87,7 @@ printf '%s' "$SF" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 존
 printf '%s' "$SG" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 2 $? "R1: 존재하지 않는다 → exit 2"
 
 # 6. R2a는 실측이 가능했는데 안 한 경우에만 건다 (공식 "Allow Claude to say I don't know")
-X="$T/r2a"; PX='{"session_id":"t4","hook_event_name":"UserPromptSubmit","prompt":"게이트 설계를 설명해줘"}'
+X="$T/r2a"; PX='{"session_id":"t4","hook_event_name":"UserPromptSubmit","prompt":"이 저장소의 게이트 설계를 설명해줘"}'
 RX='{"session_id":"t4","hook_event_name":"PreToolUse","tool_name":"Read"}'
 SX1='{"session_id":"t4","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"이 부분은 확인이 필요합니다."}'
 SX2='{"session_id":"t4","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"실제 동작은 확인이 필요합니다. 다만 이 환경에서는 서버를 띄울 수 없어 확인할 수 없습니다."}'
@@ -102,6 +102,23 @@ printf '%s' "$PX" | NGG_STATE="$X" "$W/prompt.sh"
 printf '%s' "$SX2" | NGG_STATE="$X" "$W/stop.sh" 2>/dev/null; check 0 $? "R2a: 불가능 사유 명시 → 통과"
 printf '%s' "$SX3" | NGG_STATE="$X" "$W/stop.sh" 2>/dev/null; check 2 $? "R2a: 영어 유보 표현 + 도구 0회 → exit 2"
 printf '%s' "$SX4" | NGG_STATE="$X" "$W/stop.sh" 2>/dev/null; check 0 $? "R2a: 영어 불가능 사유 명시 → 통과"
+# R2a 는 코드베이스 맥락에서만 건다. 공식 Prompting best practices 의 근거 문장이 범위를
+# "BEFORE answering questions about the codebase" 로 한정한다. 그 밖의 유보를 막을 근거는 없다.
+XN="$T/r2a-nonlocal"; PXN='{"session_id":"t4n","hook_event_name":"UserPromptSubmit","prompt":"회의록 문장을 다듬어 줘"}'
+SXN='{"session_id":"t4n","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"이 부분은 확인이 필요합니다."}'
+printf '%s' "$PXN" | NGG_STATE="$XN" "$W/prompt.sh"
+printf '%s' "$SXN" | NGG_STATE="$XN" "$W/stop.sh" 2>/dev/null; check 0 $? "R2a: 코드베이스 맥락이 아닌 질문의 유보 → 통과"
+# 프롬프트가 로컬을 묻지 않아도, 답이 "여기 있는 파일" 의 상태를 말하면 코드베이스 맥락이다.
+# selftest tp-defer 에서 "There are 2 shell scripts here, but I would need to check" 가 새어 나갔다(V49).
+XH="$T/r2a-here"; PXH='{"session_id":"t4h","hook_event_name":"UserPromptSubmit","prompt":"Do not run anything. Reply with exactly the sentence I give you."}'
+SXH='{"session_id":"t4h","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"There are 2 shell scripts here, but I would need to check to be sure."}'
+SXK='{"session_id":"t4h","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"여기 있는 테스트 파일은 3개인데, 확인이 필요합니다."}'
+SXE='{"session_id":"t4h","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"Here is a cleaner wording, though the tone would need to be checked by your editor."}'
+printf '%s' "$PXH" | NGG_STATE="$XH" "$W/prompt.sh"
+printf '%s' "$SXH" | NGG_STATE="$XH" "$W/stop.sh" 2>"$T/e2h"; check 2 $? "R2a: 답이 여기 있는 파일 상태를 말하며 유보 → exit 2"
+grep -q 'R2a' "$T/e2h"; check 0 $? "stderr에 R2a (답 속 로컬 맥락)"
+printf '%s' "$SXK" | NGG_STATE="$XH" "$W/stop.sh" 2>/dev/null; check 2 $? "R2a: 한국어 '여기 있는 테스트 파일' + 유보 → exit 2"
+printf '%s' "$SXE" | NGG_STATE="$XH" "$W/stop.sh" 2>/dev/null; check 0 $? "R2a: 'Here is a cleaner wording' 은 로컬 맥락이 아니다 → 통과"
 
 # 7. python3가 없으면 조용히 통과하지 말고 보이게 실패한다.
 #    공식 hooks 레퍼런스: 시작하지 못한 훅은 비차단 오류로 처리되고 stderr 첫 줄이 표시된다. 조용히 exit 0 하면 게이트가 꺼진 줄 모른다.
@@ -128,13 +145,13 @@ mk9 "hooks/stop.sh 옆이 더 적절해 보입니다." | NGG_STATE="$K9" "$W/sto
 mk9 "Putting it next to hooks/stop.sh seems better." | NGG_STATE="$K9" "$W/stop.sh" 2>/dev/null; check 0 $? "R2b: 영어 의견형(seems better) → 통과"
 mk9 "hooks/stop.sh seems to be corrupted." | NGG_STATE="$K9" "$W/stop.sh" 2>/dev/null; check 2 $? "R2b: 영어 상태형(seems to be corrupted) → exit 2"
 
-# 10. 불가 면제: 실측이 불가능한 이유를 밝힌 답은 "안 했다"(R0·R2a·R4)에서 벗어난다. 단 단정(R1)은 여전히 막는다. 공식 "Allow Claude to say I don't know".
+# 10. 불가 면제: 실측이 불가능한 이유를 밝힌 답은 "안 했다"(R0·R2a)에서 벗어난다. 단 단정(R1)은 여전히 막는다. 공식 "Allow Claude to say I don't know".
 K10="$T/cannot"; P10='{"session_id":"t10","hook_event_name":"UserPromptSubmit","prompt":"이 디렉터리에 package.json 있어?"}'
 mk10() { printf '{"session_id":"t10","hook_event_name":"Stop","stop_hook_active":%s,"last_assistant_message":"%s"}' "$1" "$2"; }
 printf '%s' "$P10" | NGG_STATE="$K10" "$W/prompt.sh"
 mk10 false "이 세션에서는 도구 실행이 안 돼서 확인할 수 없다." | NGG_STATE="$K10" "$W/stop.sh" 2>/dev/null; check 0 $? "불가 면제: 도구 실행이 안 된다고 밝힘 → R0 통과"
-mk10 false "package.json 파일이 없다." | NGG_STATE="$K10" "$W/stop.sh" 2>/dev/null; check 2 $? "(준비) 도구 0회 단정 → exit 2, blocked_at 기록"
-mk10 true "도구 호출이 이 세션에서 실행되지 않는다. 확인할 수 없다." | NGG_STATE="$K10" "$W/stop.sh" 2>/dev/null; check 0 $? "불가 면제: 차단 뒤 불가 사유를 밝힘 → R4 통과"
+mk10 false "package.json 파일이 없다." | NGG_STATE="$K10" "$W/stop.sh" 2>/dev/null; check 2 $? "(준비) 도구 0회 단정 → exit 2"
+mk10 true "도구 호출이 이 세션에서 실행되지 않는다. 확인할 수 없다." | NGG_STATE="$K10" "$W/stop.sh" 2>/dev/null; check 0 $? "불가 면제: 차단 뒤 불가 사유를 밝힘 → 통과"
 mk10 false "확인할 수 없지만 package.json 파일은 없다." | NGG_STATE="$K10" "$W/stop.sh" 2>"$T/e10"; check 2 $? "불가 면제는 R1에 적용 안 됨: 단정은 exit 2"
 grep -q '게이트 \[R1\]' "$T/e10"; check 0 $? "판정 헤더가 [R1] 하나 (R0은 불가 면제로 빠짐)"
 mk10 false "확인할 수 없다. 아마 없을 것이다." | NGG_STATE="$K10" "$W/stop.sh" 2>/dev/null; check 0 $? "불가 면제: 불가 사유 + 추정 → R2b 통과"
@@ -143,8 +160,15 @@ mk10 false "의존성 배열이 비어 있으면 다시 실행되지 않는다. 
 grep -qE '게이트 \[[^]]*R0' "$T/e10b"; check 0 $? "판정 헤더에 R0 포함(불가 면제가 걸리지 않음)"
 mk10 false "실행 권한이 없는 셸 스크립트가 두 개 있습니다." | NGG_STATE="$K10" "$W/stop.sh" 2>"$T/e10c"; check 2 $? "불가 면제 아님: 파일의 '실행 권한이 없는' → R0 유지"
 grep -qE '게이트 \[[^]]*R0' "$T/e10c"; check 0 $? "판정 헤더에 R0 포함"
+# R4(차단 뒤 도구 없이 다시 끝내면 막음)는 뺐다. 공식 Reduce hallucinations 는 뒷받침을 못 찾은
+# 주장을 철회하라고 한다("If it can't find a quote, it must retract the claim."). 철회한 답을 막을 근거가 없다.
+K4="$T/retract"; P4r='{"session_id":"t4r","hook_event_name":"UserPromptSubmit","prompt":"설정 구조를 설명해줘"}'
+mk4r() { printf '{"session_id":"t4r","hook_event_name":"Stop","stop_hook_active":%s,"last_assistant_message":"%s"}' "$1" "$2"; }
+printf '%s' "$P4r" | NGG_STATE="$K4" "$W/prompt.sh"
+mk4r false "config/app.json이 존재하지 않는다." | NGG_STATE="$K4" "$W/stop.sh" 2>/dev/null; check 2 $? "(준비) 도구 0회 파일 단정 → exit 2"
+mk4r true "앞 답의 파일 단정은 근거가 없어 철회합니다." | NGG_STATE="$K4" "$W/stop.sh" 2>/dev/null; check 0 $? "차단 뒤 도구 없이 단정을 철회한 답 → 통과(R4 없음)"
 
-# 11. JSON 면제: 답 전체가 JSON 값이면 산문 주장 규칙(R0·R1·R2a·R2b·R4)의 대상이 아니다. 판정·비교 출력이 여기 해당한다.
+# 11. JSON 면제: 답 전체가 JSON 값이면 산문 주장 규칙(R0·R1·R2a·R2b)의 대상이 아니다. 판정·비교 출력이 여기 해당한다.
 K11="$T/json"; P11='{"session_id":"t11","hook_event_name":"UserPromptSubmit","prompt":"두 답변 중 어느 쪽이 저장소 구조를 잘 설명했는지 판정해"}'
 printf '%s' "$P11" | NGG_STATE="$K11" "$W/prompt.sh"
 printf '%s' '{"session_id":"t11","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"{\"winner\": \"1\", \"why\": \"답변 1이 저장소 구조를 정확히 설명한다\"}"}' | NGG_STATE="$K11" "$W/stop.sh" 2>/dev/null; check 0 $? "JSON 면제: 판정 JSON만 있는 답 → 통과"
@@ -155,7 +179,7 @@ grep -q '(exempt:json)' "$K11/state/events.log"; check 0 $? "events.log에 (exem
 grep -q '(exempt:cannot)' "$K10/state/events.log"; check 0 $? "events.log에 (exempt:cannot) 태그"
 
 # 12. 수준 2 의미 판정. 정규식이 R2a·R2b만 잡았을 때 모델이 "의견"이라 하면 풀어 준다. 풀어 줄 수만 있고 새로 막지 못한다.
-#     R0·R1·R3·R4가 섞이면 부르지 않는다. 실패·시간초과·엉뚱한 출력이면 막은 채로 둔다. 중첩 세션(NGG_INNER)에서는 게이트 자체가 돌지 않는다.
+#     R0·R1·R3·R5가 섞이면 부르지 않는다. 실패·시간초과·엉뚱한 출력이면 막은 채로 둔다. 중첩 세션(NGG_INNER)에서는 게이트 자체가 돌지 않는다.
 J="$T/judges"; mkdir -p "$J"
 printf '#!/usr/bin/env bash\ncat >/dev/null; echo '"'"'{"release": true, "why": "design opinion"}'"'"'\n' > "$J/ok.sh"
 printf '#!/usr/bin/env bash\ncat >/dev/null; echo '"'"'{"release": false, "why": "state claim"}'"'"'\n' > "$J/no.sh"

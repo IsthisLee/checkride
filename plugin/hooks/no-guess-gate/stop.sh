@@ -15,19 +15,22 @@ log() { local lf; lf="$(state_root "$d")/state/events.log"
   if [ "$(wc -l < "$lf" 2>/dev/null || echo 0)" -gt 2200 ]; then tail -n 2000 "$lf" > "$lf.tmp" 2>/dev/null && mv "$lf.tmp" "$lf"; fi; }
 if [ "$nask" -gt 0 ]; then log - "(exempt:ask-tool)"; touch "$s/turn_closed"; exit 0; fi
 ASKRE='(\?[[:space:]]*$|which (one|takes priority|do you)|should I|do you want|would you like|please (confirm|clarify|tell me)|어느 쪽|어떻게 할까|할까요\?|원하시|확인해 주|알려 주|선택해 주)'
-if printf '%s' "$last" | grep -qiE "$ASKRE"; then log - "(exempt:question)"; rm -f "$s/blocked_at"; touch "$s/turn_closed"; exit 0; fi
+if printf '%s' "$last" | grep -qiE "$ASKRE"; then log - "(exempt:question)"; touch "$s/turn_closed"; exit 0; fi
 
 FILE='[A-Za-z0-9_.-]+\.(json|js|jsx|ts|tsx|md|sh|yml|yaml|env|lock|sql|css|scss|py|go|rs)'
 LOCALQ="(this (directory|folder|file|repo|repository|project|codebase|code|config|setting)|the (code|codebase|repo|repository|project|config|current directory)|current directory|in here|이 (디렉터리|폴더|파일|저장소|프로젝트|코드|설정)|여기|현재 (디렉터리|폴더)|코드베이스|저장소|$FILE)"
 PATHRE="((^|[^A-Za-z0-9])/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+|$FILE)"
+# 답이 "여기 있는 파일" 의 상태를 말해도 코드베이스 맥락이다. 명사 없이 쓰인 "Here is …" 는 잡지 않는다(V49 tp-defer).
+HERELOCAL='(\b(files?|scripts?|tests?|folders?|directories|modules?|configs?)\b[^.]{0,20}\bhere\b|(여기|이 디렉터리|이 폴더|이 저장소)(에 있는| 있는|에|의|안의|안에 있는) ?[^.]{0,20}(파일|스크립트|테스트|폴더|디렉터리))'
 ctx=0; printf '%s' "$prompt" | grep -qiE "$LOCALQ" && ctx=1; printf '%s' "$last" | grep -qE "$PATHRE" && ctx=1
+printf '%s' "$last" | grep -qiE "$HERELOCAL" && ctx=1
 # 정규식의 대괄호 안에는 멀티바이트 문자를 넣지 않는다. LC_ALL=C 같은 로케일에서 grep·sed 가
 # 바이트로 매칭해 한국어 글자를 한가운데서 자르고, 그러면 R1 이 조용히 안 걸린다. 교체(|)로 쓴다.
 R1PHRASE="(there('s| is| are) (no|a|an)|(does|doesn't|do not|don't) (contain|exist|have)|존재하지 않|파일이 없|파일이 있|디렉터리에 (없|있))"
 R1STATE='(없다([[:space:],.)]|$)|없습니다|없음([[:space:],.)]|$)|없어(요)?([[:space:],.)]|$)|있다([[:space:],.)]|$)|있습니다|있음([[:space:],.)]|$)|존재(한다|합니다|하지 않는다|하지 않습니다)([[:space:],.)]|$)|비어 ?있|is missing|not found|no such|does not exist|doesn'"'"'t exist|exists([[:space:],.)]|$)|is empty)'
 r1_hit() { printf '%s' "$last" | grep -qiE "$R1PHRASE" && return 0; printf '%s\n' "$last" | sed -E 's/(\.|!|\?|。)([[:space:]]|$)/\1\n/g' | grep -E "$PATHRE" | grep -v '수 있' | grep -qiE "$R1STATE"; }
 R2a='(should (verify|check|confirm)|need(s)? to (verify|check|confirm)|would need to (check|verify|run|look)|without checking|to be sure|확인 필요|실측 필요|검증 필요|확인해야|검증해야|확인이 필요|확인하지 않았|검증하지 않았|미확인)'
-# 불가 면제. 실측이 불가능한 이유를 밝힌 답. "안 했다"(NEG)와 다르다. R0·R2a·R2b·R4에서 벗어나고 단정(R1)과 검증 주장(R3)에는 적용하지 않는다.
+# 불가 면제. 실측이 불가능한 이유를 밝힌 답. "안 했다"(NEG)와 다르다. R0·R2a·R2b에서 벗어나고 단정(R1)과 검증 주장(R3)에는 적용하지 않는다.
 CANNOT='(확인할 수 없|검증할 수 없|실행할 수 없|접근할 수 없|띄울 수 없|재현할 수 없|불가능(하다|합니다|해서|하다고)|(도구|명령|명령어|커맨드|bash|셸|쉘|툴) ?(실행|호출)?[^.]{0,25}(안 ?(된다|돼|됩니다|되고|돌아)|되지 않|실행되지 않|돌지 않|불가|막혀)|cannot (verify|check|run|access|reproduce|execute)|can'"'"'t (verify|check|run|access|reproduce|execute)|unable to (verify|check|run|access|reproduce|execute)|no (access|permission)|tools? (are|is) (not |un)?(available|working|running|broken|failing)|tool calls? (are |is )?(not|fail))'
 # 의견형 유보. "나아 보인다"는 설계 의견이지 상태 주장이 아니다. R2b 판정 전에 지운다.
 EVALHEDGE='((더 |훨씬 |좀 더 )?(나아|낫|좋아|괜찮아|적절해|맞아|타당해|자연스러워|충분해|깔끔해|안전해|편해|쉬워|무난해|합리적으로|바람직해|유리해|나쁘지 않아) ?보(인다|임|입니다|여요|이네요|이는데|이지만)|(seems?|looks?|appears?|feels?) (like )?(a |the )?(good|better|best|fine|reasonable|appropriate|sensible|cleaner|simpler|safer|right|ok|okay|nice|worth|solid|clean|natural|clearer|preferable))'
@@ -48,10 +51,12 @@ R3='(테스트.{0,6}(통과했|성공했|돌렸|실행했)|검증(했|됐|완료
 NEG='(cannot|can'"'"'t|unable to|did not|didn'"'"'t|have not|haven'"'"'t|not (run|ran|verified|checked|tested)|without (running|checking|verifying)|하지 않았|안 했|못 했|미실행|미확인|없이는|수 없)'
 NG2='(추측이 아니|추측이 아닌|추측 아니|추정이 아니|추측하지 않|추측한 것이 아니|추측한 게 아니|실측값|실측한|실측이다|not a guess|is not a guess|isn.t a guess|not guessing|rather than guess)'
 v=""
-ba=$(cat "$s/blocked_at" 2>/dev/null); if [ "$STOP_HOOK_ACTIVE" = "True" ] && [ -n "$ba" ] && [ "$ntools" -le "$ba" ] && [ "$prose" -eq 1 ]; then v="$v R4"; fi
+# 차단 뒤 도구 없이 다시 끝내는 답을 따로 막던 R4 는 뺐다. 공식 Reduce hallucinations 는 뒷받침을 못 찾은
+# 주장을 철회하라고 하므로, 다시 쓴 답도 아래 규칙으로만 판정한다(V49).
 [ "$ntools" -eq 0 ] && [ "$prose" -eq 1 ] && printf '%s' "$prompt" | grep -qiE "$LOCALQ" && v="$v R0"
 [ "$ntools" -eq 0 ] && [ "$jsononly" -eq 0 ] && r1_hit && v="$v R1"
-[ "$ntools" -eq 0 ] && [ "$prose" -eq 1 ] && printf '%s' "$resid" | grep -qiE "$R2a" && v="$v R2a"
+# R2a 는 코드베이스 맥락(ctx)에서만 건다. 근거 문장이 "BEFORE answering questions about the codebase" 로 범위를 한정한다.
+[ "$ntools" -eq 0 ] && [ "$ctx" -eq 1 ] && [ "$prose" -eq 1 ] && printf '%s' "$resid" | grep -qiE "$R2a" && v="$v R2a"
 # R5: 이 턴에 마지막으로 돌린 Bash 가 실패했는데 검증·성공을 주장한다. R3 은 Bash 0건만 보므로
 # 돌렸는데 실패한 경우가 비어 있었다. bashres.sh 가 S/F 를 순서대로 남긴다.
 lastb=$(tail -c 1 "$s/bashseq" 2>/dev/null || true)
@@ -70,7 +75,7 @@ if [ -n "$v" ] && [ -f "$ngg_conf" ]; then
   dr=$(sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$ngg_conf" | head -1)
   for tok in $(printf '%s' "$dr" | tr ',' ' '); do
     case "$(printf '%s' "$tok" | LC_ALL=C tr '[:upper:]' '[:lower:]')" in
-      r0) R=R0;; r1) R=R1;; r2a) R=R2a;; r2b) R=R2b;; r3) R=R3;; r4) R=R4;; r5) R=R5;;
+      r0) R=R0;; r1) R=R1;; r2a) R=R2a;; r2b) R=R2b;; r3) R=R3;; r5) R=R5;;
       # 다른 게이트의 항목(done.pr 등)은 같은 줄에 온다. 모르는 이름으로 알리면 오탐이다.
       *) case " $NGG_ITEMS " in *" $(lc "$tok") "*) continue;; esac
          offbad="$offbad $tok"; continue;;
@@ -89,9 +94,9 @@ if [ -n "$off" ] && [ -n "$v" ]; then
   v="${keep# }"; off="${dropped# }"
 fi
 # 수준 2. 정규식이 R2a·R2b만 잡았으면 모델에게 의견인지 상태 주장인지 묻는다. 풀어 줄 수만 있고 새로 막지 못한다.
-# R0·R1·R3·R4(도구를 안 돌린 사실, 단정, 검증 주장)는 판정 대상이 아니다. 실패·시간초과면 막은 채로 둔다(fail closed).
+# R0·R1·R3·R5(도구를 안 돌린 사실, 단정, 검증 주장)는 판정 대상이 아니다. 실패·시간초과면 막은 채로 둔다(fail closed).
 JUDGE_DEFAULT=1; judge_note=""; judged=""; judge_log=""
-if [ -n "$v" ] && [ "${NGG_JUDGE:-$JUDGE_DEFAULT}" != "0" ] && ! printf '%s' "$v" | grep -qE 'R0|R1|R3|R4|R5'; then
+if [ -n "$v" ] && [ "${NGG_JUDGE:-$JUDGE_DEFAULT}" != "0" ] && ! printf '%s' "$v" | grep -qE 'R0|R1|R3|R5'; then
   # 걸린 문장만 뽑아 보낸다. 판정 대상이 분명해지고 입력이 짧아진다.
   flagged=$(printf '%s\n' "$last" | sed -E 's/(\.|!|\?|。)([[:space:]]|$)/\1\n/g' | while IFS= read -r sent; do [ -n "$sent" ] && printf '%s' "$sent" | xform | grep -qiE "$R2a|$R2b" && printf '%s\n' "$sent"; done)
   jt0=$(date +%s)
@@ -104,8 +109,7 @@ if [ -n "$v" ] && [ "${NGG_JUDGE:-$JUDGE_DEFAULT}" != "0" ] && ! printf '%s' "$v
   esac
 fi
 tag="$v"; if [ -z "$v" ]; then [ "$jsononly" -eq 1 ] && tag="(exempt:json)"; [ "$cannot" -eq 1 ] && tag="(exempt:cannot)"; [ -n "$judged" ] && tag="$judged"; fi
-log "$ctx" "$tag"; if [ -z "$v" ]; then rm -f "$s/blocked_at"; touch "$s/turn_closed"; exit 0; fi
-echo "$ntools" > "$s/blocked_at"
+log "$ctx" "$tag"; if [ -z "$v" ]; then touch "$s/turn_closed"; exit 0; fi
 {
   t ngg.head "$v"
   [ -n "$offbad" ] && t ngg.offbad "$offbad"
@@ -113,7 +117,6 @@ echo "$ntools" > "$s/blocked_at"
   case " $v " in *" R1 "*) t ngg.r1;; esac
   case " $v " in *" R2a "*) t ngg.r2a;; esac
   case " $v " in *" R2b "*) t ngg.r2b;; esac
-  case " $v " in *" R4 "*) t ngg.r4;; esac
   [ -n "$judge_note" ] && echo "$judge_note"
   case " $v " in *" R3 "*) t ngg.r3;; esac
   case " $v " in *" R5 "*) t ngg.r5;; esac

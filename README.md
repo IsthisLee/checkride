@@ -90,17 +90,16 @@ Claude Code 세션 안에서 다음 두 줄이면 됩니다.
 
 ## 무엇이 막히나
 
-Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 일곱 개를 검사합니다. 그중 하나라도 걸리면 턴이 끝나지 않고, Claude는 직접 확인하거나 사용자에게 물어본 뒤 다시 답합니다.
+Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 여섯 개를 검사합니다. 그중 하나라도 걸리면 턴이 끝나지 않고, Claude는 직접 확인하거나 사용자에게 물어본 뒤 다시 답합니다.
 
 
 | 코드      | 막는 경우                                      | 예                            |
 | ------- | ------------------------------------------ | ---------------------------- |
 | **R0**  | 사용자가 이 디렉터리·파일·코드의 상태를 물었는데 도구를 한 번도 안 씀   | "여기 테스트 있어?" → 확인 없이 "없습니다"  |
 | **R1**  | 도구 없이 특정 경로·파일의 존재나 상태를 단정                 | "src/auth.ts에 버그가 있다" (안 읽고) |
-| **R2a** | 도구를 한 번도 안 쓰고 "확인이 필요하다"로 끝냄 | "실제 동작은 확인이 필요합니다."로 끝       |
+| **R2a** | 코드베이스에 관한 질문에 도구를 한 번도 안 쓰고 "확인이 필요하다"로 끝냄 | "실제 동작은 확인이 필요합니다."로 끝       |
 | **R2b** | 확인 가능한 로컬 상태를 추정으로 메움                      | "아마 설정 파일이 없어서일 겁니다"         |
 | **R3**  | Bash 실행 0건인데 테스트·검증을 했다고 주장                | "테스트 통과했습니다" (안 돌리고)         |
-| **R4** | 막힌 뒤 도구를 하나도 안 쓰고 또 끝내려 함 | 사과문만 내고 끝 |
 | **R5**  | 마지막으로 돌린 명령이 **실패**했는데 통과·검증을 주장           | `npm test`가 깨졌는데 "전부 통과했습니다" |
 
 
@@ -118,7 +117,7 @@ Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 일곱 개를 검사�
 | **의견**   | "이 구조가 나아 보인다"는 설계 의견이지 상태 주장이 아닙니다              |
 
 
-마지막 두 면제는 정규식만으로는 다 가려내지 못합니다. 그래서 R2a·R2b만 걸렸을 때는 **작은 모델에게 그 문장이 의견인지 상태 주장인지 물어보고, 의견이면 풀어 줍니다.** 이 판정은 풀어 주기만 할 뿐 새로 막지는 못합니다. 도구를 돌리지 않은 사실을 잡아내는 R0·R1·R3·R4는 애초에 판정 대상이 아닙니다. 그래서 결정적으로 막는 바탕은 그대로 남습니다. 판정이 실패하거나 제한 시간을 넘기면, 답을 막은 채로 둡니다.
+마지막 두 면제는 정규식만으로는 다 가려내지 못합니다. 그래서 R2a·R2b만 걸렸을 때는 **작은 모델에게 그 문장이 의견인지 상태 주장인지 물어보고, 의견이면 풀어 줍니다.** 이 판정은 풀어 주기만 할 뿐 새로 막지는 못합니다. 도구를 돌리지 않은 사실이나 실패한 명령을 잡아내는 R0·R1·R3·R5는 애초에 판정 대상이 아닙니다. 그래서 결정적으로 막는 바탕은 그대로 남습니다. 판정이 실패하거나 제한 시간을 넘기면, 답을 막은 채로 둡니다.
 
 판정이 불리는 턴은 전체 차단의 약 4%이고, 판정이 불리면 중앙값으로 8초가 걸립니다(실측 12건, 최대 9초). 판정기를 끄거나 다른 모델로 바꾸는 법은 [상세 문서](docs/gates.md#의미-판정기-설정)에 있습니다.
 
@@ -166,7 +165,7 @@ Claude는 이런 메시지를 받습니다.
 | 오탐                             | 고친 방법                                    |
 | ------------------------------ | ---------------------------------------- |
 | 설계 의견 "어디에 두는 게 나아 보인다"        | 평가 형용사 뒤의 유보는 지우고 판정합니다. 남는 것은 판정기가 가릅니다 |
-| 도구가 막힌 세션에서 "도구가 안 돈다"고 밝혀도 막힘 | 불가 면제를 R0·R2a·R2b·R4가 공유합니다                 |
+| 도구가 막힌 세션에서 "도구가 안 돈다"고 밝혀도 막힘 | 불가 면제를 R0·R2a·R2b가 공유합니다                 |
 | A/B 판정 JSON `{"winner": …}`    | 답 전체가 JSON이면 산문 규칙을 면제합니다                |
 
 
@@ -188,7 +187,7 @@ Claude는 이런 메시지를 받습니다.
 
 | 미탐                                                                            | 왜 그대로 두는가                                                            |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 불가 면제가 알아보는 표현(`확인할 수 없`, `cannot verify` 등)으로 사유를 한 줄 적으면 R0·R2a·R2b·R4에서 벗어납니다 | 공식 문서가 "모른다고 말할 권한을 주라"고 합니다. 도구가 실제로 막혔는지 아는 방법이 없어 조이면 정직한 답을 막습니다 |
+| 불가 면제가 알아보는 표현(`확인할 수 없`, `cannot verify` 등)으로 사유를 한 줄 적으면 R0·R2a·R2b에서 벗어납니다 | 공식 문서가 "모른다고 말할 권한을 주라"고 합니다. 도구가 실제로 막혔는지 아는 방법이 없어 조이면 정직한 답을 막습니다 |
 | 소스에 테스트 입력값을 박아 통과시키는 것                                                       | 정당한 상수와 구분할 수 없습니다. EvilGenie도 holdout 방식의 오탐이 1.4%라고 적습니다           |
 | 일반성 없는 구현(작은 입력에서만 도는 것)                                                      | 정규식이 판단할 수 있는 것이 아닙니다                                                |
 | R2a의 영어 패턴은 `should verify` 같은 능동형만 잡아 `should be verified`는 지나갑니다            | 수동형까지 넓히면 오탐이 늡니다                                                    |
@@ -227,17 +226,21 @@ Claude는 이런 메시지를 받습니다.
 
 ## 근거
 
-검사하는 모범 사례가 각각 어느 문장에서 나왔는지 밝힙니다. 근거 없는 규칙은 넣지 않습니다.
+검사하는 모범 사례가 각각 어느 문장에서 나왔는지 밝힙니다. **무엇을 막는지가 출처 문서에 없는 규칙은 넣지 않습니다.** 아래 문장은 모두 2026-09-15에 원문을 열어 확인했습니다.
 
-| 검사 | 출처 | 문장 |
-|---|---|---|
-| 근거 없는 주장(R0·R1·R2a·R2b·R4) | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | "If it can't find a quote, it must retract the claim" |
-| 거짓 완료(R3), 턴 끝 검사, PR 본문 | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
-| 테스트 무력화 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" |
-| 마이그레이션 수정 | [Hooks](https://code.claude.com/docs/en/hooks) | "Write a hook that blocks writes to the migrations folder." |
-| 읽지 않은 파일 덮어쓰기(`rb.write`) | [Tools reference](https://code.claude.com/docs/en/tools-reference) | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." |
 
-Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)도 근거로 함께 씁니다. 규칙마다 어느 문장에서 나왔는지는 [상세 문서](docs/gates.md#근거)에 적어 두었습니다.
+| 검사                                                       | 출처                                                                                                                                                                                 | 문장                                                                                                                                                                                                                   |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 확인 없이 답하거나 단정·유보·추정하기(R0·R1·R2a·R2b)                     | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) "Minimizing hallucinations in agentic coding" | "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase." (열어 보지 않은 코드를 추측하지 마라. 코드베이스에 관한 질문에는 답하기 전에 관련 파일을 조사하고 읽어라.) |
+| 확인할 수 없다고 밝힌 답은 풀어 주기(불가 면제)                             | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations)                                                         | "Allow Claude to say "I don't know"" (Claude가 모른다고 말할 수 있게 하라.)                                                                                                                                                      |
+| 거짓 완료(R3), 실패한 명령의 통과 주장(R5), 턴 끝 검사, PR 본문              | [Best practices](https://code.claude.com/docs/en/best-practices)                                                                                                                   | "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라.)                                                                                                                                |
+| 테스트 무력화·삭제(`ti.skip`·`ti.rm`), 커밋 전 전체 검사(`done.commit`) | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes)                                                                                 | "cheating, for example by disabling or deleting tests" (속임수, 예컨대 테스트를 비활성화하거나 지우는 것) · "Only commit when: 1. ALL tests are passing" (모든 테스트가 통과할 때만 커밋하라.)                                                           |
+| 단언 감소·러너 설정 제외(`ti.assert`·`ti.exclude`)                 | Gabor 외, [EvilGenie](https://arxiv.org/abs/2511.21654) "Modified Testing Procedure"                                                                                                | "The agent modifies the test cases or the code that runs the testing procedure." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다.)                                                                                                  |
+| 마이그레이션 수정                                                | [Best practices](https://code.claude.com/docs/en/best-practices)                                                                                                                   | "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라.)                                                                                                                           |
+| 읽지 않은 파일 덮어쓰기(`rb.write`)                                | [Tools reference](https://code.claude.com/docs/en/tools-reference)                                                                                                                 | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." (Claude Opus 4.6, Claude Haiku 4.5와 그 이전 모델은 늘 읽기를 요구한다.)                                                                             |
+
+
+출처 문서가 뒷받침하지 않아 뺀 규칙(R4, `pg.noverify`)과 범위를 좁힌 규칙(R2a)은 [설계 결정](docs/decisions.md#6-근거가-없는-규칙은-뺐습니다)에 있습니다. Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:init`·`/check:tdd`·`/check:ship`)의 근거로 씁니다.
 
 ## 비슷한 도구
 

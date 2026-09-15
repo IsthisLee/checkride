@@ -30,11 +30,13 @@ The evidence gate's Stop rules fire only under their conditions. Most fire **onl
 
 | Rule | Checked when |
 |---|---|
-| R0 · R1 · R2a | only when zero tool calls this turn |
+| R0 · R1 | only when zero tool calls this turn |
+| R2a | only when zero tool calls and the turn is about the codebase (the prompt asks about the repo or a file, or the answer names a path or says something like "the files here") |
 | R3 | only when zero Bash calls |
 | R5 | only when the last Bash run failed (F) |
-| R4 | only when the previous turn was blocked and no tool ran since |
-| R2b | only when the prompt asks about local state |
+| R2b | only when the turn is about the codebase |
+
+R4 (blocking a second ending with no tool call after a block) was dropped because its source did not back it. A rewritten answer is judged by the rules above alone (V49).
 
 So on the common turn (tools used, evidence attached) nothing fires and the turn passes.
 
@@ -96,7 +98,7 @@ Comma-separate several; case doesn't matter. These are the names:
 
 | Gate | Name | What stops |
 |---|---|---|
-| Evidence | `R0`, `R1`, `R2a`, `R2b`, `R3`, `R4`, `R5` | That one rule |
+| Evidence | `R0`, `R1`, `R2a`, `R2b`, `R3`, `R5` | That one rule |
 | | `rb.write` | Blocking a Write over an existing file you have not read |
 | Completion | `done.turn` | The check at the end of a turn that changed code |
 | | `done.commit` | The full check right before a commit |
@@ -105,9 +107,8 @@ Comma-separate several; case doesn't matter. These are the names:
 | | `ti.assert` | Blocking fewer assertions |
 | | `ti.rm` | Blocking test file deletion |
 | | `ti.exclude` | Blocking new exclusions in runner config |
-| Project guard | `pg.noverify` | Blocking `--no-verify` commits |
 
-Append-only has no name: without `append_only` it is already off.
+The project guard's append-only has no name: without `append_only` it is already off.
 
 **Putting it in a file rather than an env var is the whole point.** An env var like `NGG_DONE=0` switches off every check in that gate at once, and in someone's shell it is invisible to the rest of the team. `.check.toml` is committed, so it shows up in the pull request and the reason lives in the same commit. This does not make switching something off easier; it makes switching it off **visible**. The env vars stay as an emergency switch.
 
@@ -240,7 +241,9 @@ This guard is more precise: **new files are allowed; only edits and deletions of
 append_only = "supabase/migrations, db/migrate"
 ```
 
-With no configuration it blocks nothing. `git commit --no-verify` is blocked **only when there are commit hooks to bypass** (`.check.toml`, `.husky/pre-commit`, `.git/hooks/pre-commit`, or `core.hooksPath`). Installing a plugin should not change git's behaviour in repos you never configured. Disable with `NGG_GUARD=0`.
+With no configuration it blocks nothing. Disable with `NGG_GUARD=0`.
+
+It used to block `git commit --no-verify` as well (`pg.noverify`). No document recommending that block could be found, so it was dropped (V49).
 
 ## Repo profile: facts, loaded every session
 
@@ -305,17 +308,19 @@ The gates run on their own. What needs your judgment about *when* and *what it c
 
 ## Sources
 
-Every rule cites where it came from. No rule ships without one.
+Every rule cites where it came from. The bar: **what the rule blocks must be in the source.** How it is detected (regex, judge) is implementation, backed by tests and the [verification log](VERIFICATION.md) instead. Every sentence below was checked against the original on 2026-09-15.
 
 | Document | What it grounds |
 |---|---|
-| [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | R0, R1, R2a, R2b, R4 and the exemptions. *"If it can't find a quote, it must retract the claim."* R2a was narrowed to zero-tool turns to match *"Allow Claude to say I don't know."* |
-| [Best practices](https://code.claude.com/docs/en/best-practices) | R3, the completion gate's Stop-hook approach, and the PR body check (`done.pr`). *"Have Claude show evidence rather than asserting success."* |
-| [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | exit 2 blocking, the 8-block cap, timeouts, and using a model where judgment is needed. The `PostToolUseFailure` event R5 uses to learn a command failed |
-| Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | The test-integrity gate. *"cheating, for example by disabling or deleting tests."* |
+| [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), "Minimizing hallucinations in agentic coding" | R0, R1, R2a, R2b. *"Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer."* The sentence is scoped to questions about the codebase, so R2a and R2b look only at that context |
+| [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | The impossibility exemption. *"Allow Claude to say "I don't know""*. Retraction, which the block message points to, also comes from here: *"If it can't find a quote, it must retract the claim."* |
+| [Best practices](https://code.claude.com/docs/en/best-practices) | R3, R5, the completion gate's Stop-hook approach, and the PR body check (`done.pr`). *"Have Claude show evidence rather than asserting success."* The project guard's append-only: *"Write a hook that blocks writes to the migrations folder."* |
+| [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | Implementation only: exit 2 blocking, the 8-block cap, timeouts, and the `PostToolUseFailure` event R5 uses to learn a command failed |
+| Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`, `ti.rm`: *"cheating, for example by disabling or deleting tests."* `done.commit`: *"Only commit when: 1. ALL tests are passing"* |
+| Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17), "Modified Testing Procedure" | `ti.assert`, `ti.exclude`: *"The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases."* |
 | [Tools reference](https://code.claude.com/docs/en/tools-reference) | `rb.write`. *"Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read."* Once newer models were allowed to skip the read (v2.1.228), only whole-file overwrites with Write are blocked again |
 
-The sources are not only Anthropic's docs. Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) is a source too.
+Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules. Allow-once is not a blocking rule but a release valve, taken from Probity.
 
 The reason for using hooks at all is in the docs too:
 
@@ -327,11 +332,11 @@ The reason for using hooks at all is in the docs too:
 claude --plugin-dir .                         # load this folder instead of the installed copy
 claude plugin validate .                      # manifest and hook wiring
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  hooks/$g/unit.sh || break; done && tests/skills-unit.sh    # 252 assertions, no model calls
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 442 assertions, no model calls
 tests/fuzz.sh                                 # 24 malformed inputs x ten hooks = 240 runs
 tests/no-guess-gate/selftest.sh               # 12-case regression against real prompts, minutes
 tests/no-guess-gate/judge-accuracy.sh         # judge accuracy and latency, minutes
-shellcheck -x -s bash hooks/*/*.sh skills/unit.sh
+shellcheck -x -s bash plugin/hooks/*/*.sh tests/*.sh tests/*/*.sh
 ```
 
 Every string the gates emit lives in `plugin/hooks/lib/msg.sh`, not in the hooks. A new string goes in with both its Korean and English form; leave one out and `tests/lib/unit.sh` fails.

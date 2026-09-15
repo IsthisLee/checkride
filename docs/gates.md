@@ -54,11 +54,13 @@ Claude Code는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니�
 
 | 규칙 | 언제 검사하나 |
 |---|---|
-| R0 · R1 · R2a | 이 턴에 도구 호출이 0건일 때만 |
+| R0 · R1 | 이 턴에 도구 호출이 0건일 때만 |
+| R2a | 도구 호출이 0건이고, 코드베이스 맥락(프롬프트가 저장소·파일을 묻거나, 답에 경로나 "여기 있는 파일" 같은 표현이 있음)일 때만 |
 | R3 | Bash 실행이 0건일 때만 |
 | R5 | 마지막으로 돌린 Bash가 실패(F)했을 때만 |
-| R4 | 직전 턴에 막혔고 그 뒤로 도구를 쓰지 않았을 때만 |
-| R2b | 프롬프트가 로컬 상태를 묻는 맥락일 때만 |
+| R2b | 코드베이스 맥락일 때만 |
+
+R4(막힌 뒤 도구 없이 다시 끝내면 막음)는 출처 문서와 맞지 않아 뺐습니다. 다시 쓴 답도 위 규칙으로만 판정합니다. 이유는 [설계 결정](decisions.md#6-근거가-없는-규칙은-뺐습니다)에 있습니다.
 
 그래서 도구를 쓰고 근거를 붙여 답한 흔한 턴에서는 걸릴 것이 없어 그대로 통과합니다.
 
@@ -120,7 +122,7 @@ disabled_rules = "R2b, done.pr"
 
 | 게이트 | 이름 | 끄면 멈추는 것 |
 |---|---|---|
-| 근거 | `R0`·`R1`·`R2a`·`R2b`·`R3`·`R4`·`R5` | 그 규칙 하나 |
+| 근거 | `R0`·`R1`·`R2a`·`R2b`·`R3`·`R5` | 그 규칙 하나 |
 | | `rb.write` | 읽지 않은 기존 파일을 Write로 덮어쓰는 것 차단 |
 | 완료 | `done.turn` | 코드를 고친 턴 끝의 검사 |
 | | `done.commit` | 커밋 직전의 전체 검사 |
@@ -129,9 +131,8 @@ disabled_rules = "R2b, done.pr"
 | | `ti.assert` | 단언 감소 차단 |
 | | `ti.rm` | 테스트 파일 삭제 차단 |
 | | `ti.exclude` | 러너 설정의 제외 추가 차단 |
-| 프로젝트 가드 | `pg.noverify` | `--no-verify` 커밋 차단 |
 
-append-only에는 이름이 없습니다. `append_only`를 적지 않으면 원래 꺼져 있습니다.
+프로젝트 가드의 append-only에는 이름이 없습니다. `append_only`를 적지 않으면 원래 꺼져 있습니다.
 
 **환경변수 대신 파일에 두는 이유가 요점입니다.** `NGG_DONE=0` 같은 환경변수는 그 게이트의 검사를 한꺼번에 끄고, 누가 자기 셸에 넣어 두면 팀은 그 사실을 알 수 없습니다. `.check.toml`은 저장소에 커밋되므로 PR에 보이고, 왜 껐는지가 같은 커밋에 적힙니다. 끄는 것을 쉽게 만드는 장치가 아니라 **끄는 행위를 보이게 만드는 장치**입니다. 환경변수는 급할 때 쓰는 스위치로 남겨 두었습니다.
 
@@ -270,7 +271,9 @@ test_command      = "npm test"                # 커밋 직전에 이것
 append_only = "supabase/migrations, db/migrate"
 ```
 
-설정이 없으면 아무것도 막지 않습니다. `git commit --no-verify`는 **건너뛸 커밋 훅이 실제로 있을 때만** 막습니다(`.check.toml`, `.husky/pre-commit`, `.git/hooks/pre-commit`, `core.hooksPath` 중 하나). 설치만 했는데 남의 저장소의 git 동작이 바뀌면 과하기 때문입니다. 끄려면 `NGG_GUARD=0`을 씁니다.
+설정이 없으면 아무것도 막지 않습니다. 끄려면 `NGG_GUARD=0`을 씁니다.
+
+예전에는 커밋 훅을 건너뛰는 `git commit --no-verify`도 막았습니다(`pg.noverify`). 막으라고 권하는 문서를 찾지 못해 뺐습니다([설계 결정](decisions.md#6-근거가-없는-규칙은-뺐습니다)).
 
 ## 저장소 프로필: 세션마다 사실을 실어 줍니다
 
@@ -337,17 +340,19 @@ append-only 경로: supabase/migrations
 
 ## 근거
 
-규칙마다 어디서 왔는지 밝힙니다. 링크 없는 규칙은 두지 않습니다. 규칙을 고른 과정과 버린 대안은 [설계 결정](decisions.md)에 있습니다.
+규칙마다 어디서 왔는지 밝힙니다. 기준은 **무엇을 막는지가 출처 문서에 있어야 한다**는 것입니다. 어떻게 알아내는지(정규식·판정기)는 구현이라, 출처 대신 테스트와 [검증 기록](VERIFICATION.md)으로 뒷받침합니다. 아래 문장은 모두 2026-09-15에 원문을 열어 확인했습니다. 규칙을 고른 과정과 버린 대안은 [설계 결정](decisions.md)에 있습니다.
 
 | 문서 | 가져온 것 |
 |---|---|
-| [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | R0·R1·R2a·R2b·R4와 면제. "If it can't find a quote, it must retract the claim" (인용을 못 찾으면 그 주장을 철회해야 한다). R2a는 "Allow Claude to say I don't know"(모른다고 말하게 하라)에 맞춰 도구를 한 번도 쓰지 않은 경우로 좁혔습니다 |
-| [Best practices](https://code.claude.com/docs/en/best-practices) | R3, 완료 게이트의 Stop 훅 방식, PR 본문 검사(`done.pr`). "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라) |
-| [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | exit 2 차단, 8회 상한, 타임아웃, 판단이 필요한 결정은 모델에게 맡기는 방식. R5가 실패한 명령을 알아내는 `PostToolUseFailure` 이벤트 |
-| Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | 테스트 무결성 게이트. "cheating, for example by disabling or deleting tests" (부정행위, 이를테면 테스트를 비활성화하거나 지우기) |
+| [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) "Minimizing hallucinations in agentic coding" | R0·R1·R2a·R2b. "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer" (열어 보지 않은 코드를 추측하지 마라. 코드베이스에 관한 질문에는 답하기 전에 관련 파일을 조사하고 읽어라. 정답을 확신하지 않는 한 조사하기 전에 코드에 대해 주장하지 마라). 근거 문장이 코드베이스 질문으로 범위를 한정하므로 R2a·R2b도 그 맥락에서만 봅니다 |
+| [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | 불가 면제. "Allow Claude to say "I don't know"" (Claude가 모른다고 말할 수 있게 하라). 막힌 뒤 할 일로 안내하는 철회도 이 문서에서 왔습니다. "If it can't find a quote, it must retract the claim" (인용을 찾지 못하면 그 주장을 철회해야 한다) |
+| [Best practices](https://code.claude.com/docs/en/best-practices) | R3·R5, 완료 게이트의 Stop 훅 방식, PR 본문 검사(`done.pr`). "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라). 프로젝트 가드의 append-only. "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라) |
+| [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | 구현 수단입니다. exit 2 차단, 8회 상한, 타임아웃, R5가 실패한 명령을 알아내는 `PostToolUseFailure` 이벤트 |
+| Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`·`ti.rm`. "cheating, for example by disabling or deleting tests" (속임수, 예컨대 테스트를 비활성화하거나 지우는 것). `done.commit`. "Only commit when: 1. ALL tests are passing" (모든 테스트가 통과할 때만 커밋하라) |
+| Gabor 외, [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17) "Modified Testing Procedure" | `ti.assert`·`ti.exclude`. "The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다. 테스트 케이스가 받아들이는 답을 바꾸거나 테스트 케이스를 지우거나 무시할 수 있다) |
 | [Tools reference](https://code.claude.com/docs/en/tools-reference) | `rb.write`. "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." (Claude Opus 4.6, Claude Haiku 4.5와 그 이전 모델은 늘 읽기를 요구한다) 최신 모델에게 이 요구가 풀린 뒤(v2.1.228) Write의 통째 덮어쓰기만 다시 막습니다. Edit는 현재 내용과 맞아야 적용되지만 Write는 파일 전체를 바꾸기 때문입니다 |
 
-Anthropic 공식 문서만 근거로 삼지는 않습니다. Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)도 근거로 씁니다.
+Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:init`·`/check:tdd`·`/check:ship`)의 근거로 씁니다. 한 번만 허용하기는 막는 규칙이 아니라 푸는 장치이고, Probity에서 가져왔습니다.
 
 훅을 쓰는 이유도 공식 문서에 있습니다.
 
@@ -360,7 +365,7 @@ Anthropic 공식 문서만 근거로 삼지는 않습니다. Simon Willison의 [
 claude --plugin-dir .                         # 설치본 대신 이 폴더를 그 세션에 로드
 claude plugin validate .                      # 매니페스트와 훅 배선 검사
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 452건. 모델을 부르지 않는다
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 442건. 모델을 부르지 않는다
 tests/fuzz.sh                                 # 망가진 입력 24종 × 훅 열 = 240회
 tests/no-guess-gate/selftest.sh               # 실제 프롬프트 회귀 12케이스, 몇 분
 tests/no-guess-gate/judge-accuracy.sh         # 판정기 정확도·소요 시간, 몇 분

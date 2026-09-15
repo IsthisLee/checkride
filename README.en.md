@@ -82,16 +82,15 @@ Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on 
 
 ## What gets blocked
 
-When Claude tries to finish a turn, a `Stop` hook checks seven rules. If any fires, the turn does not end — Claude has to go measure something, or ask.
+When Claude tries to finish a turn, a `Stop` hook checks six rules. If any fires, the turn does not end — Claude has to go measure something, or ask.
 
 | Code | Blocks | Example |
 |---|---|---|
 | **R0** | You asked about this directory/file/code and Claude used zero tools | "Are there tests here?" → "No" without looking |
 | **R1** | Asserting a path's existence or state with no tool call | "The bug is in src/auth.ts" — without reading it |
-| **R2a** | Ending with "this needs to be verified" after zero tool calls | "The actual behavior would need checking." |
+| **R2a** | On a question about the codebase, ending with "this needs to be verified" after zero tool calls | "The actual behavior would need checking." |
 | **R2b** | Filling in checkable local state with a guess | "It's probably because the config file is missing" |
 | **R3** | Claiming tests or verification ran with zero Bash calls | "Tests pass" — without running them |
-| **R4** | After a block, ending again without a single tool call | Apology, then stop |
 | **R5** | The last command you ran **failed**, yet you claim it passed | `npm test` broke, but "all tests pass" |
 
 ### What does not get blocked
@@ -106,7 +105,7 @@ The official docs say to give Claude explicit permission to admit uncertainty, s
 | **Mention** | Text inside quotes or backticks. A document explaining the rules doesn't trip the rules |
 | **Opinion** | "This structure seems better" is a design preference, not a claim about state |
 
-The last two cannot be fully separated by regex. So when *only* R2a/R2b fire, the gate asks a small model whether the flagged wording is an opinion or a state claim, and releases it if it's an opinion. **That judge can only release, never block.** R0, R1, R3, and R4 — the rules grounded in "no tool was run" — are never sent to the judge, so the deterministic floor stays. If the judge fails or times out, the block stands.
+The last two cannot be fully separated by regex. So when *only* R2a/R2b fire, the gate asks a small model whether the flagged wording is an opinion or a state claim, and releases it if it's an opinion. **That judge can only release, never block.** R0, R1, R3, and R5 — the rules grounded in "no tool was run" or "the command failed" — are never sent to the judge, so the deterministic floor stays. If the judge fails or times out, the block stands.
 
 It runs on about 4% of blocks; median 8s when it does (measured over 12 cases, max 9s). See [the detail doc](docs/gates.en.md#judge-settings) to turn it off or change the model.
 
@@ -153,7 +152,7 @@ The rules are regex, so they don't read intent. Across 760 real turns, 130 were 
 | False positive | Fix |
 |---|---|
 | Design opinions: "putting it here seems better" | Hedges after evaluative adjectives are stripped before judging; the rest goes to the judge |
-| Saying "tools don't work in this session" still got blocked | The impossibility exemption is now shared by R0, R2a, R2b, R4 |
+| Saying "tools don't work in this session" still got blocked | The impossibility exemption is now shared by R0, R2a, R2b |
 | A/B verdict JSON `{"winner": …}` | A whole-JSON answer is exempt from the prose rules |
 
 ### Known misses
@@ -162,7 +161,7 @@ What it does not catch, written down. Publishing the false positives and hiding 
 
 | Miss | Why it stays |
 |---|---|
-| One line of "I can't verify this" clears R0, R2a, R2b and R4 | The official docs say to give Claude permission to admit uncertainty. There is no way to know whether tools were actually blocked, so tightening this blocks honest answers |
+| One line of "I can't verify this" clears R0, R2a and R2b | The official docs say to give Claude permission to admit uncertainty. There is no way to know whether tools were actually blocked, so tightening this blocks honest answers |
 | Hardcoding test inputs in the source to make tests pass | Indistinguishable from a legitimate constant. EvilGenie reports a 1.4% false positive rate for the holdout approach |
 | Implementations that only work for small inputs | Not something a regex can judge |
 | R2a's English patterns only match active voice like `should verify`, so `should be verified` slips through | Widening to passive voice raises false positives |
@@ -195,17 +194,19 @@ State lives in `~/.claude/plugins/data/check-did-you-check/` and is safe to dele
 
 ## Sources
 
-Every practice this plugin checks names the sentence it came from. A rule with no source does not ship.
+Every practice this plugin checks names the sentence it came from. **A rule ships only if what it blocks is in the source.** Every sentence below was checked against the original on 2026-09-15.
 
 | Check | Source | Sentence |
 |---|---|---|
-| Claims without evidence (R0, R1, R2a, R2b, R4) | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | "If it can't find a quote, it must retract the claim" |
-| False "done" (R3), end-of-turn check, PR body | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
-| Disabled tests | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" |
-| Rewritten migrations | [Hooks](https://code.claude.com/docs/en/hooks) | "Write a hook that blocks writes to the migrations folder." |
+| Answering, asserting, deferring or guessing without looking (R0, R1, R2a, R2b) | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), "Minimizing hallucinations in agentic coding" | "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase." |
+| Releasing an answer that says why it cannot check (impossibility exemption) | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | "Allow Claude to say "I don't know"" |
+| False "done" (R3), claiming a failed command passed (R5), end-of-turn check, PR body | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
+| Disabling or deleting tests (`ti.skip`, `ti.rm`), full check before commit (`done.commit`) | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" · "Only commit when: 1. ALL tests are passing" |
+| Fewer assertions, runner-config exclusions (`ti.assert`, `ti.exclude`) | Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654), "Modified Testing Procedure" | "The agent modifies the test cases or the code that runs the testing procedure." |
+| Rewritten migrations | [Best practices](https://code.claude.com/docs/en/best-practices) | "Write a hook that blocks writes to the migrations folder." |
 | Overwriting a file you never read (`rb.write`) | [Tools reference](https://code.claude.com/docs/en/tools-reference) | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." |
 
-Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) is a source too. Every rule cites its sentence in [the detail doc](docs/gates.en.md#sources).
+Rules dropped because their sources did not back them (R4, `pg.noverify`) and the rule whose scope was narrowed (R2a) are recorded in V49 of the [verification log](docs/VERIFICATION.md). Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules.
 
 ## Related
 

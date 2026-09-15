@@ -13,9 +13,10 @@
 # 설정이 없으면 아무것도 막지 않는다. 끄기: NGG_GUARD=0
 d="$(cd "$(dirname "$0")" && pwd)"; . "$d/../lib/common.sh"
 IN=$(cat)
-# 빠른 경로. 이 훅은 Bash 호출마다 돈다. Bash 에서 보는 것은 삭제·이동과 --no-verify 커밋뿐이라,
+# 빠른 경로. 이 훅은 Bash 호출마다 돈다. Bash 에서 보는 것은 삭제·이동뿐이라,
 # 그 글자가 없으면 파이썬을 띄우지 않고 끝낸다(V40). 도구 이름이 애매하면 느린 경로로 간다.
-if quick_tool && [ "$QT" = Bash ]; then case "$IN" in *rm[[:space:]\"\\]*|*mv[[:space:]\"\\]*|*commit*) ;; *) exit 0;; esac; fi
+# --no-verify 커밋 차단(pg.noverify)은 막을 근거 문서를 찾지 못해 뺐다(V49).
+if quick_tool && [ "$QT" = Bash ]; then case "$IN" in *rm[[:space:]\"\\]*|*mv[[:space:]\"\\]*) ;; *) exit 0;; esac; fi
 read_in
 [ "${NGG_GUARD:-1}" = "0" ] && exit 0
 find_root; root="$NGG_ROOT"; conf="$root/.check.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
@@ -45,34 +46,6 @@ for stmt in re.split(r"[;&|\n]+", t):
         if x and not x.startswith("-"): print(x)'
 }
 
-
-# 검사를 건너뛰는 커밋을 막는다. 다만 **건너뛸 훅이 실제로 있을 때만** 막는다.
-# 설치만 했는데 남의 저장소의 git 동작이 바뀌면 과하다. 비상 통로는 사람이 직접 쓰는 것이지
-# 에이전트가 게이트를 우회하는 길이 아니다.
-has_hooks() {
-  [ -f "$conf" ] && return 0
-  [ -f "$root/.husky/pre-commit" ] && return 0
-  [ -x "$root/.git/hooks/pre-commit" ] && return 0
-  hp=$(git -C "$root" config --get core.hooksPath 2>/dev/null || true)
-  [ -n "$hp" ] && [ -e "$root/$hp/pre-commit" ] && return 0
-  return 1
-}
-# 플래그가 '쓰였는지' 는 토큰으로 봐야 한다. 명령 문자열을 통째로 훑으면
-# 커밋 메시지 안에 플래그 이름을 적기만 해도 걸린다. 실제로 README 표에 적다가 막혔다.
-# 문장을 나눈 뒤 git commit 으로 시작하는 문장의 인자에 플래그가 토큰으로 있는지만 본다.
-skips_hooks() {
-  printf '%s' "$1" | py -c 'import re,shlex,sys
-t = sys.stdin.read()
-for stmt in re.split(r"[;&|\n]+", t):
-    try: toks = shlex.split(stmt, posix=True)
-    except ValueError: continue
-    if len(toks) < 2 or toks[0] != "git" or toks[1] != "commit": continue
-    if "--no-verify" in toks[2:] or "-n" in toks[2:]:
-        print("yes"); break' | grep -q yes
-}
-if [ "$TOOL_NAME" = "Bash" ] && has_hooks && skips_hooks "$COMMAND" && ! item_off pg.noverify && ! allow_once pg.noverify; then
-  block "$(tn pg.noverify)" "$(t line.cmd "$COMMAND"; tn pg.noverifyt)" pg.noverify
-fi
 
 [ -f "$conf" ] || exit 0
 paths=$(sed -n 's/^[[:space:]]*append_only[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1)

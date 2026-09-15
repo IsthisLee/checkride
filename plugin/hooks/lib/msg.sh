@@ -18,11 +18,10 @@ msg_ko() { case "$1" in
   ngg.r2a)       M="- R2a: 도구를 한 번도 쓰지 않고 '확인이 필요하다'류의 유보 표현으로 끝냈다. 지금 확인하라. 정말 확인할 수 없는 상황이면 왜 불가능한지 답에 적어라. 모른다고 말하는 것은 허용되지만, 확인할 수 있는데 미루는 것은 안 된다." ;;
   ngg.r2b)       M="- R2b: 로컬 상태에 대해 추정 표현('아마', 'probably', 'appears')을 썼다. 실측해서 단정하라." ;;
   ngg.r3)        M="- R3: 테스트/검증/확인을 했다고 주장하지만 이 턴에 Bash 실행이 0건이다. 실제로 실행하고 그 출력을 근거로 답하라." ;;
-  ngg.r4)        M="- R4: 직전 차단 이후 도구를 하나도 실행하지 않았다. 사과나 설명으로 턴을 끝낼 수 없다. 지금 실측하거나 AskUserQuestion으로 물어라." ;;
   ngg.r5)        M="- R5: 이 턴에 마지막으로 돌린 명령이 실패했는데 검증·성공을 주장했다. 실패한 출력을 근거로 삼을 수는 없다. 고쳐서 다시 돌리거나, 무엇이 실패했는지 답에 적어라." ;;
   ngg.judgekept) M="- 모델 판정: 상태 주장으로 봄(%s). 규칙 판정을 유지한다." ;;
   ngg.judgefail) M="- 모델 판정 실패 또는 시간초과(%s). 규칙 판정을 유지한다." ;;
-  ngg.allowed)   M="허용되는 행동은 둘뿐이다. (1) 지금 실측한다 (2) 실측이 불가능한 이유를 답에 적는다(예: '이 세션에서는 도구 실행이 안 된다'). 그러면 R0·R2a·R4는 걸리지 않는다. 사용자가 '명령 실행하지 말라'고 했더라도 추측으로 답할 수는 없다. 필요하면 AskUserQuestion으로 물어라." ;;
+  ngg.allowed)   M="허용되는 행동은 둘뿐이다. (1) 지금 실측한다 (2) 실측이 불가능한 이유를 답에 적는다(예: '이 세션에서는 도구 실행이 안 된다', '사용자가 실행하지 말라고 해서 확인할 수 없다'). 그러면 R0·R2a·R2b는 걸리지 않는다. 뒷받침할 근거를 찾지 못한 단정이나 검증 주장은 철회하라. 필요하면 AskUserQuestion으로 물어라." ;;
   ngg.noretell)  M="앞의 막힌 답은 화면에 남아 있다. **최종 답을 그 자체로 완결되게 다시 써라.** 실측한 내용을 반영해 사용자가 마지막 답 하나만 읽어도 전부 파악되게 한다. 앞 답이 틀렸으면 고쳐서 담아라. 게이트에 대한 불평은 답변에 내지 마라." ;;
   rb.write)      M="근거 게이트: 이번 세션에 읽은 적 없는 기존 파일을 Write 로 통째로 덮어쓰려 했다." ;;
   rb.writet)     M="- 먼저 Read 도구로 읽고 다시 써라. 일부만 바꾸려면 Edit 도구를 써라. 파일 전체를 새로 쓰는 것이 맞으면 읽은 뒤에 덮어써라." ;;
@@ -56,8 +55,6 @@ msg_ko() { case "$1" in
   ti.markers)    M="- 걸린 표기: %s" ;;
 
   pg.prefix)     M="프로젝트 가드: %s" ;;
-  pg.noverify)   M="git commit --no-verify로 커밋 훅을 건너뛰려 했다." ;;
-  pg.noverifyt)  M="- 검사를 건너뛰지 말고 통과시켜라. 정말 비상이면 사람이 직접 실행한다." ;;
   pg.appendedit) M="이 경로는 추가만 가능하다(append-only). 기존 파일은 고칠 수 없다." ;;
   pg.appendrm)   M="이 경로는 추가만 가능하다(append-only). 삭제나 이동을 막는다." ;;
   pg.conf)       M="- 설정: append_only = \"%s\"  (.check.toml)" ;;
@@ -78,7 +75,7 @@ msg_ko() { case "$1" in
   rp.gates)      M="게이트: 근거(항상) · 완료(%s) · 테스트 무결성(항상) · 프로젝트 가드(%s)" ;;
   rp.on)         M="켜짐" ;;
   rp.wait)       M="검사 명령 없어 대기" ;;
-  rp.noconf)     M="설정 없어 --no-verify만 차단" ;;
+  rp.noconf)     M="설정 없어 막는 것 없음" ;;
   rp.disabled)   M="끈 규칙: %s  (.check.toml 의 disabled_rules)" ;;
 esac ; }
 
@@ -92,11 +89,10 @@ msg_en() { case "$1" in
   ngg.r2a)       M="- R2a: you ended on a hedge like 'this needs to be verified' without running a single tool. Verify it now. If verification is genuinely impossible, say in your answer why. Saying you don't know is allowed; deferring what you could have checked is not." ;;
   ngg.r2b)       M="- R2b: you guessed at local state with words like 'probably' or 'appears'. Measure it, then say what is true." ;;
   ngg.r3)        M="- R3: you claim you tested or verified something, but this turn has zero Bash calls. Actually run it and answer from the output." ;;
-  ngg.r4)        M="- R4: you have run no tool since the last block. An apology or an explanation cannot end this turn. Measure something now, or ask with AskUserQuestion." ;;
   ngg.r5)        M="- R5: the last command you ran this turn failed, yet you are claiming it verified or passed. A failed run is not evidence. Fix it and run again, or say in your answer what failed." ;;
   ngg.judgekept) M="- Judge: read as a claim about state (%s). The rule verdict stands." ;;
   ngg.judgefail) M="- Judge failed or timed out (%s). The rule verdict stands." ;;
-  ngg.allowed)   M="Only two moves are allowed: (1) measure it now, or (2) state in your answer why measuring is impossible (for example, 'tool execution is disabled in this session'). Either one clears R0, R2a and R4. Even if the user told you not to run commands, you still may not answer by guessing. Ask with AskUserQuestion if you need to." ;;
+  ngg.allowed)   M="Only two moves are allowed: (1) measure it now, or (2) state in your answer why measuring is impossible (for example, 'tool execution is disabled in this session', or 'I cannot verify this because the user asked me not to run commands'). Either one clears R0, R2a and R2b. Retract any assertion or verification claim you cannot back up. Ask with AskUserQuestion if you need to." ;;
   ngg.noretell)  M="The blocked answer above stays on screen. **Write your final answer so it stands on its own.** Fold in what you measured so the user gets everything from this last answer alone. Correct anything the earlier answer got wrong. Do not argue with the gate in your answer." ;;
   rb.write)      M="Evidence gate: this Write would overwrite an existing file you have not read this session." ;;
   rb.writet)     M="- Read it with the Read tool first, then write. To change only part of it, use the Edit tool. If replacing the whole file is right, read it before you overwrite it." ;;
@@ -130,8 +126,6 @@ msg_en() { case "$1" in
   ti.markers)    M="- Markers found: %s" ;;
 
   pg.prefix)     M="Project guard: %s" ;;
-  pg.noverify)   M="This skips the commit hooks with git commit --no-verify." ;;
-  pg.noverifyt)  M="- Make the checks pass instead of skipping them. If it is a real emergency, a human runs it." ;;
   pg.appendedit) M="This path is append-only. Existing files cannot be edited." ;;
   pg.appendrm)   M="This path is append-only. Deleting and moving are blocked." ;;
   pg.conf)       M="- Setting: append_only = \"%s\"  (.check.toml)" ;;
@@ -152,6 +146,6 @@ msg_en() { case "$1" in
   rp.gates)      M="Gates: evidence (always) · completion (%s) · test integrity (always) · project guard (%s)" ;;
   rp.on)         M="on" ;;
   rp.wait)       M="idle, no check command" ;;
-  rp.noconf)     M="unconfigured, blocks only --no-verify" ;;
+  rp.noconf)     M="unconfigured, blocks nothing" ;;
   rp.disabled)   M="Disabled rules: %s  (disabled_rules in .check.toml)" ;;
 esac ; }

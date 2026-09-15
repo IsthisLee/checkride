@@ -44,9 +44,8 @@ bash_ "$P" "rm supabase/migrations/0001_init.sql" | "$W/pre.sh" 2>"$T/e5"; check
 grep -q '삭제' "$T/e5"; check 0 $? "stderr에 삭제 차단"
 bash_ "$P" "rm src/app.ts" | "$W/pre.sh" 2>/dev/null; check 0 $? "지정 밖 rm → 통과"
 
-# 6. 검사를 건너뛰는 커밋을 막는다
-bash_ "$P" "git commit --no-verify -m x" | "$W/pre.sh" 2>"$T/e6"; check 2 $? "git commit --no-verify → exit 2"
-grep -q 'no-verify' "$T/e6"; check 0 $? "stderr에 no-verify 설명"
+# 6. --no-verify 커밋은 막지 않는다. 막을 근거 문서를 찾지 못해 규칙(pg.noverify)을 뺐다(V49).
+bash_ "$P" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 0 $? "git commit --no-verify → 통과(규칙 없음)"
 bash_ "$P" "git commit -m x" | "$W/pre.sh" 2>/dev/null; check 0 $? "일반 커밋 → 통과"
 
 # 7. 여러 경로를 쉼표로 적을 수 있다
@@ -55,16 +54,6 @@ edit "$P" Edit "$P/db/migrate/001.rb" | "$W/pre.sh" 2>/dev/null; check 2 $? "둘
 
 # 8. 끄기
 edit "$P" Edit "$P/supabase/migrations/0001_init.sql" | NGG_GUARD=0 "$W/pre.sh" 2>/dev/null; check 0 $? "NGG_GUARD=0 → 통과"
-
-# 9. 건너뛸 훅이 없는 저장소에서는 --no-verify를 막지 않는다.
-#    설치만 했는데 남의 저장소의 git 동작이 바뀌면 과하다.
-P8="$T/plain"; mkdir -p "$P8"
-bash_ "$P8" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 0 $? "설정도 커밋 훅도 없음 → --no-verify 통과"
-bash_ "$P" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? ".check.toml 있으면 → 차단"
-P9="$T/husky"; mkdir -p "$P9/.husky"; printf '#!/bin/sh\nnpm test\n' > "$P9/.husky/pre-commit"
-bash_ "$P9" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? ".husky/pre-commit 있으면 → 차단"
-P10="$T/githook"; mkdir -p "$P10/.git/hooks"; printf '#!/bin/sh\n' > "$P10/.git/hooks/pre-commit"; chmod +x "$P10/.git/hooks/pre-commit"
-bash_ "$P10" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? ".git/hooks/pre-commit 있으면 → 차단"
 
 # 10. 따옴표로 감싼 경로도 잡아야 한다.
 mkdir -p "$P/supabase/migrations"; printf 'x\n' > "$P/supabase/migrations/0002 new.sql"
@@ -81,40 +70,19 @@ grep -q '프로젝트 가드' "$T/pl-ko"; check 0 $? "ko: 한국어 머리글"
 grep -q 'Project guard' "$T/pl-en"; check 0 $? "en: 영어 머리글"
 nohangul "$(cat "$T/pl-en")"; check 0 $? "en: 한글이 섞이지 않는다"
 
-# 문서에 플래그 이름을 적는 것은 사용이 아니다.
-# 근거 게이트에는 인용 면제가 있는데 프로젝트 가드에는 없어서, README 표에 적다가 막혔다.
-bash_ "$P" 'echo '\''use --no-verify to skip'\'' > doc.md' | "$W/pre.sh" 2>/dev/null; check 0 $? "인용: 문서에 플래그를 적는 것은 사용이 아니다"
-bash_ "$P" 'printf '\''%s'\'' '\''| 가드 | --no-verify 차단 |'\'' >> README.md' | "$W/pre.sh" 2>/dev/null; check 0 $? "인용: 표에 적는 것도 사용이 아니다"
-bash_ "$P" 'git commit -m '\''docs: --no-verify 설명 추가'\''' | "$W/pre.sh" 2>/dev/null; check 0 $? "인용: 커밋 메시지에 든 것은 사용이 아니다"
-bash_ "$P" 'git commit --no-verify -m x' | "$W/pre.sh" 2>/dev/null; check 2 $? "인용: 진짜 사용은 그대로 막는다"
-bash_ "$P" 'echo hi; git commit --no-verify -m x' | "$W/pre.sh" 2>/dev/null; check 2 $? "인용: 뒤 문장의 진짜 사용도 막는다"
-bash_ "$P" 'git commit -m x' | "$W/pre.sh" 2>/dev/null; check 0 $? "인용: 평범한 커밋은 통과"
-
-# 항목 하나만 끄기. NGG_GUARD=0 은 append-only 까지 같이 끈다.
-PX="$T/off"; mkdir -p "$PX/supabase/migrations"; printf 'x\n' > "$PX/supabase/migrations/0001.sql"
-printf 'append_only = "supabase/migrations"\ndisabled_rules = "pg.noverify"\n' > "$PX/.check.toml"
-bash_ "$PX" "git commit --no-verify -m x" | NGG_STATE="$T/pgs" "$W/pre.sh" 2>/dev/null; check 0 $? "끄기: pg.noverify 를 끄면 --no-verify 를 막지 않는다"
-grep -q 'off=\[pg.noverify\]' "$T/pgs/state/events.log"; check 0 $? "끄기: 끈 사실이 events.log 에 남는다"
-edit "$PX" Edit "$PX/supabase/migrations/0001.sql" | NGG_STATE="$T/pgs" "$W/pre.sh" 2>/dev/null; check 2 $? "끄기: pg.noverify 만 끄면 append-only 는 그대로다"
-
-# 한 번만 허용하기. 허용 목록은 prompt.sh 가 사람의 프롬프트에서만 적는다. 여기서는 그 결과를 둔다.
-AL="$T/allow"; mkdir -p "$AL/state/pg"; printf 'pg.noverify\n' > "$AL/state/pg/allow"
-bash_ "$P" "git commit --no-verify -m x" | NGG_STATE="$AL" "$W/pre.sh" 2>/dev/null; check 0 $? "허용: pg.noverify 를 허용하면 한 번 통과한다"
-bash_ "$P" "git commit --no-verify -m x" | NGG_STATE="$AL" "$W/pre.sh" 2>"$T/eal"; check 2 $? "허용: 두 번째는 막는다"
-grep -q 'check allow pg.noverify' "$T/eal"; check 0 $? "허용: 막을 때 사람이 허용하는 법을 알린다"
-
 # 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 .check.toml 을 쓴다.
 edit "$P/src" Edit "$P/supabase/migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더에서도 append-only 수정을 막는다"
 bash_ "$P/supabase" "rm migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더 기준 상대 경로 삭제도 막는다"
-bash_ "$P/src" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더에서도 --no-verify 를 막는다"
 
-# 빠른 경로. Bash 에서 보는 것은 삭제·이동과 --no-verify 커밋뿐이라, 그 글자가 없으면 파이썬을 띄우지 않는다.
+# 빠른 경로. Bash 에서 보는 것은 삭제·이동뿐이라, 그 글자가 없으면 파이썬을 띄우지 않는다.
 # 불리면 소리를 내는 가짜 python3 를 PATH 앞에 두고 확인한다.
 # 훅은 파이썬의 stderr 를 버린다. 그래서 가짜 python3 는 불린 사실을 파일로 남긴다.
 FB="$T/fakebin"; mkdir -p "$FB"; printf '#!/usr/bin/env bash\necho called >> "%s/called"\nexit 97\n' "$FB" > "$FB/python3"; chmod +x "$FB/python3"
 rm -f "$FB/called"; bash_ "$P" "ls -la && npm test" | PATH="$FB:$PATH" "$W/pre.sh" 2>/dev/null; check 0 $? "빠른 경로: 관계없는 Bash 명령은 파이썬 없이 통과한다"
 [ -e "$FB/called" ]; r=$?; check 1 "$r" "빠른 경로: 관계없는 Bash 명령에는 파이썬을 띄우지 않는다"
 rm -f "$FB/called"; bash_ "$P" "git commit --no-verify -m x" | PATH="$FB:$PATH" "$W/pre.sh" 2>/dev/null
-[ -e "$FB/called" ]; check 0 $? "빠른 경로: 커밋 명령은 끝까지 검사한다"
+[ -e "$FB/called" ]; r=$?; check 1 "$r" "빠른 경로: 커밋 명령에도 파이썬을 띄우지 않는다"
+rm -f "$FB/called"; bash_ "$P" "rm supabase/migrations/0001_init.sql" | PATH="$FB:$PATH" "$W/pre.sh" 2>/dev/null
+[ -e "$FB/called" ]; check 0 $? "빠른 경로: 삭제 명령은 끝까지 검사한다"
 
 echo; echo "실패 ${fail}건"; exit "$fail"

@@ -11,7 +11,7 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 | 근거 없이 주장하지 않는다 | 도구를 안 쓰고 상태를 단정하거나, 확인을 미루거나, 실패한 명령을 통과라고 주장하는 턴(R0~R5). 이번 세션에 읽지 않은 기존 파일을 Write로 통째로 덮어쓰기(`rb.write`) | `.check.toml`의 `disabled_rules`로 규칙별(`R0`~`R5`·`rb.write`), `NGG_JUDGE=0`은 의미 판정만 |
 | 성공을 주장하지 말고 근거를 보여 준다 | 코드를 고친 턴이 저장소 검사를 통과하지 않은 채 끝나는 것, 돌린 명령과 출력 없이 여는 PR | `disabled_rules`에 `done.turn`·`done.commit`·`done.pr`, 전체는 `NGG_DONE=0` |
 | 테스트를 비활성화하거나 지우지 않는다 | `.skip` 추가, 단언 감소, 테스트 파일 삭제, 러너 설정에 제외 추가 | `disabled_rules`에 `ti.skip`·`ti.assert`·`ti.rm`·`ti.exclude`, 전체는 `NGG_TESTGUARD=0` |
-| 쌓인 기록은 고치지 않는다 | `append_only` 경로의 기존 파일 수정·삭제, 커밋 훅을 건너뛰는 `--no-verify` 커밋 | `disabled_rules`에 `pg.noverify`, 전체는 `NGG_GUARD=0` |
+| 쌓인 기록은 고치지 않는다 | `append_only` 경로의 기존 파일 수정·삭제 | 설정에서 `append_only`를 빼거나 `NGG_GUARD=0` |
 
 넷 다 이 플러그인이 정한 규칙이 아니다. 어느 문장에서 왔는지는 저장소의 근거 표에 있다.
 
@@ -72,7 +72,7 @@ Checks, every turn, whether the best practices the Claude Code docs recommend we
 | Never claim what you did not check | Asserting state with no tool call, deferring, or claiming a failed command passed (R0–R5). Overwriting an existing file with Write before reading it this session (`rb.write`) | `R0`–`R5` and `rb.write` in `disabled_rules`; `NGG_JUDGE=0` for the semantic judge only |
 | Show evidence instead of asserting success | A turn that changed code ending before the repo check passes, and a PR opened with no command output in its body | `done.turn`, `done.commit`, `done.pr` in `disabled_rules`; `NGG_DONE=0` for all |
 | Never disable or delete a test | Adding `.skip`, dropping assertions, deleting tests, adding runner-config exclusions | `ti.skip`, `ti.assert`, `ti.rm`, `ti.exclude` in `disabled_rules`; `NGG_TESTGUARD=0` for all |
-| Never rewrite what already landed | Editing or deleting existing files under `append_only`, commits that skip the commit hooks | `pg.noverify` in `disabled_rules`; `NGG_GUARD=0` for all |
+| Never rewrite what already landed | Editing or deleting existing files under `append_only` | Remove `append_only` from the config, or `NGG_GUARD=0` |
 
 To get past one false positive, write `check allow <item>` on its own line in your next prompt; it lets one action through and is gone.
 
