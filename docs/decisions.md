@@ -13,9 +13,8 @@
 |---|---|---|
 | [규칙을 부탁하지 않고 훅으로 강제합니다](#1-부탁하지-않고-훅으로-강제합니다) | CLAUDE.md 지시는 권고라서 지켜진다는 보장이 없습니다 | [[1]](https://code.claude.com/docs/en/best-practices) |
 | [파일을 고치기 전에 조사를 시키는 게이트는 두지 않습니다](#2-파일을-고치기-전에-조사를-강제해야-하는가) | [말한 사실만 믿고 게이트를 열어서](#왜-물러났나) 실제 조사는 보장하지 못했고, 이미 조사한 경우에도 막았습니다. 효과는 확인되지 않았는데 긴 세션의 반복 루프가 보고됐고, 최신 모델은 시키지 않아도 조사합니다 | [[5]](https://github.com/zunoworks/gateguard), [[6]](https://github.com/zunoworks/gateguard/blob/main/benchmarks/painbench/RESULTS.md), [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5), [[11]](https://github.com/affaan-m/ECC) |
-| [읽지 않은 기존 파일을 Write로 덮어쓰는 것만 막습니다(`rb.write`)](#이-플러그인의-결정) | Edit는 현재 내용과 맞아야 적용되지만, Write는 파일 전체를 바꿉니다. 모르고 덮어쓰면 되돌리기 어려운 자리는 Write뿐입니다 | [[3]](https://code.claude.com/docs/en/tools-reference), [[4]](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md), [[6]](https://github.com/zunoworks/gateguard/blob/main/benchmarks/painbench/RESULTS.md) |
 | [근거 없는 주장은 턴이 끝나는 순간에 검사합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | 거짓 주장은 답 그 자체라서, 답이 완성된 뒤에야 검사할 수 있습니다 | 판단, [[2]](https://code.claude.com/docs/en/hooks), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
-| [막는 대상이 출처 문서에 없는 규칙은 뺐습니다(R4, `pg.noverify`)](#6-근거가-없는-규칙은-뺐습니다) | 문서가 권하는 대처(근거 없는 주장 철회)를 막거나, 막으라는 문서가 아예 없었습니다 | [[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
+| [막는 대상이 출처 문서에 없는 규칙은 뺐습니다(R4, `pg.noverify`, `rb.write`)](#6-근거가-없는-규칙은-뺐습니다) | 문서가 권하는 대처(근거 없는 주장 철회)를 막거나, 막으라는 문서가 아예 없었습니다 | [[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
 | [모델에게 "확인하라"고 지시하지 않고, 나온 답을 밖에서 대조합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | Opus 5는 스스로 검증하므로, 검증 지시를 넣으면 과잉 검증으로 토큰만 늘고 품질은 그대로라고 공식 가이드가 안내합니다. 밖에서 대조하면 규칙에 걸린 턴에만 비용이 듭니다 | [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) |
 
 ## 1. 부탁하지 않고 훅으로 강제합니다
@@ -110,24 +109,15 @@ Claude Code가 최신 모델에게 읽기 요구를 푼 이유는 공식 문서�
 
 ### 이 플러그인의 결정
 
-위 흐름을 보고 대안 셋을 버리고 하나를 골랐습니다.
+위 흐름을 보고 아래 대안을 모두 두지 않기로 했습니다.
 
 | 대안 | 결정 | 이유 |
 |---|---|---|
 | 파일을 처음 만질 때마다 조사한 사실을 말하게 한다([2단계](#2단계-억지로-시키던-시기-2026년-46월)의 GateGuard v0.5·ECC 방식) | 버림 | 효과 근거가 자기 채점 N=3뿐이고, 제작자가 5 계열에는 적용하지 말라고 했습니다 [[5]](https://github.com/zunoworks/gateguard), [[6]](https://github.com/zunoworks/gateguard/blob/main/benchmarks/painbench/RESULTS.md). 긴 세션에서 반복 루프가 보고됐습니다 [[11]](https://github.com/affaan-m/ECC) |
 | 모든 편집 전에 Read를 강제한다 | 버림 | Claude Code가 최신 모델에게 푼 제한을 다시 거는 일인데, 다시 걸 근거가 없습니다. GateGuard 제작자의 측정에서 "읽지 않고 편집" 과제는 게이트 유무에 따른 차이가 없었고 [[6]](https://github.com/zunoworks/gateguard/blob/main/benchmarks/painbench/RESULTS.md), Edit는 현재 내용과 정확히 맞아야 적용되므로 모르고 덮어쓸 위험이 작습니다 [[3]](https://code.claude.com/docs/en/tools-reference) |
 | 에이전트 훅이 편집마다 코드를 조사해 판정한다 | 버림 | 공식 문서가 "Agent hooks are experimental and may change."라고 적어 동작이 바뀔 수 있습니다. 판정 한 번에 최대 50턴까지 쓸 수 있어, 편집마다 부르면 지연과 비용이 편집 수만큼 늘어납니다 [[2]](https://code.claude.com/docs/en/hooks) |
-| **읽지 않은 기존 파일을 Write로 덮어쓰는 것만 막는다(`rb.write`)** | **채택** | 아래에 설명합니다 |
 
-`rb.write`를 고른 이유는 Edit와 Write의 차이에 있습니다.
-
-- **Edit**는 `old_string`이 현재 내용과 정확히 맞아야 적용됩니다. 공식 문서는 이 방식을 "Matching against the file's current content keeps this safe"라고 설명합니다. [[3]](https://code.claude.com/docs/en/tools-reference)
-- **Write**는 파일 전체를 새 내용으로 바꿉니다. v2.1.228부터 최신 모델은 읽지 않은 기존 파일에도 Write를 쓸 수 있습니다. [[4]](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md)
-- PainBench에서 게이트가 점수를 바꾼 유일한 과제도, 읽기 전에 파일을 바꾼 되돌리기 어려운 경우였습니다. [[6]](https://github.com/zunoworks/gateguard/blob/main/benchmarks/painbench/RESULTS.md)
-
-**판단:** 모르고 망가뜨릴 수 있는 자리는 Write 덮어쓰기이고, 그 자리는 되돌리기도 어렵습니다. 그래서 강제를 이 한 곳에만 남겼습니다. "읽었다"고 치는 기준은 공식 read-before-edit 기준에 맞췄습니다. Read와, 파이프 없이 파일 하나를 보는 `cat`·`head`·`sed -n`·`grep` 같은 명령입니다. [[3]](https://code.claude.com/docs/en/tools-reference)
-
-추가 비용은 도구 호출 대부분에서 없습니다. Read와 일반 Bash는 전과 같이 약 15ms이고, 파이썬을 새로 띄우는 Write(약 45ms)와 파일을 보는 Bash(약 67ms)만 느려졌습니다. 실제 세션(claude-sonnet-5)에서는 Write가 막힌 뒤 모델이 스스로 파일을 읽고 다시 써서 통과했습니다. ([V47](VERIFICATION.md))
+처음에는 읽지 않은 기존 파일을 Write로 덮어쓰는 것만 막는 `rb.write`를 두었지만, 2026년 9월 16일에 뺐습니다. 공식 도구 레퍼런스는 최신 모델이 읽지 않은 파일도 고칠 수 있다고 적고, 읽기를 요구하는 오래된 모델은 Claude Code가 이미 막습니다. 문서가 허용한 동작을 다시 막을 근거가 없습니다([6절](#6-근거가-없는-규칙은-뺐습니다)). [[3]](https://code.claude.com/docs/en/tools-reference)
 
 ## 3. 근거 없는 주장은 턴이 끝나는 순간에 검사합니다
 
@@ -180,15 +170,13 @@ Claude Code가 최신 모델에게 읽기 요구를 푼 이유는 공식 문서�
 
 **5 계열에서의 효과는 아직 재지 않았습니다.** [3절](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다)의 연구 자료는 2026년 4월까지의 것이고, Opus 5는 스스로 검증한다고 안내됩니다[[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5). `tests/no-guess-gate/ab.sh`로 다시 재야 합니다.
 
-**`rb.write`에서 확인하지 못한 부분**은 [V47](VERIFICATION.md)에 적었습니다. Windows 실행, 일부 보기 명령(`tail`·`rg` 등), 컨텍스트 압축 뒤의 기준, 12시간을 넘는 세션입니다.
-
 ## 5. ECC와 함께 쓸 때
 
 ECC의 GateGuard 게이트는 이 플러그인과 목적이 일부 겹칩니다. 두 도구를 함께 쓴다면 다음처럼 역할을 나누기를 권합니다.
 
 | ECC 게이트 | 권장 | 이유 |
 |---|---|---|
-| 파일을 처음 편집할 때 사실 말하기 | 끄기: `ECC_DISABLED_HOOKS=pre:edit-write:gateguard-fact-force` | 조사 여부를 보지 않고 첫 편집을 막고, 말한 사실을 믿고 엽니다. [왜 물러났나](#왜-물러났나)에 적은 문제가 그대로 남습니다. 되돌리기 어려운 Write 덮어쓰기는 `rb.write`가 맡습니다 |
+| 파일을 처음 편집할 때 사실 말하기 | 끄기: `ECC_DISABLED_HOOKS=pre:edit-write:gateguard-fact-force` | 조사 여부를 보지 않고 첫 편집을 막고, 말한 사실을 믿고 엽니다. [왜 물러났나](#왜-물러났나)에 적은 문제가 그대로 남습니다. |
 | 세션 첫 셸 명령에서 사실 말하기 | 끄기: `GATEGUARD_BASH_ROUTINE_DISABLED=1` | 명령 내용을 보지 않고 세션의 첫 셸 명령을 한 번 막으므로, `ls` 같은 조회 명령도 막힙니다. 위험한 명령은 아래 파괴적 명령 방어가 따로 봅니다 |
 | 파괴적 명령(`rm -rf`, `git reset --hard` 등) 방어 | 켜 두기 | 이 플러그인에는 없는 방어이고, 위 두 설정으로는 꺼지지 않습니다 |
 
@@ -207,9 +195,13 @@ ECC의 GateGuard 게이트는 이 플러그인과 목적이 일부 겹칩니다.
 | R5 | 출처를 고쳤습니다 | 이전에 적은 훅 문서의 `PostToolUseFailure` 는 구현 수단입니다. 막는 이유는 "Have Claude show evidence rather than asserting success"입니다[[1]](https://code.claude.com/docs/en/best-practices) |
 | `ti.assert`·`ti.exclude` | 출처를 고쳤습니다 | Kent Beck 글에는 단언을 줄이는 이야기가 없습니다[[13]](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes). EvilGenie의 "Modified Testing Procedure"가 테스트 케이스와 테스트를 돌리는 코드를 고치는 것을 다룹니다[[14]](https://arxiv.org/abs/2511.21654) |
 | 마이그레이션(append-only) | 출처 링크를 고쳤습니다 | 인용한 문장은 훅 문서가 아니라 Best practices 에 있습니다[[1]](https://code.claude.com/docs/en/best-practices) |
+| `rb.write`: 읽지 않은 기존 파일을 Write로 덮어쓰면 막음 | **뺐습니다**(2026-09-16, V51) | 공식 도구 레퍼런스는 "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read. Newer models can edit an unread file …"라고 적습니다[[3]](https://code.claude.com/docs/en/tools-reference). 읽기를 요구하는 모델은 Claude Code가 이미 막고, 최신 모델에게는 문서가 허용합니다. 문서가 허용한 동작을 다시 막는 규칙이었습니다 |
+| `done.pr`: 코드를 바꾼 PR 본문에 코드 블록·이미지가 없으면 막음 | **성공·검증을 주장하는 본문만 막도록 좁혔습니다**(V51) | 근거 문장은 "Have Claude show evidence rather than asserting success"입니다[[1]](https://code.claude.com/docs/en/best-practices). 성공을 주장하지 않는 본문에 근거를 요구하는 것은 그 문장의 범위를 넘습니다 |
+| R2b: 코드베이스 맥락의 추정 표현 | **도구를 쓰지 않은 턴만 보도록 좁혔습니다**(V51) | 근거 문장은 "Never speculate about code you have not opened"입니다[[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices). 도구로 파일을 연 턴에서는 열어 보지 않은 코드에 대한 추측이라고 단정할 수 없습니다 |
+| `ti.skip` 의 `it.todo(` 표기 | **표기 목록에서 뺐습니다**(V51) | 근거 문장은 "disabling or deleting tests"[[13]](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes)입니다. `it.todo`는 아직 쓰지 않은 테스트의 자리라 있던 테스트를 끄지 않습니다 |
 | 마이그레이션 **삭제**(`rm`·`git rm`) 막음 | **뺐습니다**(2026-09-16, V50) | 위 대조에서 출처 링크만 고치고 범위는 따지지 않아 남았던 부분입니다. 출처는 "blocks writes to the migrations folder"까지만 말하고, [Rails 가이드](https://guides.rubyonrails.org/active_record_migrations.html)는 스키마 파일이 기준이 되면 오래된 마이그레이션을 "delete or prune"할 수 있다고 설명합니다. 이동도 막을 근거가 없어 막지 않습니다. 기존 파일 수정 차단은 두 문서와 맞아 그대로 둡니다 |
 
-나머지 규칙(R3, `rb.write`, `done.turn`·`done.commit`·`done.pr`, `ti.skip`·`ti.rm`)은 인용한 문장이 막는 대상과 맞아 그대로 두었습니다.
+2026년 9월 16일에는 "지금 문서에 막는 대상과 범위가 정확히 적힌 것만 남긴다"는 기준으로 한 번 더 좁혔습니다. 나머지 규칙(R0·R1·R2a·R3·R5, `done.turn`·`done.commit`, `ti.rm`·`ti.assert`·`ti.exclude`, 수정만 막는 append-only)은 인용한 문장이 막는 대상과 범위를 그대로 덮어 유지합니다.
 
 **판단:** 규칙을 빼면 그만큼 덜 막습니다. 이 저장소는 "근거 없는 규칙은 넣지 않는다"를 원칙으로 두므로, 덜 막는 쪽을 택했습니다. R4가 없어도 확인 없이 같은 주장을 되풀이한 답은 R0~R3·R5에 다시 걸립니다.
 

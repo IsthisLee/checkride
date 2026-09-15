@@ -8,8 +8,6 @@
 
 - **`/check:config` 가 게이트 언어를 전역에도 쓸 수 있다.** 언어를 고른 뒤 쓸 곳을 한 번 더 묻는다. 이 저장소를 고르면 지금처럼 `.check.toml` 의 `lang` 한 줄을, 전역을 고르면 `~/.claude/settings.json` 의 `env.NGG_LANG` 키 하나만 바꾼다. 전역 값은 모든 저장소의 `lang` 보다 앞서고 PR 에 남지 않으므로, 그 사실을 선택지 설명에 적게 했다.
 - 전역 설정 파일에는 토큰이 들어 있을 수 있다. 그래서 스킬이 그 파일을 통째로 출력하지 않고 `env.NGG_LANG` 키만 보게 했다. 바꾼 뒤에도 게이트가 옛 언어로 말하면 새 세션을 열라고 안내한다.
-- **읽지 않은 기존 파일을 Write 로 통째로 덮어쓰지 못한다(`rb.write`).** Claude Code 는 원래 읽지 않은 파일을 고치지 못하게 막았는데, v2.1.228 부터는 최신 모델이 읽지 않은 기존 파일도 Write 로 덮어쓸 수 있다. Edit 는 `old_string` 이 현재 내용과 정확히 맞아야 적용되므로 모르고 망가뜨리기 어렵지만 Write 는 파일 전체를 갈아엎는다. 그래서 편집 전체가 아니라 이 자리만 근거 게이트가 도구 호출 전에 다시 막는다. 새 파일·빈 파일·이번 세션에 읽거나 직접 쓴 파일은 통과한다. 읽은 것으로 치는 기준은 공식 도구 레퍼런스의 read-before-edit 기준(Read, 파이프 없이 파일 하나를 보는 `cat`·`head`·`sed -n`·`grep` 등)과 같다. `disabled_rules` 와 `check allow` 로 끌 수 있다.
-- 이 검사 때문에 `no-guess-gate/pre.sh` 가 Write 와 파일을 보는 Bash 에서만 파이썬을 띄운다. 그 두 경우는 약 45ms·67ms 가 되고, 나머지 도구 호출은 파이썬 없이 약 15ms 로 그대로다.
 
 ### 제거
 
@@ -19,6 +17,9 @@
 
 ### 변경
 
+- **R2b 는 도구를 쓰지 않은 턴에만 건다.** 근거 문장("Never speculate about code you have not opened")은 열어 보지 않은 코드에 대한 것이라, 도구로 파일을 연 턴의 추정 표현은 막지 않는다.
+- **PR 본문 검사(`done.pr`)는 성공이나 검증을 주장하는 본문만 본다.** 근거 문장은 "Have Claude show evidence rather than asserting success" 라서, 변경만 설명하는 본문에는 코드 블록을 요구하지 않는다.
+- **`it.todo(` 추가는 테스트 무력화로 보지 않는다.** 아직 쓰지 않은 테스트의 자리라 있던 테스트를 끄지 않는다. `.skip(`·`xit(` 같은 표기는 그대로 막는다.
 - **R2a 는 코드베이스 맥락에서만 건다.** 근거 문장("BEFORE answering questions about the codebase")이 범위를 코드베이스 질문으로 한정한다. 프롬프트가 저장소·파일을 묻지 않고, 답에 경로나 "여기 있는 파일"(`scripts here`, `여기 있는 테스트 파일`) 같은 표현도 없으면 유보 표현이 있어도 막지 않는다. 처음 좁혔을 때는 답 속의 "scripts here"를 맥락으로 읽지 못해 selftest `tp-defer` 가 새어 나갔고, 그 표현을 더해 고쳤다.
 - 근거 표의 출처를 원문과 다시 맞췄다. R0·R1·R2a·R2b 는 Prompting best practices 의 `investigate_before_answering`, R5 는 Best practices, `ti.assert`·`ti.exclude` 는 EvilGenie 의 "Modified Testing Procedure", 마이그레이션 예시는 Best practices 로 고쳤다. 확인일은 2026-09-15 다. `/check:config` 표도 같이 고쳤다.
 - 막혔을 때 나가는 안내에서 R4 를 지우고, 뒷받침할 근거를 찾지 못한 단정이나 검증 주장은 철회하라고 적었다. 사용자가 실행을 막은 경우의 예시("사용자가 실행하지 말라고 해서 확인할 수 없다")도 더했다.

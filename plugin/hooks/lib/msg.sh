@@ -23,8 +23,6 @@ msg_ko() { case "$1" in
   ngg.judgefail) M="- 모델 판정 실패 또는 시간초과(%s). 규칙 판정을 유지한다." ;;
   ngg.allowed)   M="허용되는 행동은 둘뿐이다. (1) 지금 실측한다 (2) 실측이 불가능한 이유를 답에 적는다(예: '이 세션에서는 도구 실행이 안 된다', '사용자가 실행하지 말라고 해서 확인할 수 없다'). 그러면 R0·R2a·R2b는 걸리지 않는다. 뒷받침할 근거를 찾지 못한 단정이나 검증 주장은 철회하라. 필요하면 AskUserQuestion으로 물어라." ;;
   ngg.noretell)  M="앞의 막힌 답은 화면에 남아 있다. **최종 답을 그 자체로 완결되게 다시 써라.** 실측한 내용을 반영해 사용자가 마지막 답 하나만 읽어도 전부 파악되게 한다. 앞 답이 틀렸으면 고쳐서 담아라. 게이트에 대한 불평은 답변에 내지 마라." ;;
-  rb.write)      M="근거 게이트: 이번 세션에 읽은 적 없는 기존 파일을 Write 로 통째로 덮어쓰려 했다." ;;
-  rb.writet)     M="- 먼저 Read 도구로 읽고 다시 써라. 일부만 바꾸려면 Edit 도구를 써라. 파일 전체를 새로 쓰는 것이 맞으면 읽은 뒤에 덮어써라." ;;
 
   done.prefix)   M="완료 게이트: %s" ;;
   done.nocmd)    M="코드 파일 %s개를 고쳤지만 검사 명령을 찾지 못했다. .check.toml에 test_command를 적으면 이 턴부터 검사한다. 막지 않는다." ;;
@@ -93,8 +91,6 @@ msg_en() { case "$1" in
   ngg.judgefail) M="- Judge failed or timed out (%s). The rule verdict stands." ;;
   ngg.allowed)   M="Only two moves are allowed: (1) measure it now, or (2) state in your answer why measuring is impossible (for example, 'tool execution is disabled in this session', or 'I cannot verify this because the user asked me not to run commands'). Either one clears R0, R2a and R2b. Retract any assertion or verification claim you cannot back up. Ask with AskUserQuestion if you need to." ;;
   ngg.noretell)  M="The blocked answer above stays on screen. **Write your final answer so it stands on its own.** Fold in what you measured so the user gets everything from this last answer alone. Correct anything the earlier answer got wrong. Do not argue with the gate in your answer." ;;
-  rb.write)      M="Evidence gate: this Write would overwrite an existing file you have not read this session." ;;
-  rb.writet)     M="- Read it with the Read tool first, then write. To change only part of it, use the Edit tool. If replacing the whole file is right, read it before you overwrite it." ;;
 
   done.prefix)   M="Completion gate: %s" ;;
   done.nocmd)    M="%s code file(s) changed, but no check command was found. Add test_command to .check.toml and the check runs from the next turn. Not blocking." ;;

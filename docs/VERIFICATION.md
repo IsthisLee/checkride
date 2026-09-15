@@ -3419,7 +3419,6 @@ CLAUDE.md, CHANGELOG, 거짓 음성 이슈 템플릿을 고쳤다. README·decis
 - 커맨드(스킬)가 인용하는 Willison 문장은 게이트 규칙이 아니라 이번 대조 범위에서 뺐다.
 - "검증된 문서"로서 Kent Beck 뉴스레터와 EvilGenie 논문을 받아들인 것은 이 저장소의 기존 판단을 따랐다.
 
-
 ## V50 프로젝트 가드: 근거가 없는 삭제 차단을 뺐다
 
 배경: README 에 훅 표를 넣으면서 프로젝트 가드가 "수정·삭제·이동"을 막는다고 적었다. 실측하니 이동은 막지 않았다. 차단 메시지
@@ -3487,3 +3486,82 @@ shellcheck 0건
 - 프로젝트 가드가 Bash 에서 빠져 Bash 한 번에 붙는 지연이 줄었을 것이다. 문서의 "약 70ms·약 170ms" 는 그 전 측정이고 다시 재지 않았다.
 - `rb.write` 도 같은 기준으로 보면 범위가 출처 문장을 넘는다. 출처(Tools reference)는 오래된 모델에 대한 Claude Code 자체 규칙인데,
   `rb.write` 는 그 요구가 풀린 최신 모델에게 다시 건다. 이번에는 판단하지 않고 사용자에게 넘겼다.
+
+## V51 최신 문서에 정확한 근거가 있는 범위로만 좁혔다
+
+배경: 사용자가 기준을 정했다. "무조건 최신 문서인 근거가 정확하게 있는 걸로만 범위 좁혀서 보수적으로 적용해야 해." 남은 규칙마다
+**막는 대상**과 **적용 범위**가 지금 문서의 문장에 그대로 있는지 다시 봤다. 출처 원문은 V49(2026-09-15)·V50(2026-09-16)에서 연 것을 썼다.
+
+| 규칙 | 출처 문장 | 넘는 부분 | 조치 |
+|---|---|---|---|
+| `rb.write` | Tools reference: "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read. Newer models can edit an unread file …" | 문서가 허용한 최신 모델에게 다시 건다. 오래된 모델은 Claude Code 가 이미 막는다 | 뺐다 |
+| `done.pr` | Best practices: "Have Claude show evidence rather than asserting success" | 성공을 주장하지 않는 본문에도 코드 블록을 요구했다 | 성공·검증을 주장하는 본문만 막는다 |
+| R2b | Prompting best practices: "Never speculate about code you have not opened" | 도구로 파일을 연 턴의 추정 표현도 막았다 | 도구를 쓰지 않은 턴만 본다 |
+| `ti.skip` 의 `it.todo(` | Beck "disabling or deleting tests", EvilGenie "delete or ignore test cases" | todo 자리 추가는 있던 테스트를 끄지 않는다 | 뺐다(아래 "it.todo") |
+
+유지한 규칙: R0·R1·R2a·R3·R5, `done.turn`·`done.commit`, `ti.rm`·`ti.assert`·`ti.exclude`, 수정만 막는 append-only.
+
+### RED
+
+```
+=== 근거 게이트
+❌ R2b: 이번 턴에 도구를 쓴 뒤의 추정 표현 → 통과 (기대=0 실측=2)
+❌ 읽지 않은 기존 파일 Write → 통과(rb.write 없음) (기대=0 실측=2)
+실패 2건
+=== 완료 게이트
+❌ PR: 성공 주장이 없는 본문 → 통과 (기대=0 실측=2)
+❌ PR: 영어 본문도 성공 주장이 없으면 → 통과 (기대=0 실측=2)
+실패 2건
+```
+
+### GREEN
+
+바꾼 코드: `no-guess-gate/pre.sh` 를 `rb.write` 이전(677c446)으로 되돌렸다. `stop.sh` 의 R2b 에 `ntools -eq 0` 조건을 더했다.
+`done-gate/pre.sh` 는 코드 블록·이미지가 없을 때 본문에 성공·검증 주장(`통과`·`검증했`·`passed`·`verified` 등)이 없으면 통과시킨다.
+`common.sh` 의 `NGG_ITEMS` 와 `msg.sh` 에서 `rb.write`·`rb.writet` 를 지웠다. SECURITY 두 파일은 `seen` 기록 설명을 넣기 전(677c446)으로 되돌렸다.
+`rb.write` 만 검사하던 단위 테스트 29건은 "막지 않는다" 2건으로 바꿨다.
+
+처음 돌린 invariants 는 "카탈로그에 없는 키를 부른다: ['rb.write', 'rb.writet']" 로 실패했다. 훅 코드에는 그 키가 없었고, invariants 가
+`.gitignore` 에 있는 `plugin/hooks/no-guess-gate/selftest-runs/` 의 옛 사본까지 훑은 것이 원인이었다. R2b 를 바꿨으므로
+`selftest.sh` 를 다시 돌렸고, 사본이 새 코드로 바뀐 뒤 통과했다.
+
+```
+$ tests/no-guess-gate/selftest.sh 2>&1 | tail -1
+총 12케이스 / 실패 0건
+tests/lib/unit.sh ✅26 ❌0
+tests/no-guess-gate/unit.sh ✅160 ❌0
+tests/done-gate/unit.sh ✅83 ❌0
+tests/test-integrity/unit.sh ✅69 ❌0
+tests/project-guard/unit.sh ✅23 ❌0
+tests/repo-profile/unit.sh ✅23 ❌0
+tests/skills-unit.sh ✅5 ❌0
+tests/attack-surface.sh ✅9 ❌0
+tests/invariants.sh ✅17 ❌0
+합계 415
+실행 240회 · 실패 0건
+shellcheck 0건
+✔ Validation passed
+내부 링크 61 깨짐 0
+```
+
+문서: README·README.en(첫 표, 규칙표, 훅 표, 근거 표), docs/gates·gates.en(`rb.write` 절 삭제, PR 본문 절, 지연·근거 표), docs/decisions(2절의 결정, 4·5·6절),
+plugin/README, `/check:config` 표, CLAUDE.md, CHANGELOG(아직 배포하지 않은 `rb.write` 추가 항목을 지우고 변경 두 줄을 더함).
+
+### it.todo
+
+새 동작을 기대하는 테스트를 `tests/test-integrity/unit.sh` 에 넣으려 하자, 이 세션에 설치된 플러그인의 테스트 무결성 게이트가
+"테스트를 무력화하는 표기가 늘었다(0 → 1). 걸린 표기: it.todo(" 로 편집을 막았다. 문자열을 쪼개 피하지 않고, 사용자가 프롬프트에
+`check allow ti.skip` 을 적은 뒤 같은 편집을 다시 했다.
+
+```
+❌ it.todo 추가 → 통과 (기대=0 실측=2)
+실패 1건
+```
+
+`test-integrity/pre.sh` 의 `DISABLE` 에서 `it\.todo\(` 를 뺐다. 결과는 아래 합계에 담았다(테스트 무결성 69건).
+
+**하지 못한 것:**
+
+- invariants 가 `.gitignore` 된 `selftest-runs/` 까지 훑는 문제는 고치지 않았다. `selftest.sh` 사본이 낡으면 다시 같은 거짓 실패가 난다.
+- `done.pr` 의 성공 주장 판정은 표현 목록이다. "CI 통과 후 머지" 처럼 주장이 아닌 "통과" 도 주장으로 본다.
+

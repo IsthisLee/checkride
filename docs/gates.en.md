@@ -12,13 +12,13 @@ This plugin makes that asking automatic. It is like a car that beeps when you sk
 
 ## When each runs
 
-The four gates and the repo profile hook into different events. **At `Stop` (turn end) only the evidence gate and the completion gate run.** Test integrity and the project guard block at the moment an edit or Bash call is about to run, not when the turn ends. The evidence gate blocks one thing before a tool call too: overwriting an existing file you have not read with Write (`rb.write`). The wiring lives in `plugin/hooks/hooks.json`.
+The four gates and the repo profile hook into different events. **At `Stop` (turn end) only the evidence gate and the completion gate run.** Test integrity and the project guard block at the moment an edit or Bash call is about to run, not when the turn ends. The wiring lives in `plugin/hooks/hooks.json`.
 
 | Event | Evidence | Completion | Test integrity | Project guard | Repo profile |
 |---|---|---|---|---|---|
 | `SessionStart` | | | | | loads repo facts into context |
 | `UserPromptSubmit` | reads `check allow` | | | | |
-| `PreToolUse` | records every tool name; blocks only a Write over an unread existing file (`rb.write`) | Bash | Edit·Write·Bash | Edit·Write | |
+| `PreToolUse` | records every tool name (never blocks) | Bash | Edit·Write·Bash | Edit·Write | |
 | `PostToolUse` | records Bash result as S/F | Edit·Write | | | |
 | `PostToolUseFailure` | records the Bash failure | | | | |
 | `Stop` | R0–R5 | check command | | | |
@@ -34,7 +34,7 @@ The evidence gate's Stop rules fire only under their conditions. Most fire **onl
 | R2a | only when zero tool calls and the turn is about the codebase (the prompt asks about the repo or a file, or the answer names a path or says something like "the files here") |
 | R3 | only when zero Bash calls |
 | R5 | only when the last Bash run failed (F) |
-| R2b | only when the turn is about the codebase |
+| R2b | only when zero tool calls and the turn is about the codebase |
 
 R4 (blocking a second ending with no tool call after a block) was dropped because its source did not back it. A rewritten answer is judged by the rules above alone (V49).
 
@@ -99,7 +99,6 @@ Comma-separate several; case doesn't matter. These are the names:
 | Gate | Name | What stops |
 |---|---|---|
 | Evidence | `R0`, `R1`, `R2a`, `R2b`, `R3`, `R5` | That one rule |
-| | `rb.write` | Blocking a Write over an existing file you have not read |
 | Completion | `done.turn` | The check at the end of a turn that changed code |
 | | `done.commit` | The full check right before a commit |
 | | `done.pr` | The evidence check on a PR body |
@@ -137,31 +136,6 @@ That check passes **once** within the turn, and the allowance is gone. An unused
 
 The idea comes from Probity's `enforceTdd`: "reply in the session asking for the change to be let through, and it's allowed on the next attempt."
 
-## Evidence gate: never overwrite a file you have not read
-
-The evidence gate blocks exactly one kind of tool call: **a Write that would overwrite an existing file you have not read this session** (`rb.write`).
-
-Claude Code used to refuse edits to files it had not read. The official tools reference still states that rule:
-
-> "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read. Newer models can edit an unread file when reading it wouldn't need a permission prompt and the Read tool is available."
-
-Since v2.1.228 Write follows the same rule, so newer models can overwrite an existing file they never read. Edit only applies when `old_string` matches the current content exactly, which makes it hard to wreck a file by accident. Write replaces the whole file. So the gate does not police edits in general; it puts back only this one hard-to-undo case.
-
-| Case | Verdict |
-|---|---|
-| Creating a new file | Passes |
-| Overwriting an empty file | Passes; there is nothing to lose |
-| A file read with Read this session | Passes, even if it was read in an earlier turn |
-| A single file viewed with a command like `cat`, `head`, `sed -n 'X,Yp'` or `grep` | Passes; these are commands the official docs count as a read |
-| A file you wrote with Write this session | Passes |
-| A file viewed through a pipe, or together with other files | Blocked; the docs do not count those as a read either |
-| A file you only changed with Edit | Blocked; you saw the part you changed, not the whole file |
-| A file the main conversation read, overwritten by a subagent | Blocked; they are separate conversations |
-
-The record lasts for the session, not the turn (`state/<session>/seen`). Different spellings of the same path count as the same file.
-
-When blocked, Claude reads the file and writes again. That is what a real session (claude-sonnet-5) did: the Write was blocked, it read the file, and the second Write went through ([V47](VERIFICATION.md)). To turn only this check off, put `rb.write` in `disabled_rules`; to let one through, write `check allow rb.write`.
-
 ## Completion gate: the check must pass
 
 A turn that changed code files does not end until your project's check actually runs. This is the mechanism the official docs prescribe:
@@ -193,7 +167,7 @@ This repo eats its own dog food: its `.check.toml` points at its own test suites
 
 ### No evidence, no PR
 
-Right before `gh pr create`, the gate reads the body. Without the command you ran and its output, the PR does not open. That is exactly what the official docs name as evidence:
+Right before `gh pr create`, the gate reads the body. If the body **claims** tests passed or something was verified but carries no command output, the PR does not open. A body that claims no success is not blocked (V51). That is exactly what the official docs name as evidence:
 
 > "Have Claude show evidence rather than asserting success: the test output, the command it ran and what it returned, or a screenshot of the result."
 
@@ -203,6 +177,7 @@ What counts is a **closed code block** (both the opening and the closing fence) 
 |---|---|
 | The body has a code block or an image | Passes |
 | The body only says "all tests pass" | Blocked |
+| The body describes the change without claiming success | Passes |
 | No code files changed against the base branch (docs only) | Passes |
 | The body is not in the command (`--fill`, `--web`) | Passes. It never blocks on what it cannot see |
 | `gh pr create` appears inside a commit message or a doc | Passes. Quoting is not using |
@@ -212,7 +187,7 @@ The base is `--base` if given, otherwise the first that exists of `origin/HEAD` 
 
 **It checks the form only.** It cannot tell whether the pasted output came from a real run; it stops at telling a blocked model not to make output up. It does not look at `gh pr edit --body` either.
 
-A one-line code fix is in scope too. That clashes with the habit of opening small fixes with a title alone; the choice here is that a code change carries one block of check output. Docs-only PRs are not affected.
+A body that only describes the change passes: the source asks for evidence *rather than asserting success*, so with no assertion there is nothing to back up. A success claim is recognised by words like "passed" or "verified".
 
 To switch off this check alone, add `done.pr` to `disabled_rules`. `NGG_DONE=0` turns off the whole completion gate.
 
@@ -276,7 +251,7 @@ Installing this adds time to every turn. Here are the numbers: the median of 20 
 | `no-guess-gate/prompt.sh` | once per turn | 51ms |
 | `no-guess-gate/stop.sh` | end of turn | 161ms |
 | `done-gate/stop.sh` | end of turn | 44ms |
-| `no-guess-gate/pre.sh` | per tool call | 17ms; about 45ms for a Write and about 67ms for a Bash call that views a file, such as `cat` (V47, median of 30). Only those two start Python |
+| `no-guess-gate/pre.sh` | per tool call | 17ms |
 | `test-integrity/pre.sh` | per Edit, Write or Bash call | 46ms; 12ms for a Bash call with no delete in it |
 | `project-guard/pre.sh` | per Edit or Write call | 41ms. Since V50 it no longer runs on Bash |
 | `done-gate/pre.sh` | per Bash call | 12ms unless it is a commit or a PR |
@@ -320,12 +295,11 @@ Every rule cites where it came from. The bar: **what the rule blocks must be in 
 |---|---|
 | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), "Minimizing hallucinations in agentic coding" | R0, R1, R2a, R2b. *"Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer."* The sentence is scoped to questions about the codebase, so R2a and R2b look only at that context |
 | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | The impossibility exemption. *"Allow Claude to say "I don't know""*. Retraction, which the block message points to, also comes from here: *"If it can't find a quote, it must retract the claim."* |
-| [Best practices](https://code.claude.com/docs/en/best-practices) | R3, R5, the completion gate's Stop-hook approach, and the PR body check (`done.pr`). *"Have Claude show evidence rather than asserting success."* The project guard's append-only (blocking edits to existing files): *"Write a hook that blocks writes to the migrations folder."* |
+| [Best practices](https://code.claude.com/docs/en/best-practices) | R3, R5, the completion gate's Stop-hook approach, and the check on PR bodies that claim success (`done.pr`). *"Have Claude show evidence rather than asserting success."* The project guard's append-only (blocking edits to existing files): *"Write a hook that blocks writes to the migrations folder."* |
 | [Rails migrations guide](https://guides.rubyonrails.org/active_record_migrations.html) | Append-only's edit block: *"In general, editing existing migrations that have been already committed to source control is not a good idea."* The same guide describes deleting old migration files as fine, so deletion is not blocked |
 | [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | Implementation only: exit 2 blocking, the 8-block cap, timeouts, and the `PostToolUseFailure` event R5 uses to learn a command failed |
 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`, `ti.rm`: *"cheating, for example by disabling or deleting tests."* `done.commit`: *"Only commit when: 1. ALL tests are passing"* |
 | Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17), "Modified Testing Procedure" | `ti.assert`, `ti.exclude`: *"The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases."* |
-| [Tools reference](https://code.claude.com/docs/en/tools-reference) | `rb.write`. *"Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read."* Once newer models were allowed to skip the read (v2.1.228), only whole-file overwrites with Write are blocked again |
 
 Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules. Allow-once is not a blocking rule but a release valve, taken from Probity.
 
@@ -339,7 +313,7 @@ The reason for using hooks at all is in the docs too:
 claude --plugin-dir .                         # load this folder instead of the installed copy
 claude plugin validate .                      # manifest and hook wiring
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 438 assertions, no model calls
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 415 assertions, no model calls
 tests/fuzz.sh                                 # 24 malformed inputs x ten hooks = 240 runs
 tests/no-guess-gate/selftest.sh               # 12-case regression against real prompts, minutes
 tests/no-guess-gate/judge-accuracy.sh         # judge accuracy and latency, minutes

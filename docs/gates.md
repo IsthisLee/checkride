@@ -15,7 +15,6 @@ README는 짧게 두고 자세한 내용은 이 문서에 적습니다. 각 게�
   - [왜 내장 `type: "prompt"` 훅을 쓰지 않나](#왜-내장-type-prompt-훅을-쓰지-않나)
 - [항목 하나만 끄기](#항목-하나만-끄기)
 - [한 번만 허용하기](#한-번만-허용하기)
-- [근거 게이트: 읽지 않은 파일은 통째로 덮어쓰지 않습니다](#근거-게이트-읽지-않은-파일은-통째로-덮어쓰지-않습니다)
 - [완료 게이트: 검사가 통과해야 턴이 끝납니다](#완료-게이트-검사가-통과해야-턴이-끝납니다)
   - [PR 본문에 근거가 있어야 PR을 엽니다](#pr-본문에-근거가-있어야-pr을-엽니다)
 - [테스트 무결성 게이트: 테스트가 아니라 코드를 고칩니다](#테스트-무결성-게이트-테스트가-아니라-코드를-고칩니다)
@@ -36,13 +35,13 @@ Claude Code는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니�
 
 ## 언제 무엇이 도나
 
-게이트 넷과 저장소 프로필은 서로 다른 훅 이벤트에 걸립니다. **Stop(턴 끝)에서 도는 것은 근거 게이트와 완료 게이트 둘뿐입니다.** 테스트 무결성과 프로젝트 가드는 턴이 끝날 때가 아니라 편집·Bash를 실행하려는 순간에만 막습니다. 근거 게이트도 도구 호출 전에 한 가지는 막습니다. 읽지 않은 기존 파일을 Write로 통째로 덮어쓰는 경우입니다(`rb.write`). 배선은 `plugin/hooks/hooks.json`에 있습니다.
+게이트 넷과 저장소 프로필은 서로 다른 훅 이벤트에 걸립니다. **Stop(턴 끝)에서 도는 것은 근거 게이트와 완료 게이트 둘뿐입니다.** 테스트 무결성과 프로젝트 가드는 턴이 끝날 때가 아니라 편집·Bash를 실행하려는 순간에만 막습니다. 배선은 `plugin/hooks/hooks.json`에 있습니다.
 
 | 이벤트 | 근거 게이트 | 완료 게이트 | 테스트 무결성 | 프로젝트 가드 | 저장소 프로필 |
 |---|---|---|---|---|---|
 | `SessionStart` | | | | | 저장소 사실을 컨텍스트에 싣습니다 |
 | `UserPromptSubmit` | `check allow`를 읽습니다 | | | | |
-| `PreToolUse` | 모든 도구의 이름을 남깁니다. 읽지 않은 기존 파일의 Write만 막습니다(`rb.write`) | Bash | Edit·Write·Bash | Edit·Write | |
+| `PreToolUse` | 모든 도구의 이름을 남깁니다(막지 않습니다) | Bash | Edit·Write·Bash | Edit·Write | |
 | `PostToolUse` | Bash 결과를 S/F로 남깁니다 | Edit·Write | | | |
 | `PostToolUseFailure` | Bash 실패를 남깁니다 | | | | |
 | `Stop` | R0~R5 | 검사 명령 | | | |
@@ -58,7 +57,7 @@ Claude Code는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니�
 | R2a | 도구 호출이 0건이고, 코드베이스 맥락(프롬프트가 저장소·파일을 묻거나, 답에 경로나 "여기 있는 파일" 같은 표현이 있음)일 때만 |
 | R3 | Bash 실행이 0건일 때만 |
 | R5 | 마지막으로 돌린 Bash가 실패(F)했을 때만 |
-| R2b | 코드베이스 맥락일 때만 |
+| R2b | 도구 호출이 0건이고 코드베이스 맥락일 때만 |
 
 R4(막힌 뒤 도구 없이 다시 끝내면 막음)는 출처 문서와 맞지 않아 뺐습니다. 다시 쓴 답도 위 규칙으로만 판정합니다. 이유는 [설계 결정](decisions.md#6-근거가-없는-규칙은-뺐습니다)에 있습니다.
 
@@ -123,7 +122,6 @@ disabled_rules = "R2b, done.pr"
 | 게이트 | 이름 | 끄면 멈추는 것 |
 |---|---|---|
 | 근거 | `R0`·`R1`·`R2a`·`R2b`·`R3`·`R5` | 그 규칙 하나 |
-| | `rb.write` | 읽지 않은 기존 파일을 Write로 덮어쓰는 것 차단 |
 | 완료 | `done.turn` | 코드를 고친 턴 끝의 검사 |
 | | `done.commit` | 커밋 직전의 전체 검사 |
 | | `done.pr` | PR 본문의 근거 검사 |
@@ -161,34 +159,6 @@ check allow ti.skip
 
 Probity의 `enforceTdd`에서 가져온 방식입니다. "reply in the session asking for the change to be let through, and it's allowed on the next attempt."
 
-## 근거 게이트: 읽지 않은 파일은 통째로 덮어쓰지 않습니다
-
-근거 게이트가 도구 호출 전에 막는 것은 하나뿐입니다. **이번 세션에 읽은 적 없는 기존 파일을 Write로 통째로 덮어쓰는 것**입니다(`rb.write`).
-
-Claude Code는 원래 읽지 않은 파일을 고치지 못하게 막았습니다. 공식 도구 레퍼런스는 지금도 그 기준을 적어 둡니다.
-
-> "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read. Newer models can edit an unread file when reading it wouldn't need a permission prompt and the Read tool is available."
-> (Claude Opus 4.6, Claude Haiku 4.5와 그 이전 모델은 늘 읽기를 요구한다. 더 새로운 모델은 읽는 데 권한 프롬프트가 필요 없고 Read 도구를 쓸 수 있으면 읽지 않은 파일도 고칠 수 있다.)
-
-v2.1.228부터는 Write도 같은 규칙을 따라, 최신 모델이 읽지 않은 기존 파일을 덮어쓸 수 있습니다. Edit는 `old_string`이 현재 내용과 정확히 맞아야 적용되므로 모르고 망가뜨리기 어렵습니다. 반면 Write는 파일 전체를 갈아엎습니다. 그래서 편집 전체가 아니라 되돌리기 어려운 이 자리만 다시 막습니다. 이렇게 판단한 과정은 [설계 결정](decisions.md)에 있습니다.
-
-"읽었다"고 치는 기준은 새로 만들지 않고 공식 read-before-edit 기준을 그대로 씁니다. 모델이 이미 따르는 기준과 같아야, 막혔을 때 무엇을 하면 되는지가 분명하기 때문입니다. 공식 기준은 파이프나 리다이렉트 없이 **파일 하나**를 보는 명령만 읽은 것으로 칩니다. 이 기준을 따르므로 `grep`처럼 일부 줄만 보여 주는 명령도 읽은 것으로 칩니다. 이 점은 느슨한 자리로 남아 있습니다.
-
-| 경우 | 판정 |
-|---|---|
-| 새 파일을 만드는 경우 | 통과 |
-| 비어 있는 파일을 덮어쓰는 경우 | 통과. 잃을 것이 없습니다 |
-| 이번 세션에 Read로 읽은 파일 | 통과. 앞 턴에서 읽었어도 됩니다 |
-| `cat`·`head`·`sed -n 'X,Yp'`·`grep` 같은 명령으로 파일 하나만 본 파일 | 통과. 공식 기준이 읽은 것으로 칩니다 |
-| 이번 세션에 Write로 직접 쓴 파일 | 통과 |
-| 파이프로 넘겨 보거나 여러 파일을 한꺼번에 본 파일 | 막습니다. 공식 기준이 읽은 것으로 치지 않습니다 |
-| Edit로 일부만 고친 파일 | 막습니다. 고친 부분만 봤고 파일 전체를 본 것은 아닙니다 |
-| 메인 대화가 읽은 파일을 서브에이전트가 덮어쓰는 경우 | 막습니다. 서브에이전트는 메인 대화의 컨텍스트를 받지 않으므로, 메인이 읽은 내용을 모릅니다 |
-
-읽은 기록은 턴마다 비우지 않고 세션 동안 남깁니다(`state/<세션>/seen`). 앞 턴에서 읽은 내용도 대화에 그대로 남아 있기 때문입니다. 컨텍스트가 압축된 뒤에도 이 기준이 맞는지는 아직 확인하지 못했습니다([V47](VERIFICATION.md)). 경로 표기가 달라도 실경로가 같으면 같은 파일로 봅니다.
-
-막히면 Claude는 파일을 읽고 다시 씁니다. 실제 세션(claude-sonnet-5)에서도 그렇게 흘러갔습니다. Write가 막히고, Read로 읽고, 다시 Write해서 통과했습니다([V47](VERIFICATION.md)). 이 검사만 끄려면 `disabled_rules`에 `rb.write`를 적고, 한 건만 넘기려면 `check allow rb.write`를 씁니다.
-
 ## 완료 게이트: 검사가 통과해야 턴이 끝납니다
 
 코드 파일을 고친 턴은 저장소의 검사를 실제로 돌린 뒤에야 끝납니다. "다 끝냈습니다"라는 말이 아니라 검사 결과로 턴의 끝을 판정하기 위해서입니다. 공식 문서가 지정한 방법도 이것입니다.
@@ -221,7 +191,7 @@ test_command      = "npm test"                # 커밋 직전에 이것
 
 ### PR 본문에 근거가 있어야 PR을 엽니다
 
-`gh pr create` 직전에 본문을 봅니다. 돌린 명령과 그 출력이 없으면 PR을 열지 못합니다. 리뷰어는 "테스트 통과"라는 문장만으로는 실제로 돌렸는지 확인할 수 없기 때문입니다. 공식 문서가 근거로 드는 것도 바로 그것입니다.
+`gh pr create` 직전에 본문을 봅니다. 본문이 테스트 통과나 검증을 **주장하는데** 돌린 명령과 그 출력이 없으면 PR을 열지 못합니다. 성공을 주장하지 않는 본문은 막지 않습니다(V51). 리뷰어는 "테스트 통과"라는 문장만으로는 실제로 돌렸는지 확인할 수 없기 때문입니다. 공식 문서가 근거로 드는 것도 바로 그것입니다.
 
 > "Have Claude show evidence rather than asserting success: the test output, the command it ran and what it returned, or a screenshot of the result."
 > (성공을 주장하는 대신 근거를 보여 주게 하라. 테스트 출력, 돌린 명령과 그 결과, 또는 결과 스크린샷이다.)
@@ -232,6 +202,7 @@ test_command      = "npm test"                # 커밋 직전에 이것
 |---|---|
 | 본문에 코드 블록이나 이미지가 있는 경우 | 통과 |
 | 본문이 "테스트 전부 통과했습니다"뿐인 경우 | 막습니다 |
+| 본문이 성공을 주장하지 않고 변경만 설명하는 경우 | 통과 |
 | 기준 브랜치 대비 코드 파일을 바꾸지 않은 경우(문서만) | 통과 |
 | `--fill`·`--web`처럼 본문이 명령에 없는 경우 | 통과. 볼 수 없는 것으로는 막지 않습니다 |
 | 커밋 메시지나 문서 안에 `gh pr create`라고 적은 경우 | 통과. 인용은 사용이 아닙니다 |
@@ -241,7 +212,7 @@ test_command      = "npm test"                # 커밋 직전에 이것
 
 **형식만 봅니다.** 붙인 출력이 실제로 돌린 결과인지는 가리지 못합니다. 막힌 모델에게 돌리지 않은 출력을 지어내지 말라고 알리는 데서 그칩니다. `gh pr edit --body`로 본문을 나중에 바꾸는 것도 보지 않습니다.
 
-한 줄짜리 코드 수정도 대상입니다. 작은 수정은 제목만으로 PR을 여는 관행과 부딪히는 자리인데, 코드를 바꿨다면 검사 출력 한 블록은 붙이는 쪽을 택했습니다. 문서만 바꾼 PR은 걸리지 않습니다.
+변경만 설명하는 본문은 통과합니다. 근거 문장은 성공을 **주장하는 대신** 근거를 보이라는 것이라, 주장이 없으면 뒷받침할 것도 없기 때문입니다. 성공 주장은 "통과"·"검증했"·"passed"·"verified" 같은 표현으로 알아봅니다.
 
 이 검사만 끄려면 `disabled_rules`에 `done.pr`을 적습니다. 완료 게이트 전체는 `NGG_DONE=0`으로 끕니다.
 
@@ -311,7 +282,7 @@ append-only 경로: supabase/migrations
 | `no-guess-gate/prompt.sh` | 턴마다 1회 | 51ms |
 | `no-guess-gate/stop.sh` | 턴 끝 | 161ms |
 | `done-gate/stop.sh` | 턴 끝 | 44ms |
-| `no-guess-gate/pre.sh` | 도구 호출마다 | 17ms. Write는 약 45ms, 파일을 보는 Bash(`cat` 등)는 약 67ms입니다(V47, 30회 중앙값). 이 둘에서만 파이썬을 띄웁니다 |
+| `no-guess-gate/pre.sh` | 도구 호출마다 | 17ms |
 | `test-integrity/pre.sh` | Edit·Write·Bash마다 | 46ms. 삭제 글자가 없는 Bash는 12ms |
 | `project-guard/pre.sh` | Edit·Write마다 | 41ms. V50부터 Bash에서는 돌지 않습니다 |
 | `done-gate/pre.sh` | Bash마다 | 커밋·PR 생성이 아니면 12ms |
@@ -356,12 +327,11 @@ append-only 경로: supabase/migrations
 |---|---|
 | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) "Minimizing hallucinations in agentic coding" | R0·R1·R2a·R2b. "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer" (열어 보지 않은 코드를 추측하지 마라. 코드베이스에 관한 질문에는 답하기 전에 관련 파일을 조사하고 읽어라. 정답을 확신하지 않는 한 조사하기 전에 코드에 대해 주장하지 마라). 근거 문장이 코드베이스 질문으로 범위를 한정하므로 R2a·R2b도 그 맥락에서만 봅니다 |
 | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | 불가 면제. "Allow Claude to say "I don't know"" (Claude가 모른다고 말할 수 있게 하라). 막힌 뒤 할 일로 안내하는 철회도 이 문서에서 왔습니다. "If it can't find a quote, it must retract the claim" (인용을 찾지 못하면 그 주장을 철회해야 한다) |
-| [Best practices](https://code.claude.com/docs/en/best-practices) | R3·R5, 완료 게이트의 Stop 훅 방식, PR 본문 검사(`done.pr`). "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라). 프로젝트 가드의 append-only(기존 파일 수정 차단). "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라) |
+| [Best practices](https://code.claude.com/docs/en/best-practices) | R3·R5, 완료 게이트의 Stop 훅 방식, 성공을 주장하는 PR 본문 검사(`done.pr`). "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라). 프로젝트 가드의 append-only(기존 파일 수정 차단). "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라) |
 | [Rails 마이그레이션 가이드](https://guides.rubyonrails.org/active_record_migrations.html) | append-only 의 수정 차단. "In general, editing existing migrations that have been already committed to source control is not a good idea." (이미 커밋한 마이그레이션을 고치는 것은 대체로 좋은 생각이 아니다). 같은 가이드가 오래된 마이그레이션 파일을 지워도 된다고 설명하므로 삭제는 막지 않습니다 |
 | [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | 구현 수단입니다. exit 2 차단, 8회 상한, 타임아웃, R5가 실패한 명령을 알아내는 `PostToolUseFailure` 이벤트 |
 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`·`ti.rm`. "cheating, for example by disabling or deleting tests" (속임수, 예컨대 테스트를 비활성화하거나 지우는 것). `done.commit`. "Only commit when: 1. ALL tests are passing" (모든 테스트가 통과할 때만 커밋하라) |
 | Gabor 외, [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17) "Modified Testing Procedure" | `ti.assert`·`ti.exclude`. "The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다. 테스트 케이스가 받아들이는 답을 바꾸거나 테스트 케이스를 지우거나 무시할 수 있다) |
-| [Tools reference](https://code.claude.com/docs/en/tools-reference) | `rb.write`. "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." (Claude Opus 4.6, Claude Haiku 4.5와 그 이전 모델은 늘 읽기를 요구한다) 최신 모델에게 이 요구가 풀린 뒤(v2.1.228) Write의 통째 덮어쓰기만 다시 막습니다. Edit는 현재 내용과 맞아야 적용되지만 Write는 파일 전체를 바꾸기 때문입니다 |
 
 Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:init`·`/check:tdd`·`/check:ship`)의 근거로 씁니다. 한 번만 허용하기는 막는 규칙이 아니라 푸는 장치이고, Probity에서 가져왔습니다.
 
@@ -376,7 +346,7 @@ Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guide
 claude --plugin-dir .                         # 설치본 대신 이 폴더를 그 세션에 로드
 claude plugin validate .                      # 매니페스트와 훅 배선 검사
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 438건. 모델을 부르지 않는다
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 415건. 모델을 부르지 않는다
 tests/fuzz.sh                                 # 망가진 입력 24종 × 훅 열 = 240회
 tests/no-guess-gate/selftest.sh               # 실제 프롬프트 회귀 12케이스, 몇 분
 tests/no-guess-gate/judge-accuracy.sh         # 판정기 정확도·소요 시간, 몇 분

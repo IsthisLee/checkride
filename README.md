@@ -17,18 +17,17 @@
 Claude Code 공식 문서를 비롯한 여러 개발 문서가 권하는 모범 사례를, Claude가 실제로 준수하도록 강제합니다. 턴이 끝날 때마다 그 사례를 지켰는지 검사하고, 지키지 않았으면 턴을 끝내지 못하게 막습니다.
 
 
-| 검사하는 모범 사례                  | 어긴 순간                                                       |
-| --------------------------- | ----------------------------------------------------------- |
-| **근거 없이 주장하지 않습니다**         | 열어 보지도 않고 "그런 파일 없습니다" → 그 답이 나가지 못합니다                      |
-| **읽지 않은 파일을 통째로 덮어쓰지 않습니다** | 열어 보지도 않은 설정 파일을 Write로 새로 씀 → 먼저 읽기 전에는 그 쓰기가 되지 않습니다      |
-| **성공을 주장하지 말고 근거를 보여 줍니다**  | 테스트를 안 돌리고 "다 됐습니다" → 검사가 자동으로 돌고 실패하면 턴이 끝나지 않습니다          |
-|                             | 본문에 "통과했습니다"만 적고 PR을 열려 함 → 돌린 명령과 출력을 붙이기 전에는 PR이 열리지 않습니다 |
-| **테스트를 비활성화하거나 지우지 않습니다**   | 통과시키려고 `.skip`을 붙임 → 그 편집이 아예 안 됩니다                         |
-|                             | 설정에 제외 패턴을 넣어 테스트를 뺌 → 그것도 막힙니다                             |
-| **쌓인 기록은 고치지 않습니다**         | 이미 올라간 마이그레이션을 고치려 함 → 그 편집이 되지 않습니다                           |
+| 검사하는 모범 사례                 | 훅이 발동하는 상황                                                  |
+| -------------------------- | ----------------------------------------------------------- |
+| **근거 없이 주장하지 않습니다**        | 열어 보지도 않고 "그런 파일 없습니다" → 그 답이 나가지 못합니다                      |
+| **성공을 주장하지 말고 근거를 보여 줍니다** | 테스트를 안 돌리고 "다 됐습니다" → 검사가 자동으로 돌고 실패하면 턴이 끝나지 않습니다          |
+|                            | 본문에 "통과했습니다"만 적고 PR을 열려 함 → 돌린 명령과 출력을 붙이기 전에는 PR이 열리지 않습니다 |
+| **테스트를 비활성화하거나 지우지 않습니다**  | 통과시키려고 `.skip`을 붙임 → 그 편집이 아예 안 됩니다                         |
+|                            | 설정에 제외 패턴을 넣어 테스트를 뺌 → 그것도 막힙니다                             |
+| **쌓인 기록은 고치지 않습니다**        | 이미 올라간 마이그레이션을 고치려 함 → 그 편집이 되지 않습니다                        |
 
 
-다섯 가지 사례는 모두 **공식 문서와 개발 문서가 권하는 것입니다.** 각 사례가 어느 문장에서 나왔는지는 [근거](#근거)에 정리해 두었습니다.
+네 가지 사례는 모두 **공식 문서와 개발 문서가 권하는 것입니다.** 각 사례가 어느 문장에서 나왔는지는 [근거](#근거)에 정리해 두었습니다.
 
 규칙은 항목마다 끌 수 있습니다. `/check:config`로 항목의 출처를 보고 고르면 `.check.toml`에 적혀 커밋에 남으므로, 무엇을 껐는지 팀이 함께 봅니다. 테스트 무결성·완료 게이트에서 오탐 한 건만 넘기려면 다음 프롬프트에 `check allow <항목>`을 한 줄로 쓰면 됩니다. 자세한 방법은 [끄기와 제거](#끄기와-제거)에 있습니다.
 
@@ -36,13 +35,17 @@ Claude Code 공식 문서를 비롯한 여러 개발 문서가 권하는 모범 
 
 > **왜 훅인가.** 같은 문서가 답합니다. "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens." (권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다.)
 
-<p align="center"><img src="docs/assets/demo.svg" alt="근거 없는 답이 막히고 실측한 뒤 다시 답하는 화면" width="760">
+<p align="center">
+
+<img src="docs/assets/demo.svg" alt="근거 없는 답이 막히고 실측한 뒤 다시 답하는 화면" width="760">
 
 </p>
 
 **이 플러그인은 자기 자신에게도 예외를 두지 않습니다.** 아래는 실제 사용 중에 게이트가 이 에이전트를 막았던 사례입니다. 파일을 열어 보지도 않고 단정하려다 R1에 걸렸고, 확인할 수 있는 로컬 상태를 "~처럼 보인다"라고 얼버무리려다 R2b에 걸렸습니다. 두 경우 모두 막힌 뒤에야 파일과 원문을 직접 확인하고 다시 답했습니다.
 
-<p align="center"><img src="docs/assets/cases.svg" alt="게이트가 이 에이전트를 실제로 막은 사례" width="760">
+<p align="center">
+
+<img src="docs/assets/cases.svg" alt="게이트가 이 에이전트를 실제로 막은 사례" width="760">
 
 </p>
 
@@ -80,11 +83,13 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 
 그래서 이 플러그인은 모델에게 미리 시키지 않고, 나온 답을 턴 끝에 밖에서 대조합니다. 비용은 막힐 때만 붙습니다.
 
-| 경우 | 드는 비용 |
-| --- | --- |
-| 걸리지 않은 턴 | 모델 토큰은 들지 않습니다. 정규식 검사만 돌고 약 256ms가 붙습니다 |
-| 막힌 턴 | Claude가 확인하고 다시 답하는 한 턴 분량입니다. 실제 사용에서 898번 검사 중 69번(약 8%)이었습니다 |
-| 의견인지 상태 주장인지 애매한 턴 | 작은 모델(haiku) 판정 한 번입니다. 차단의 약 4%에서만 부릅니다 |
+
+| 경우                 | 드는 비용                                                           |
+| ------------------ | --------------------------------------------------------------- |
+| 걸리지 않은 턴           | 모델 토큰은 들지 않습니다. 정규식 검사만 돌고 약 256ms가 붙습니다                        |
+| 막힌 턴               | Claude가 확인하고 다시 답하는 한 턴 분량입니다. 실제 사용에서 898번 검사 중 69번(약 8%)이었습니다 |
+| 의견인지 상태 주장인지 애매한 턴 | 작은 모델(haiku) 판정 한 번입니다. 차단의 약 4%에서만 부릅니다                        |
+
 
 막힌 뒤 다시 답하는 턴의 비용도 줄었습니다. [Claude Code 변경 이력](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) 2.1.259는 차단 뒤의 턴이 캐시를 놓치던 문제를 고쳤습니다.
 
@@ -134,7 +139,7 @@ Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 여섯 개를 검사�
 | **R0**  | 사용자가 이 디렉터리·파일·코드의 상태를 물었는데 도구를 한 번도 안 씀   | "여기 테스트 있어?" → 확인 없이 "없습니다"  |
 | **R1**  | 도구 없이 특정 경로·파일의 존재나 상태를 단정                 | "src/auth.ts에 버그가 있다" (안 읽고) |
 | **R2a** | 코드베이스에 관한 질문에 도구를 한 번도 안 쓰고 "확인이 필요하다"로 끝냄 | "실제 동작은 확인이 필요합니다."로 끝       |
-| **R2b** | 확인 가능한 로컬 상태를 추정으로 메움                      | "아마 설정 파일이 없어서일 겁니다"         |
+| **R2b** | 도구를 한 번도 안 쓰고 확인 가능한 로컬 상태를 추정으로 메움        | "아마 설정 파일이 없어서일 겁니다"         |
 | **R3**  | Bash 실행 0건인데 테스트·검증을 했다고 주장                | "테스트 통과했습니다" (안 돌리고)         |
 | **R5**  | 마지막으로 돌린 명령이 **실패**했는데 통과·검증을 주장           | `npm test`가 깨졌는데 "전부 통과했습니다" |
 
@@ -172,10 +177,10 @@ Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 여섯 개를 검사�
 | 게이트             | 이벤트(대상 도구)                               | 스크립트                       | 하는 일                                                                                                            |
 | --------------- | ---------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | **근거**          | `UserPromptSubmit`                       | `no-guess-gate/prompt.sh`  | 기록: 프롬프트와 `check allow`                                                                                         |
-|                 | `PreToolUse`(모든 도구)                      | `no-guess-gate/pre.sh`     | 기록: 쓴 도구와 읽은 파일<br>**막음**: 읽지 않은 기존 파일을 Write로 덮어쓰기(`rb.write`)                                                                                               |
+|                 | `PreToolUse`(모든 도구)                      | `no-guess-gate/pre.sh`     | 기록: 쓴 도구(막지 않습니다)                                                                                               |
 |                 | `PostToolUse`·`PostToolUseFailure`(Bash) | `no-guess-gate/bashres.sh` | 기록: Bash의 성공·실패(R5가 봅니다)                                                                                        |
 |                 | `Stop`·`SubagentStop`                    | `no-guess-gate/stop.sh`    | **막음**: R0·R1·R2a·R2b·R3·R5                                                                                     |
-| **완료**          | `PreToolUse`(Bash)                       | `done-gate/pre.sh`         | **막음**: 근거 없는 PR 본문(`done.pr`)<br>**막음**: 전체 검사가 실패한 커밋(`done.commit`, `fast_test_command`를 나눈 저장소) |
+| **완료**          | `PreToolUse`(Bash)                       | `done-gate/pre.sh`         | **막음**: 근거 없이 성공·검증을 주장하는 PR 본문(`done.pr`)<br>**막음**: 전체 검사가 실패한 커밋(`done.commit`, `fast_test_command`를 나눈 저장소) |
 |                 | `PostToolUse`(Edit·Write)                | `done-gate/post.sh`        | 기록: 이 턴에 고친 파일                                                                                                  |
 |                 | `Stop`                                   | `done-gate/stop.sh`        | **막음**: 코드를 고친 턴에 검사가 실패하면 턴 종료(`done.turn`)                                                                    |
 | **테스트 무결성**     | `PreToolUse`(Edit·Write·Bash)            | `test-integrity/pre.sh`    | **막음**: 무력화 표기 추가, 단언 감소, 테스트 파일 삭제, 러너 설정의 제외 추가(`ti.*`)                                                       |
@@ -280,15 +285,14 @@ Claude는 이런 메시지를 받습니다.
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 확인 없이 답하거나 단정·유보·추정하기(R0·R1·R2a·R2b)                     | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) "Minimizing hallucinations in agentic coding" | "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase." (열어 보지 않은 코드를 추측하지 마라. 코드베이스에 관한 질문에는 답하기 전에 관련 파일을 조사하고 읽어라.) |
 | 확인할 수 없다고 밝힌 답은 풀어 주기(불가 면제)                             | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations)                                                         | "Allow Claude to say "I don't know"" (Claude가 모른다고 말할 수 있게 하라.)                                                                                                                                                      |
-| 거짓 완료(R3), 실패한 명령의 통과 주장(R5), 턴 끝 검사, PR 본문              | [Best practices](https://code.claude.com/docs/en/best-practices)                                                                                                                   | "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라.)                                                                                                                                |
+| 거짓 완료(R3), 실패한 명령의 통과 주장(R5), 턴 끝 검사, 성공을 주장하는 PR 본문     | [Best practices](https://code.claude.com/docs/en/best-practices)                                                                                                                   | "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라.)                                                                                                                                |
 | 테스트 무력화·삭제(`ti.skip`·`ti.rm`), 커밋 전 전체 검사(`done.commit`) | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes)                                                                                 | "cheating, for example by disabling or deleting tests" (속임수, 예컨대 테스트를 비활성화하거나 지우는 것) · "Only commit when: 1. ALL tests are passing" (모든 테스트가 통과할 때만 커밋하라.)                                                           |
 | 단언 감소·러너 설정 제외(`ti.assert`·`ti.exclude`)                 | Gabor 외, [EvilGenie](https://arxiv.org/abs/2511.21654) "Modified Testing Procedure"                                                                                                | "The agent modifies the test cases or the code that runs the testing procedure." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다.)                                                                                                  |
 | 마이그레이션 수정                                                | [Best practices](https://code.claude.com/docs/en/best-practices)                                                                                                                   | "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라.)                                                                                                                           |
 | 이미 커밋한 마이그레이션 수정(삭제는 막지 않음)                              | [Rails 마이그레이션 가이드](https://guides.rubyonrails.org/active_record_migrations.html)                                                                                                   | "In general, editing existing migrations that have been already committed to source control is not a good idea." (이미 소스 관리에 커밋한 마이그레이션을 고치는 것은 대체로 좋은 생각이 아니다.)                                                      |
-| 읽지 않은 파일 덮어쓰기(`rb.write`)                                | [Tools reference](https://code.claude.com/docs/en/tools-reference)                                                                                                                 | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." (Claude Opus 4.6, Claude Haiku 4.5와 그 이전 모델은 늘 읽기를 요구한다.)                                                                             |
 
 
-출처 문서가 뒷받침하지 않아 뺀 규칙(R4, `pg.noverify`)과 범위를 좁힌 규칙(R2a)은 [설계 결정](docs/decisions.md#6-근거가-없는-규칙은-뺐습니다)에 있습니다. Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:init`·`/check:tdd`·`/check:ship`)의 근거로 씁니다.
+출처 문서가 뒷받침하지 않아 뺀 규칙(R4, `pg.noverify`, `rb.write`)과 범위를 좁힌 규칙(R2a·R2b·`done.pr`)은 [설계 결정](docs/decisions.md#6-근거가-없는-규칙은-뺐습니다)에 있습니다. Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:init`·`/check:tdd`·`/check:ship`)의 근거로 씁니다.
 
 ## 비슷한 도구
 

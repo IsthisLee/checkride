@@ -30,13 +30,12 @@ One table with five columns: **Gate, Name, Blocks, Source, On/Off.** Use these r
 | Evidence | `R0` | Answering about this repo's state without running a tool | Prompting best practices, "investigate and read relevant files BEFORE answering questions about the codebase" |
 | Evidence | `R1` | Asserting a file's state without looking | Prompting best practices, "Never make any claims about code before investigating unless you are certain of the correct answer" |
 | Evidence | `R2a` | In a question about the codebase, ending on "this needs to be verified" without running a tool | Prompting best practices, "investigate and read relevant files BEFORE answering questions about the codebase". Saying why it cannot be checked is exempt: Reduce hallucinations, "Allow Claude to say I don't know" |
-| Evidence | `R2b` | Guessing at local state ("probably") | Prompting best practices, "Never speculate about code you have not opened" |
+| Evidence | `R2b` | With zero tool calls, guessing at local state ("probably") | Prompting best practices, "Never speculate about code you have not opened" |
 | Evidence | `R3` | Claiming tests passed with zero Bash calls | Best practices, "Have Claude show evidence rather than asserting success" |
 | Evidence | `R5` | Claiming success when the last command failed | Best practices, "Have Claude show evidence rather than asserting success" |
-| Evidence | `rb.write` | Overwriting an existing file with Write before reading it this session | Tools reference, "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." Newer models may skip the read, so only whole-file overwrites are blocked again |
 | Completion | `done.turn` | Ending a turn that changed code before the check passes | Best practices, "As a deterministic gate: a Stop hook runs your check as a script and blocks the turn from ending until it passes." |
 | Completion | `done.commit` | Committing before the full check passes | Kent Beck, "Only commit when ALL tests are passing." |
-| Completion | `done.pr` | Opening a PR whose body has no command output | Best practices, "Have Claude show evidence rather than asserting success" |
+| Completion | `done.pr` | Opening a PR whose body claims tests passed or something was verified, with no command output | Best practices, "Have Claude show evidence rather than asserting success" |
 | Test integrity | `ti.skip` | Adding `.skip`-style markers to tests | Kent Beck, "disabling or deleting tests" |
 | Test integrity | `ti.assert` | Removing assertions | EvilGenie (arXiv 2511.21654), "Modified Testing Procedure": "The agent modifies the test cases or the code that runs the testing procedure." |
 | Test integrity | `ti.rm` | Deleting test files | Kent Beck, same sentence |
@@ -46,7 +45,7 @@ Append-only paths have no name here. They are on only when `append_only` is set,
 
 ## 3. Ask what to turn off
 
-Use `AskUserQuestion` with multi-select, one question per gate, listing that gate's items. The question is **which to turn off**, not which to keep. It allows at most four options per question, so split the evidence gate's seven items across two questions. If I only want to change one gate, ask about that one.
+Use `AskUserQuestion` with multi-select, one question per gate, listing that gate's items. The question is **which to turn off**, not which to keep. It allows at most four options per question, so split the evidence gate's six items across two questions. If I only want to change one gate, ask about that one.
 
 Before asking, say this once: for a single false positive, writing `check allow <item>` on its own line in the next prompt lets one action through without turning anything off. That does not cover `R0`–`R5`.
 

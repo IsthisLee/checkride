@@ -6,7 +6,8 @@
 # 1. gh pr create 직전에 PR 본문에 근거가 있는지 본다.
 #    공식 best practices: "Have Claude show evidence rather than asserting success:
 #    the test output, the command it ran and what it returned, or a screenshot of the result."
-#    닫힌 코드 블록이나 이미지가 없으면 막는다. 형식만 본다. 붙인 출력이 진짜인지는 가리지 못한다.
+#    본문이 성공이나 검증을 주장하는데 닫힌 코드 블록이나 이미지가 없으면 막는다(V51). 주장이 없는 본문은 막지 않는다.
+#    형식만 본다. 붙인 출력이 진짜인지는 가리지 못한다.
 #    본문을 명령에서 볼 수 없으면(--fill, --web, 파이프로 넘긴 본문) 막지 않는다.
 #    기준 브랜치 대비 문서만 바꿨으면 대상이 아니다. stop.sh 의 원칙과 같다.
 # 2. git commit 직전에 전체 검사를 한 번 돌린다.
@@ -86,6 +87,9 @@ else:
 # 근거: 닫힌 코드 블록(여는 줄과 닫는 줄) 또는 이미지. 큰따옴표 안에서는 백틱이 \` 로 온다.
 if len(re.findall(r"^[ \t]*(?:(?:\\?`){3}|~~~)", text, re.M)) >= 2: sys.exit(0)
 if re.search(r"!\[[^\]]*\]\([^)\s]+|<img\s", text, re.I): sys.exit(0)
+# 성공이나 검증을 주장하지 않는 본문은 대상이 아니다. 근거 문장은 "rather than asserting success" 다(V51).
+CLAIM = r"(통과|성공했|성공합니다|검증(했|됐|완료)|확인(했|됐|완료)|정상\s*(동작|작동)|\bpass(es|ed|ing)?\b|\bgreen\b|\bverified\b|\btested\b|\bworks (as expected|correctly|now)\b)"
+if not re.search(CLAIM, text, re.I): sys.exit(0)
 # 코드가 아닌 변경은 대상이 아니다. 기준 브랜치 대비 바뀐 파일을 본다. 로컬 git 만 쓴다.
 base = val(("--base", "-B"))
 cands = ["origin/" + base, base] if base else ["origin/HEAD", "origin/main", "origin/master", "main", "master"]

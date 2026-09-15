@@ -19,7 +19,6 @@ did-you-check does the checking. It turns what the Claude Code docs and other de
 | The practice being checked | The moment it is broken |
 |---|---|
 | **Never claim what you did not check** | "There's no such file" — without opening anything → that answer never leaves |
-| **Never overwrite a file you have not read** | Rewriting a config file with Write without ever opening it → the write does not go through until the file is read |
 | **Show evidence instead of asserting success** | "All done" — without running the tests → the check runs, and a failure keeps the turn open |
 | | Opening a PR whose body only says "tests pass" → the PR does not open until the command and its output are in it |
 | **Never disable or delete a test** | Adding `.skip` to make it pass → the edit itself is refused |
@@ -119,7 +118,7 @@ When Claude tries to finish a turn, a `Stop` hook checks six rules. If any fires
 | **R0** | You asked about this directory/file/code and Claude used zero tools | "Are there tests here?" → "No" without looking |
 | **R1** | Asserting a path's existence or state with no tool call | "The bug is in src/auth.ts" — without reading it |
 | **R2a** | On a question about the codebase, ending with "this needs to be verified" after zero tool calls | "The actual behavior would need checking." |
-| **R2b** | Filling in checkable local state with a guess | "It's probably because the config file is missing" |
+| **R2b** | With zero tool calls, filling in checkable local state with a guess | "It's probably because the config file is missing" |
 | **R3** | Claiming tests or verification ran with zero Bash calls | "Tests pass" — without running them |
 | **R5** | The last command you ran **failed**, yet you claim it passed | `npm test` broke, but "all tests pass" |
 
@@ -153,10 +152,10 @@ The wiring is in `plugin/hooks/hooks.json`: 12 hooks in all. Each one either **b
 | Gate | Event (tools) | Script | What it does |
 | --- | --- | --- | --- |
 | **Evidence** | `UserPromptSubmit` | `no-guess-gate/prompt.sh` | Records the prompt and any `check allow` |
-| | `PreToolUse` (every tool) | `no-guess-gate/pre.sh` | Records the tools used and files read<br>**Blocks** a Write over an existing file not read this session (`rb.write`) |
+| | `PreToolUse` (every tool) | `no-guess-gate/pre.sh` | Records the tools used (never blocks) |
 | | `PostToolUse`·`PostToolUseFailure` (Bash) | `no-guess-gate/bashres.sh` | Records whether each Bash call succeeded or failed (read by R5) |
 | | `Stop`·`SubagentStop` | `no-guess-gate/stop.sh` | **Blocks** R0, R1, R2a, R2b, R3, R5 |
-| **Completion** | `PreToolUse` (Bash) | `done-gate/pre.sh` | **Blocks** a PR body without evidence (`done.pr`)<br>**Blocks** a commit whose full check fails (`done.commit`, in repos that set `fast_test_command`) |
+| **Completion** | `PreToolUse` (Bash) | `done-gate/pre.sh` | **Blocks** a PR body that claims success or verification without evidence (`done.pr`)<br>**Blocks** a commit whose full check fails (`done.commit`, in repos that set `fast_test_command`) |
 | | `PostToolUse` (Edit·Write) | `done-gate/post.sh` | Records the files changed this turn |
 | | `Stop` | `done-gate/stop.sh` | **Blocks** the end of a turn that changed code while the check fails (`done.turn`) |
 | **Test integrity** | `PreToolUse` (Edit·Write·Bash) | `test-integrity/pre.sh` | **Blocks** added disable markers, fewer assertions, test file deletion, new runner-config exclusions (`ti.*`) |
@@ -241,14 +240,13 @@ Every practice this plugin checks names the sentence it came from. **A rule ship
 |---|---|---|
 | Answering, asserting, deferring or guessing without looking (R0, R1, R2a, R2b) | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), "Minimizing hallucinations in agentic coding" | "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase." |
 | Releasing an answer that says why it cannot check (impossibility exemption) | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | "Allow Claude to say "I don't know"" |
-| False "done" (R3), claiming a failed command passed (R5), end-of-turn check, PR body | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
+| False "done" (R3), claiming a failed command passed (R5), end-of-turn check, a PR body that claims success | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
 | Disabling or deleting tests (`ti.skip`, `ti.rm`), full check before commit (`done.commit`) | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" · "Only commit when: 1. ALL tests are passing" |
 | Fewer assertions, runner-config exclusions (`ti.assert`, `ti.exclude`) | Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654), "Modified Testing Procedure" | "The agent modifies the test cases or the code that runs the testing procedure." |
 | Rewritten migrations | [Best practices](https://code.claude.com/docs/en/best-practices) | "Write a hook that blocks writes to the migrations folder." |
 | Editing a committed migration (deleting is not blocked) | [Rails migrations guide](https://guides.rubyonrails.org/active_record_migrations.html) | "In general, editing existing migrations that have been already committed to source control is not a good idea." |
-| Overwriting a file you never read (`rb.write`) | [Tools reference](https://code.claude.com/docs/en/tools-reference) | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." |
 
-Rules dropped because their sources did not back them (R4, `pg.noverify`) and the rule whose scope was narrowed (R2a) are recorded in V49 of the [verification log](docs/VERIFICATION.md). Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules.
+Rules dropped because their sources did not back them (R4, `pg.noverify`, `rb.write`) and rules whose scope was narrowed (R2a, R2b, `done.pr`) are recorded in V49 of the [verification log](docs/VERIFICATION.md). Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules.
 
 ## Related
 

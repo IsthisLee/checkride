@@ -61,7 +61,8 @@ v=""
 # 돌렸는데 실패한 경우가 비어 있었다. bashres.sh 가 S/F 를 순서대로 남긴다.
 lastb=$(tail -c 1 "$s/bashseq" 2>/dev/null || true)
 [ "$prose" -eq 1 ] && [ "$lastb" = "F" ] && printf '%s' "$resid" | grep -qiE "$R3" && v="$v R5"
-[ "$ctx" -eq 1 ] && [ "$prose" -eq 1 ] && printf '%s' "$resid" | grep -qiE "$R2b" && ! printf '%s' "$last" | grep -qiE "$NG2" && v="$v R2b"
+# R2b 는 도구를 쓰지 않은 턴만 본다. 근거 문장이 "code you have not opened" 에 대한 것이라, 도구를 쓴 턴의 추정은 판단하지 않는다(V51).
+[ "$ntools" -eq 0 ] && [ "$ctx" -eq 1 ] && [ "$prose" -eq 1 ] && printf '%s' "$resid" | grep -qiE "$R2b" && ! printf '%s' "$last" | grep -qiE "$NG2" && v="$v R2b"
 [ "$nbash" -eq 0 ] && printf '%s' "$last" | grep -qiE "$R3" && ! printf '%s' "$last" | grep -qiE "$NEG" && v="$v R3"
 v="${v# }"
 

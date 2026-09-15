@@ -33,6 +33,9 @@ for pat in "xit('a', () => {})" "describe.only('a', () => {})" "@pytest.mark.ski
   edit "$P" "$P/tests/x_test.go" "assert(1)" "$pat assert(1)" | "$W/pre.sh" 2>/dev/null; check 2 $? "무력화 표기 차단: ${pat:0:18}"
 done
 
+# it.todo 는 아직 쓰지 않은 테스트의 자리다. 있던 테스트를 끄지 않으므로 막지 않는다(V51).
+edit "$P" "$P/src/a.test.ts" "it('a', () => { expect(a).toBe(1) })" "it('a', () => { expect(a).toBe(1) }); it.todo('b')" | "$W/pre.sh" 2>/dev/null; check 0 $? "it.todo 추가 → 통과"
+
 # 3. 단언을 지우면 막는다
 edit "$P" "$P/src/a.test.ts" "expect(a).toBe(1); expect(b).toBe(2);" "expect(a).toBe(1);" | "$W/pre.sh" 2>"$T/e3"; check 2 $? "단언 개수 감소 → exit 2"
 grep -q '단언' "$T/e3"; check 0 $? "stderr에 단언 감소 표시"

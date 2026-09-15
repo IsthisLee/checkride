@@ -194,6 +194,10 @@ newrepo() { local r; r=$(newproj "$1"); git init -q "$r"; gitc "$r" checkout -qb
 PRC=$(newrepo prcode src/a.ts)
 PRD=$(newrepo prdocs docs/guide.md)
 
+# 성공을 주장하지 않는 본문은 막지 않는다(V51). 근거 문장은 "성공을 주장하는 대신" 근거를 보이라는 것이라,
+# 주장이 없는 본문에 근거를 요구할 근거는 없다.
+prrun p0 "$PRC" "gh pr create --title t --body '로그인 버튼 문구를 바꿨습니다.'"; check 0 $? "PR: 성공 주장이 없는 본문 → 통과"
+prrun p0e "$PRC" "gh pr create --title t --body 'Rename the login button label.'"; check 0 $? "PR: 영어 본문도 성공 주장이 없으면 → 통과"
 prrun p1 "$PRC" "gh pr create --title t --body '테스트 전부 통과했습니다.'"; check 2 $? "PR: 말로만 통과 → exit 2"
 grep -q '완료 게이트' "$T/epr"; check 0 $? "PR: stderr에 완료 게이트 머리글"
 grep -q 'PR' "$T/epr"; check 0 $? "PR: stderr에 무엇을 막았는지"

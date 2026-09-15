@@ -7,6 +7,7 @@
 # for example by disabling or deleting tests."
 #
 # 막는 것은 셋뿐이다. 무력화 표기 추가, 단언 개수 감소, 테스트 파일 삭제.
+# it.todo 는 아직 쓰지 않은 테스트의 자리라 표기 목록에 넣지 않는다(V51).
 # **테스트 수정 전반을 막지 않는다.** 기댓값을 고치거나 단언을 더하는 것은 통과한다.
 # TDD는 테스트를 먼저 쓰고 고치는 방법론이라 그것까지 막으면 문서가 권하는 바와 반대로 간다.
 #
@@ -20,7 +21,7 @@ read_in
 [ "${NGG_TESTGUARD:-1}" = "0" ] && exit 0
 
 TESTPATH='(\.(test|spec)\.[a-z]+$|(^|/)__tests__/|(^|/)tests?/|(^|/)test_[^/]+\.py$|_test\.(go|py|rb|ex)$|(^|/)spec/)'
-DISABLE='(\.skip\(|\.only\(|\bxit\(|\bxdescribe\(|\bxtest\(|@pytest\.mark\.(skip|xfail)|#\[ignore\]|\bt\.Skip\(|@Ignore\b|\bpending\(|it\.todo\(|describe\.skip\()'
+DISABLE='(\.skip\(|\.only\(|\bxit\(|\bxdescribe\(|\bxtest\(|@pytest\.mark\.(skip|xfail)|#\[ignore\]|\bt\.Skip\(|@Ignore\b|\bpending\(|describe\.skip\()'
 # 테스트 러너 설정. 테스트 파일을 건드리지 않고 여기에 제외를 넣어 테스트를 빼는 길이 있었다.
 # EvilGenie(arXiv 2511.21654)가 "Modified Testing Procedures"로 분류한 행동이다.
 RUNNERCFG='((^|/)(jest|vitest|karma|playwright|cypress|webpack)\.config\.[a-z]+$|(^|/)(pytest\.ini|tox\.ini|setup\.cfg|pyproject\.toml|phpunit\.xml|\.mocharc\.[a-z]+|\.nycrc)$|(^|/)jest\.config$)'
