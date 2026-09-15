@@ -280,7 +280,8 @@ assert pm == ["Edit|Write", "Bash"], f"PostToolUse matcher={pm}"
 fm = [g.get("matcher") for g in hooks["PostToolUseFailure"]]
 assert fm == ["Bash"], f"PostToolUseFailure matcher={fm}"
 tm = [g.get("matcher") for g in hooks["PreToolUse"]]
-assert tm == [None, "Edit|Write|Bash", "Edit|Write|Bash", "Bash"], f"PreToolUse matcher={tm}"
+# 프로젝트 가드는 Edit|Write 에만 건다. Bash 에서 막던 삭제 차단은 근거가 없어 뺐다(V50).
+assert tm == [None, "Edit|Write|Bash", "Edit|Write", "Bash"], f"PreToolUse matcher={tm}"
 PY
 check 0 $? "hooks.json: 일곱 이벤트에 다섯 모듈 배선·PLUGIN_ROOT/DATA·shell·타임아웃·matcher"
 for f in "$G/prompt.sh" "$G/pre.sh" "$G/stop.sh" "$G/judge.py" "$G/../done-gate/post.sh" "$G/../done-gate/stop.sh" "$G/../test-integrity/pre.sh" "$G/../project-guard/pre.sh" "$G/../repo-profile/session.sh" "$G/../done-gate/pre.sh"; do [ -x "$f" ] || { echo "❌ $(basename "$f") 실행 비트 없음"; fail=$((fail+1)); }; done

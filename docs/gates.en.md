@@ -18,7 +18,7 @@ The four gates and the repo profile hook into different events. **At `Stop` (tur
 |---|---|---|---|---|---|
 | `SessionStart` | | | | | loads repo facts into context |
 | `UserPromptSubmit` | reads `check allow` | | | | |
-| `PreToolUse` | records every tool name; blocks only a Write over an unread existing file (`rb.write`) | Bash | Edit·Write·Bash | Edit·Write·Bash | |
+| `PreToolUse` | records every tool name; blocks only a Write over an unread existing file (`rb.write`) | Bash | Edit·Write·Bash | Edit·Write | |
 | `PostToolUse` | records Bash result as S/F | Edit·Write | | | |
 | `PostToolUseFailure` | records the Bash failure | | | | |
 | `Stop` | R0–R5 | check command | | | |
@@ -234,7 +234,13 @@ This is the spot the official hook example points at.
 
 > "Write a hook that blocks writes to the migrations folder."
 
-This guard is more precise: **new files are allowed; only edits and deletions of existing files are blocked.** You still need to write migrations.
+The Rails guide says the same about committed migrations:
+
+> "In general, editing existing migrations that have been already committed to source control is not a good idea."
+
+This guard is narrower than both: **new files are allowed; only edits to existing files are blocked.** You still need to write migrations.
+
+**Deleting and moving are not blocked.** Both sources stop at writes and edits, and the Rails guide describes being able to "delete or prune" old migration files once the schema file is the source of truth. `rm` and `git rm` used to be blocked too; that had no source and was dropped (V50). Sources checked on 2026-09-16.
 
 ```toml
 # .check.toml
@@ -272,13 +278,13 @@ Installing this adds time to every turn. Here are the numbers: the median of 20 
 | `done-gate/stop.sh` | end of turn | 44ms |
 | `no-guess-gate/pre.sh` | per tool call | 17ms; about 45ms for a Write and about 67ms for a Bash call that views a file, such as `cat` (V47, median of 30). Only those two start Python |
 | `test-integrity/pre.sh` | per Edit, Write or Bash call | 46ms; 12ms for a Bash call with no delete in it |
-| `project-guard/pre.sh` | per Edit, Write or Bash call | 41ms; 13ms for a Bash call with no delete, move or commit in it |
+| `project-guard/pre.sh` | per Edit or Write call | 41ms. Since V50 it no longer runs on Bash |
 | `done-gate/pre.sh` | per Bash call | 12ms unless it is a commit or a PR |
 | `no-guess-gate/bashres.sh` | per Bash call | 17ms |
 | `done-gate/post.sh` | per Edit or Write call | 44ms |
 | `repo-profile/session.sh` | once per session | 65ms |
 
-**The per-turn floor is about 256ms** (`prompt` plus both `stop` hooks). What a tool call adds depends on the tool: about 70ms per Bash call, or about 170ms when the command deletes, moves, commits or opens a PR and the hooks check it all the way; about 155ms per Edit or Write; 17ms for any other tool. The three Bash-side hooks look at the tool name and the relevant words first, and skip Python for commands that do not concern them (V40). Opening a session costs 65ms once.
+**The per-turn floor is about 256ms** (`prompt` plus both `stop` hooks). What a tool call adds depends on the tool: about 70ms per Bash call, or about 170ms when the command deletes, moves, commits or opens a PR and the hooks check it all the way (both measured while the project guard still ran on Bash; now shorter by that hook's share, 13ms or 41ms for a delete, and not re-measured); about 155ms per Edit or Write; 17ms for any other tool. The three Bash-side hooks look at the tool name and the relevant words first, and skip Python for commands that do not concern them (V40). Opening a session costs 65ms once.
 
 The first measurement (V28) put the floor at 326ms. Running v1.5.0 through the same script today gives 258ms, so the drop comes from the measuring conditions, not the code. 1.6.0 added four features and no hook moved by more than 5ms.
 
@@ -314,7 +320,8 @@ Every rule cites where it came from. The bar: **what the rule blocks must be in 
 |---|---|
 | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), "Minimizing hallucinations in agentic coding" | R0, R1, R2a, R2b. *"Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer."* The sentence is scoped to questions about the codebase, so R2a and R2b look only at that context |
 | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | The impossibility exemption. *"Allow Claude to say "I don't know""*. Retraction, which the block message points to, also comes from here: *"If it can't find a quote, it must retract the claim."* |
-| [Best practices](https://code.claude.com/docs/en/best-practices) | R3, R5, the completion gate's Stop-hook approach, and the PR body check (`done.pr`). *"Have Claude show evidence rather than asserting success."* The project guard's append-only: *"Write a hook that blocks writes to the migrations folder."* |
+| [Best practices](https://code.claude.com/docs/en/best-practices) | R3, R5, the completion gate's Stop-hook approach, and the PR body check (`done.pr`). *"Have Claude show evidence rather than asserting success."* The project guard's append-only (blocking edits to existing files): *"Write a hook that blocks writes to the migrations folder."* |
+| [Rails migrations guide](https://guides.rubyonrails.org/active_record_migrations.html) | Append-only's edit block: *"In general, editing existing migrations that have been already committed to source control is not a good idea."* The same guide describes deleting old migration files as fine, so deletion is not blocked |
 | [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | Implementation only: exit 2 blocking, the 8-block cap, timeouts, and the `PostToolUseFailure` event R5 uses to learn a command failed |
 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`, `ti.rm`: *"cheating, for example by disabling or deleting tests."* `done.commit`: *"Only commit when: 1. ALL tests are passing"* |
 | Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17), "Modified Testing Procedure" | `ti.assert`, `ti.exclude`: *"The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases."* |
@@ -332,7 +339,7 @@ The reason for using hooks at all is in the docs too:
 claude --plugin-dir .                         # load this folder instead of the installed copy
 claude plugin validate .                      # manifest and hook wiring
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 442 assertions, no model calls
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 438 assertions, no model calls
 tests/fuzz.sh                                 # 24 malformed inputs x ten hooks = 240 runs
 tests/no-guess-gate/selftest.sh               # 12-case regression against real prompts, minutes
 tests/no-guess-gate/judge-accuracy.sh         # judge accuracy and latency, minutes

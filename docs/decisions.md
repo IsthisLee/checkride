@@ -207,6 +207,7 @@ ECC의 GateGuard 게이트는 이 플러그인과 목적이 일부 겹칩니다.
 | R5 | 출처를 고쳤습니다 | 이전에 적은 훅 문서의 `PostToolUseFailure` 는 구현 수단입니다. 막는 이유는 "Have Claude show evidence rather than asserting success"입니다[[1]](https://code.claude.com/docs/en/best-practices) |
 | `ti.assert`·`ti.exclude` | 출처를 고쳤습니다 | Kent Beck 글에는 단언을 줄이는 이야기가 없습니다[[13]](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes). EvilGenie의 "Modified Testing Procedure"가 테스트 케이스와 테스트를 돌리는 코드를 고치는 것을 다룹니다[[14]](https://arxiv.org/abs/2511.21654) |
 | 마이그레이션(append-only) | 출처 링크를 고쳤습니다 | 인용한 문장은 훅 문서가 아니라 Best practices 에 있습니다[[1]](https://code.claude.com/docs/en/best-practices) |
+| 마이그레이션 **삭제**(`rm`·`git rm`) 막음 | **뺐습니다**(2026-09-16, V50) | 위 대조에서 출처 링크만 고치고 범위는 따지지 않아 남았던 부분입니다. 출처는 "blocks writes to the migrations folder"까지만 말하고, [Rails 가이드](https://guides.rubyonrails.org/active_record_migrations.html)는 스키마 파일이 기준이 되면 오래된 마이그레이션을 "delete or prune"할 수 있다고 설명합니다. 이동도 막을 근거가 없어 막지 않습니다. 기존 파일 수정 차단은 두 문서와 맞아 그대로 둡니다 |
 
 나머지 규칙(R3, `rb.write`, `done.turn`·`done.commit`·`done.pr`, `ti.skip`·`ti.rm`)은 인용한 문장이 막는 대상과 맞아 그대로 두었습니다.
 

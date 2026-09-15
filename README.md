@@ -25,7 +25,7 @@ Claude Code 공식 문서를 비롯한 여러 개발 문서가 권하는 모범 
 |                             | 본문에 "통과했습니다"만 적고 PR을 열려 함 → 돌린 명령과 출력을 붙이기 전에는 PR이 열리지 않습니다 |
 | **테스트를 비활성화하거나 지우지 않습니다**   | 통과시키려고 `.skip`을 붙임 → 그 편집이 아예 안 됩니다                         |
 |                             | 설정에 제외 패턴을 넣어 테스트를 뺌 → 그것도 막힙니다                             |
-| **쌓인 기록은 고치지 않습니다**         | 이미 올라간 마이그레이션을 고치려 함 → 커밋 전에 막힙니다                           |
+| **쌓인 기록은 고치지 않습니다**         | 이미 올라간 마이그레이션을 고치려 함 → 그 편집이 되지 않습니다                           |
 
 
 다섯 가지 사례는 모두 **공식 문서와 개발 문서가 권하는 것입니다.** 각 사례가 어느 문장에서 나왔는지는 [근거](#근거)에 정리해 두었습니다.
@@ -179,7 +179,7 @@ Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 여섯 개를 검사�
 |                 | `PostToolUse`(Edit·Write)                | `done-gate/post.sh`        | 기록: 이 턴에 고친 파일                                                                                                  |
 |                 | `Stop`                                   | `done-gate/stop.sh`        | **막음**: 코드를 고친 턴에 검사가 실패하면 턴 종료(`done.turn`)                                                                    |
 | **테스트 무결성**     | `PreToolUse`(Edit·Write·Bash)            | `test-integrity/pre.sh`    | **막음**: 무력화 표기 추가, 단언 감소, 테스트 파일 삭제, 러너 설정의 제외 추가(`ti.*`)                                                       |
-| **프로젝트 가드**     | `PreToolUse`(Edit·Write·Bash)                 | `project-guard/pre.sh`     | **막음**: `append_only` 경로의 기존 파일 수정·삭제(`rm`·`git rm`)                                                        |
+| **프로젝트 가드**     | `PreToolUse`(Edit·Write)                 | `project-guard/pre.sh`     | **막음**: `append_only` 경로의 기존 파일 수정. 새 파일 추가와 삭제는 막지 않습니다                                                        |
 | 저장소 프로필(게이트 아님) | `SessionStart`                           | `repo-profile/session.sh`  | 싣기: 저장소 사실을 컨텍스트에 싣습니다. 막지 않습니다                                                                                 |
 
 
@@ -284,6 +284,7 @@ Claude는 이런 메시지를 받습니다.
 | 테스트 무력화·삭제(`ti.skip`·`ti.rm`), 커밋 전 전체 검사(`done.commit`) | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes)                                                                                 | "cheating, for example by disabling or deleting tests" (속임수, 예컨대 테스트를 비활성화하거나 지우는 것) · "Only commit when: 1. ALL tests are passing" (모든 테스트가 통과할 때만 커밋하라.)                                                           |
 | 단언 감소·러너 설정 제외(`ti.assert`·`ti.exclude`)                 | Gabor 외, [EvilGenie](https://arxiv.org/abs/2511.21654) "Modified Testing Procedure"                                                                                                | "The agent modifies the test cases or the code that runs the testing procedure." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다.)                                                                                                  |
 | 마이그레이션 수정                                                | [Best practices](https://code.claude.com/docs/en/best-practices)                                                                                                                   | "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라.)                                                                                                                           |
+| 이미 커밋한 마이그레이션 수정(삭제는 막지 않음)                              | [Rails 마이그레이션 가이드](https://guides.rubyonrails.org/active_record_migrations.html)                                                                                                   | "In general, editing existing migrations that have been already committed to source control is not a good idea." (이미 소스 관리에 커밋한 마이그레이션을 고치는 것은 대체로 좋은 생각이 아니다.)                                                      |
 | 읽지 않은 파일 덮어쓰기(`rb.write`)                                | [Tools reference](https://code.claude.com/docs/en/tools-reference)                                                                                                                 | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." (Claude Opus 4.6, Claude Haiku 4.5와 그 이전 모델은 늘 읽기를 요구한다.)                                                                             |
 
 

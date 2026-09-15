@@ -39,10 +39,12 @@ edit "$P" Write "$P/supabase/migrations/0002_add.sql" | "$W/pre.sh" 2>/dev/null;
 # 4. 지정 밖 경로는 대상이 아니다
 edit "$P" Edit "$P/src/app.ts" | "$W/pre.sh" 2>/dev/null; check 0 $? "지정 밖 파일 수정 → 통과"
 
-# 5. 삭제 명령을 막는다
-bash_ "$P" "rm supabase/migrations/0001_init.sql" | "$W/pre.sh" 2>"$T/e5"; check 2 $? "마이그레이션 rm → exit 2"
-grep -q '삭제' "$T/e5"; check 0 $? "stderr에 삭제 차단"
-bash_ "$P" "rm src/app.ts" | "$W/pre.sh" 2>/dev/null; check 0 $? "지정 밖 rm → 통과"
+# 5. 삭제는 막지 않는다. 출처(Best practices)는 "blocks writes" 까지만 말하고, Rails 가이드는 스키마 파일이
+#    기준이 되면 오래된 마이그레이션 파일을 "delete or prune" 할 수 있다고 설명한다(V50).
+bash_ "$P" "rm supabase/migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 0 $? "마이그레이션 rm → 통과(삭제는 막지 않음)"
+bash_ "$P" 'rm "supabase/migrations/0001_init.sql"' | "$W/pre.sh" 2>/dev/null; check 0 $? "따옴표 경로 rm → 통과"
+# 훅 배선도 쓰기 도구에만 건다. Bash 에서 볼 것이 없는데 Bash 마다 돌면 비용만 붙는다.
+python3 -c 'import json,sys; h=json.load(open(sys.argv[1]))["hooks"]["PreToolUse"]; m=[e.get("matcher") for e in h if any("project-guard" in x["command"] for x in e["hooks"])]; sys.exit(0 if m==["Edit|Write"] else 1)' "$ROOT/plugin/hooks/hooks.json"; check 0 $? "배선: 프로젝트 가드 matcher 는 Edit|Write"
 
 # 6. --no-verify 커밋은 막지 않는다. 막을 근거 문서를 찾지 못해 규칙(pg.noverify)을 뺐다(V49).
 bash_ "$P" "git commit --no-verify -m x" | "$W/pre.sh" 2>/dev/null; check 0 $? "git commit --no-verify → 통과(규칙 없음)"
@@ -55,12 +57,6 @@ edit "$P" Edit "$P/db/migrate/001.rb" | "$W/pre.sh" 2>/dev/null; check 2 $? "둘
 # 8. 끄기
 edit "$P" Edit "$P/supabase/migrations/0001_init.sql" | NGG_GUARD=0 "$W/pre.sh" 2>/dev/null; check 0 $? "NGG_GUARD=0 → 통과"
 
-# 10. 따옴표로 감싼 경로도 잡아야 한다.
-mkdir -p "$P/supabase/migrations"; printf 'x\n' > "$P/supabase/migrations/0002 new.sql"
-bash_ "$P" 'rm "supabase/migrations/0002 new.sql"' | "$W/pre.sh" 2>/dev/null; check 2 $? "따옴표+공백 마이그레이션 rm → exit 2"
-bash_ "$P" "rm 'supabase/migrations/0001_init.sql'" | "$W/pre.sh" 2>/dev/null; check 2 $? "홑따옴표 마이그레이션 rm → exit 2"
-bash_ "$P" 'rm "src/my app.ts"' | "$W/pre.sh" 2>/dev/null; check 0 $? "따옴표라도 지정 밖이면 통과"
-
 # 메시지 언어
 for L in ko en; do
   edit "$P" Edit "$P/supabase/migrations/0001_init.sql" | NGG_LANG="$L" "$W/pre.sh" 2>"$T/pl-$L"
@@ -72,9 +68,8 @@ nohangul "$(cat "$T/pl-en")"; check 0 $? "en: 한글이 섞이지 않는다"
 
 # 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 .check.toml 을 쓴다.
 edit "$P/src" Edit "$P/supabase/migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더에서도 append-only 수정을 막는다"
-bash_ "$P/supabase" "rm migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더 기준 상대 경로 삭제도 막는다"
 
-# 빠른 경로. Bash 에서 보는 것은 삭제·이동뿐이라, 그 글자가 없으면 파이썬을 띄우지 않는다.
+# 빠른 경로. 배선이 Edit|Write 로 바뀌어도, Bash 입력이 들어오면 파이썬 없이 바로 끝나야 한다.
 # 불리면 소리를 내는 가짜 python3 를 PATH 앞에 두고 확인한다.
 # 훅은 파이썬의 stderr 를 버린다. 그래서 가짜 python3 는 불린 사실을 파일로 남긴다.
 FB="$T/fakebin"; mkdir -p "$FB"; printf '#!/usr/bin/env bash\necho called >> "%s/called"\nexit 97\n' "$FB" > "$FB/python3"; chmod +x "$FB/python3"
@@ -83,6 +78,6 @@ rm -f "$FB/called"; bash_ "$P" "ls -la && npm test" | PATH="$FB:$PATH" "$W/pre.s
 rm -f "$FB/called"; bash_ "$P" "git commit --no-verify -m x" | PATH="$FB:$PATH" "$W/pre.sh" 2>/dev/null
 [ -e "$FB/called" ]; r=$?; check 1 "$r" "빠른 경로: 커밋 명령에도 파이썬을 띄우지 않는다"
 rm -f "$FB/called"; bash_ "$P" "rm supabase/migrations/0001_init.sql" | PATH="$FB:$PATH" "$W/pre.sh" 2>/dev/null
-[ -e "$FB/called" ]; check 0 $? "빠른 경로: 삭제 명령은 끝까지 검사한다"
+[ -e "$FB/called" ]; r=$?; check 1 "$r" "빠른 경로: 삭제 명령에도 파이썬을 띄우지 않는다"
 
 echo; echo "실패 ${fail}건"; exit "$fail"

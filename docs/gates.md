@@ -42,7 +42,7 @@ Claude Code는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니�
 |---|---|---|---|---|---|
 | `SessionStart` | | | | | 저장소 사실을 컨텍스트에 싣습니다 |
 | `UserPromptSubmit` | `check allow`를 읽습니다 | | | | |
-| `PreToolUse` | 모든 도구의 이름을 남깁니다. 읽지 않은 기존 파일의 Write만 막습니다(`rb.write`) | Bash | Edit·Write·Bash | Edit·Write·Bash | |
+| `PreToolUse` | 모든 도구의 이름을 남깁니다. 읽지 않은 기존 파일의 Write만 막습니다(`rb.write`) | Bash | Edit·Write·Bash | Edit·Write | |
 | `PostToolUse` | Bash 결과를 S/F로 남깁니다 | Edit·Write | | | |
 | `PostToolUseFailure` | Bash 실패를 남깁니다 | | | | |
 | `Stop` | R0~R5 | 검사 명령 | | | |
@@ -263,8 +263,18 @@ test_command      = "npm test"                # 커밋 직전에 이것
 공식 문서의 훅 예시가 가리키는 자리입니다.
 
 > "Write a hook that blocks writes to the migrations folder."
+>
+> 번역: 마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라.
 
-이 가드는 그보다 정밀합니다. **새 파일 추가는 허용하고 기존 파일의 수정·삭제만 막습니다.** 마이그레이션은 계속 새로 써야 하기 때문입니다. 반면 이미 적용된 마이그레이션 파일을 고치면, 적용을 마친 데이터베이스에서는 그 파일이 다시 돌지 않아 환경마다 스키마가 달라집니다.
+Rails 가이드도 이미 커밋한 마이그레이션은 고치지 말라고 적습니다.
+
+> "In general, editing existing migrations that have been already committed to source control is not a good idea."
+>
+> 번역: 이미 소스 관리에 커밋한 마이그레이션을 고치는 것은 대체로 좋은 생각이 아니다.
+
+이 가드는 두 문장보다 좁습니다. **새 파일 추가는 허용하고 기존 파일의 수정만 막습니다.** 마이그레이션은 계속 새로 써야 하기 때문입니다. 반면 이미 적용된 마이그레이션 파일을 고치면, 적용을 마친 데이터베이스에서는 그 파일이 다시 돌지 않아 환경마다 스키마가 달라집니다.
+
+**삭제와 이동은 막지 않습니다.** 두 출처 모두 쓰기와 수정까지만 말하고, Rails 가이드는 스키마 파일이 기준이 되면 오래된 마이그레이션 파일을 지워도("delete or prune") 된다고 설명합니다. 예전에는 `rm`·`git rm` 삭제도 막았지만 근거가 없어 뺐습니다(V50). 원문은 2026-09-16에 확인했습니다.
 
 ```toml
 # .check.toml
@@ -303,13 +313,13 @@ append-only 경로: supabase/migrations
 | `done-gate/stop.sh` | 턴 끝 | 44ms |
 | `no-guess-gate/pre.sh` | 도구 호출마다 | 17ms. Write는 약 45ms, 파일을 보는 Bash(`cat` 등)는 약 67ms입니다(V47, 30회 중앙값). 이 둘에서만 파이썬을 띄웁니다 |
 | `test-integrity/pre.sh` | Edit·Write·Bash마다 | 46ms. 삭제 글자가 없는 Bash는 12ms |
-| `project-guard/pre.sh` | Edit·Write·Bash마다 | 41ms. 삭제·이동·커밋 글자가 없는 Bash는 13ms |
+| `project-guard/pre.sh` | Edit·Write마다 | 41ms. V50부터 Bash에서는 돌지 않습니다 |
 | `done-gate/pre.sh` | Bash마다 | 커밋·PR 생성이 아니면 12ms |
 | `no-guess-gate/bashres.sh` | Bash마다 | 17ms |
 | `done-gate/post.sh` | Edit·Write마다 | 44ms |
 | `repo-profile/session.sh` | 세션 1회 | 65ms |
 
-**턴마다 붙는 바닥은 약 256ms**(`prompt` + `stop` 둘)입니다. 도구를 쓸 때 더 붙는 비용은 도구마다 다릅니다. Bash 한 번에 약 70ms이고, 삭제·이동·커밋·PR 생성 명령이면 훅이 끝까지 검사해서 약 170ms가 됩니다. Edit·Write 한 번에 약 155ms, 그 밖의 도구 한 번에 17ms입니다. Bash 쪽 훅 셋은 도구 이름과 관련 글자를 먼저 보고, 관계없는 명령에서는 파이썬을 띄우지 않습니다(V40). 세션을 열 때는 65ms가 한 번 듭니다.
+**턴마다 붙는 바닥은 약 256ms**(`prompt` + `stop` 둘)입니다. 도구를 쓸 때 더 붙는 비용은 도구마다 다릅니다. Bash 한 번에 약 70ms이고, 삭제·이동·커밋·PR 생성 명령이면 훅이 끝까지 검사해서 약 170ms가 됩니다. 이 두 값은 프로젝트 가드가 Bash에서도 돌던 때의 측정이라, 지금은 그 훅 몫(보통 13ms, 삭제 명령이면 41ms)만큼 짧습니다. 다시 재지는 않았습니다. Edit·Write 한 번에 약 155ms, 그 밖의 도구 한 번에 17ms입니다. Bash 쪽 훅 셋은 도구 이름과 관련 글자를 먼저 보고, 관계없는 명령에서는 파이썬을 띄우지 않습니다(V40). 세션을 열 때는 65ms가 한 번 듭니다.
 
 처음 잰 V28에서는 바닥이 326ms였습니다. 같은 스크립트로 v1.5.0을 번갈아 재니 258ms가 나왔습니다. 숫자가 줄어든 것은 코드 때문이 아니라 측정 조건이 달라서입니다. 1.6.0에서 기능을 넷 더했지만 훅별 차이는 5ms 안이었습니다.
 
@@ -346,7 +356,8 @@ append-only 경로: supabase/migrations
 |---|---|
 | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) "Minimizing hallucinations in agentic coding" | R0·R1·R2a·R2b. "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase. Never make any claims about code before investigating unless you are certain of the correct answer" (열어 보지 않은 코드를 추측하지 마라. 코드베이스에 관한 질문에는 답하기 전에 관련 파일을 조사하고 읽어라. 정답을 확신하지 않는 한 조사하기 전에 코드에 대해 주장하지 마라). 근거 문장이 코드베이스 질문으로 범위를 한정하므로 R2a·R2b도 그 맥락에서만 봅니다 |
 | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | 불가 면제. "Allow Claude to say "I don't know"" (Claude가 모른다고 말할 수 있게 하라). 막힌 뒤 할 일로 안내하는 철회도 이 문서에서 왔습니다. "If it can't find a quote, it must retract the claim" (인용을 찾지 못하면 그 주장을 철회해야 한다) |
-| [Best practices](https://code.claude.com/docs/en/best-practices) | R3·R5, 완료 게이트의 Stop 훅 방식, PR 본문 검사(`done.pr`). "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라). 프로젝트 가드의 append-only. "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라) |
+| [Best practices](https://code.claude.com/docs/en/best-practices) | R3·R5, 완료 게이트의 Stop 훅 방식, PR 본문 검사(`done.pr`). "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라). 프로젝트 가드의 append-only(기존 파일 수정 차단). "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라) |
+| [Rails 마이그레이션 가이드](https://guides.rubyonrails.org/active_record_migrations.html) | append-only 의 수정 차단. "In general, editing existing migrations that have been already committed to source control is not a good idea." (이미 커밋한 마이그레이션을 고치는 것은 대체로 좋은 생각이 아니다). 같은 가이드가 오래된 마이그레이션 파일을 지워도 된다고 설명하므로 삭제는 막지 않습니다 |
 | [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | 구현 수단입니다. exit 2 차단, 8회 상한, 타임아웃, R5가 실패한 명령을 알아내는 `PostToolUseFailure` 이벤트 |
 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`·`ti.rm`. "cheating, for example by disabling or deleting tests" (속임수, 예컨대 테스트를 비활성화하거나 지우는 것). `done.commit`. "Only commit when: 1. ALL tests are passing" (모든 테스트가 통과할 때만 커밋하라) |
 | Gabor 외, [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17) "Modified Testing Procedure" | `ti.assert`·`ti.exclude`. "The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다. 테스트 케이스가 받아들이는 답을 바꾸거나 테스트 케이스를 지우거나 무시할 수 있다) |
@@ -365,7 +376,7 @@ Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guide
 claude --plugin-dir .                         # 설치본 대신 이 폴더를 그 세션에 로드
 claude plugin validate .                      # 매니페스트와 훅 배선 검사
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 442건. 모델을 부르지 않는다
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 438건. 모델을 부르지 않는다
 tests/fuzz.sh                                 # 망가진 입력 24종 × 훅 열 = 240회
 tests/no-guess-gate/selftest.sh               # 실제 프롬프트 회귀 12케이스, 몇 분
 tests/no-guess-gate/judge-accuracy.sh         # 판정기 정확도·소요 시간, 몇 분

@@ -3419,3 +3419,71 @@ CLAUDE.md, CHANGELOG, 거짓 음성 이슈 템플릿을 고쳤다. README·decis
 - 커맨드(스킬)가 인용하는 Willison 문장은 게이트 규칙이 아니라 이번 대조 범위에서 뺐다.
 - "검증된 문서"로서 Kent Beck 뉴스레터와 EvilGenie 논문을 받아들인 것은 이 저장소의 기존 판단을 따랐다.
 
+
+## V50 프로젝트 가드: 근거가 없는 삭제 차단을 뺐다
+
+배경: README 에 훅 표를 넣으면서 프로젝트 가드가 "수정·삭제·이동"을 막는다고 적었다. 실측하니 이동은 막지 않았다. 차단 메시지
+`pg.appendrm` 은 "삭제나 이동을 막는다"고 말하고 있었다. V49 는 append-only 의 출처 링크만 고치고 **막는 범위가 출처 문장을 넘는지는
+보지 않았다.** 사용자가 근거를 물어 다시 대조했다.
+
+### 실측 (고치기 전)
+
+```
+rc=2 : rm supabase/migrations/0001.sql
+rc=0 : mv supabase/migrations/0001.sql /tmp/x.sql
+rc=0 : git mv supabase/migrations/0001.sql supabase/migrations/0009.sql
+```
+
+`project-guard/pre.sh` 는 명령에 `mv` 가 있으면 느린 경로로 들어갔지만, 대상 파일을 뽑는 `rm_targets` 는 `rm`·`git rm` 만 봤다.
+
+### 출처 대조 (2026-09-16)
+
+| 출처 | 문장 | 판정 |
+|---|---|---|
+| [Best practices](https://code.claude.com/docs/en/best-practices) | "Write a hook that blocks writes to the migrations folder." | 기존 파일 수정 차단은 범위 안. 삭제·이동은 없다 |
+| [Rails 마이그레이션 가이드](https://guides.rubyonrails.org/active_record_migrations.html) | "In general, editing existing migrations that have been already committed to source control is not a good idea." | 수정 차단을 뒷받침한다 |
+| 같은 가이드 | 스키마 파일이 기준이 되면 오래된 마이그레이션 파일을 "delete or prune" 할 수 있다고 설명한다. 이동(이름 바꾸기)은 다루지 않는다 | 삭제 차단은 근거가 없고, 오히려 정상 작업으로 설명된다 |
+
+판정: 삭제 차단을 뺀다. 이동은 원래 막지 못했고 막을 근거도 없으므로 더하지 않는다. 기존 파일 수정 차단만 남긴다.
+
+### RED
+
+```
+$ tests/project-guard/unit.sh 2>&1 | grep -E '❌|^실패'
+❌ 마이그레이션 rm → 통과(삭제는 막지 않음) (기대=0 실측=2)
+❌ 따옴표 경로 rm → 통과 (기대=0 실측=2)
+❌ 배선: 프로젝트 가드 matcher 는 Edit|Write (기대=0 실측=1)
+❌ 빠른 경로: 삭제 명령에도 파이썬을 띄우지 않는다 (기대=1 실측=0)
+실패 4건
+```
+
+### GREEN
+
+바꾼 코드: `project-guard/pre.sh` 에서 Bash 분기와 `rm_targets` 를 지웠다. `hooks.json` 에서 프로젝트 가드 matcher 를
+`Edit|Write|Bash` 에서 `Edit|Write` 로 좁혔다. 쓰이지 않게 된 `pg.appendrm` 을 두 언어에서 지웠다. `tests/no-guess-gate/unit.sh`
+의 배선 단언도 새 matcher 로 바꿨다(요구가 바뀐 테스트). 삭제 차단만 검사하던 단언(따옴표 경로 3건, 하위 폴더 상대 경로 1건, stderr 1건)은 지웠다.
+
+```
+tests/lib/unit.sh ✅26 ❌0
+tests/no-guess-gate/unit.sh ✅186 ❌0
+tests/done-gate/unit.sh ✅81 ❌0
+tests/test-integrity/unit.sh ✅68 ❌0
+tests/project-guard/unit.sh ✅23 ❌0
+tests/repo-profile/unit.sh ✅23 ❌0
+tests/skills-unit.sh ✅5 ❌0
+tests/attack-surface.sh ✅9 ❌0
+tests/invariants.sh ✅17 ❌0
+합계 438
+실행 240회 · 실패 0건
+shellcheck 0건
+✔ Validation passed
+```
+
+문서: README·README.en 의 첫 표("커밋 전에 막힙니다" → 편집이 되지 않음), 훅 표, 근거 표(Rails 가이드 행 추가), docs/gates·gates.en 의
+프로젝트 가드 절·배선 표·지연 표, docs/decisions 6절, plugin/README, CLAUDE.md, CHANGELOG 를 고쳤다.
+
+**확인하지 못한 것:**
+
+- 프로젝트 가드가 Bash 에서 빠져 Bash 한 번에 붙는 지연이 줄었을 것이다. 문서의 "약 70ms·약 170ms" 는 그 전 측정이고 다시 재지 않았다.
+- `rb.write` 도 같은 기준으로 보면 범위가 출처 문장을 넘는다. 출처(Tools reference)는 오래된 모델에 대한 Claude Code 자체 규칙인데,
+  `rb.write` 는 그 요구가 풀린 최신 모델에게 다시 건다. 이번에는 판단하지 않고 사용자에게 넘겼다.

@@ -24,7 +24,7 @@ did-you-check does the checking. It turns what the Claude Code docs and other de
 | | Opening a PR whose body only says "tests pass" → the PR does not open until the command and its output are in it |
 | **Never disable or delete a test** | Adding `.skip` to make it pass → the edit itself is refused |
 | | Removing tests via an ignore pattern in the runner config → blocked too |
-| **Never rewrite what already landed** | Editing a migration that shipped → blocked before the commit |
+| **Never rewrite what already landed** | Editing a migration that shipped → the edit does not go through |
 
 Every one is **recommended by the official docs or by development writing**, and [Sources](#sources) names the sentence each came from.
 
@@ -160,7 +160,7 @@ The wiring is in `plugin/hooks/hooks.json`: 12 hooks in all. Each one either **b
 | | `PostToolUse` (Edit·Write) | `done-gate/post.sh` | Records the files changed this turn |
 | | `Stop` | `done-gate/stop.sh` | **Blocks** the end of a turn that changed code while the check fails (`done.turn`) |
 | **Test integrity** | `PreToolUse` (Edit·Write·Bash) | `test-integrity/pre.sh` | **Blocks** added disable markers, fewer assertions, test file deletion, new runner-config exclusions (`ti.*`) |
-| **Project guard** | `PreToolUse` (Edit·Write·Bash) | `project-guard/pre.sh` | **Blocks** editing or deleting (`rm`, `git rm`) existing files under `append_only` |
+| **Project guard** | `PreToolUse` (Edit·Write) | `project-guard/pre.sh` | **Blocks** editing existing files under `append_only`. Adding new files and deleting are allowed |
 | Repo profile (not a gate) | `SessionStart` | `repo-profile/session.sh` | Loads repo facts into context. Never blocks |
 
 Script paths are relative to `plugin/hooks/`. The semantic judge `judge.py` is not a hook; `stop.sh` calls it only when R2a or R2b alone fired.
@@ -245,6 +245,7 @@ Every practice this plugin checks names the sentence it came from. **A rule ship
 | Disabling or deleting tests (`ti.skip`, `ti.rm`), full check before commit (`done.commit`) | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" · "Only commit when: 1. ALL tests are passing" |
 | Fewer assertions, runner-config exclusions (`ti.assert`, `ti.exclude`) | Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654), "Modified Testing Procedure" | "The agent modifies the test cases or the code that runs the testing procedure." |
 | Rewritten migrations | [Best practices](https://code.claude.com/docs/en/best-practices) | "Write a hook that blocks writes to the migrations folder." |
+| Editing a committed migration (deleting is not blocked) | [Rails migrations guide](https://guides.rubyonrails.org/active_record_migrations.html) | "In general, editing existing migrations that have been already committed to source control is not a good idea." |
 | Overwriting a file you never read (`rb.write`) | [Tools reference](https://code.claude.com/docs/en/tools-reference) | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." |
 
 Rules dropped because their sources did not back them (R4, `pg.noverify`) and the rule whose scope was narrowed (R2a) are recorded in V49 of the [verification log](docs/VERIFICATION.md). Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules.

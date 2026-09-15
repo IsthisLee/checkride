@@ -56,7 +56,6 @@ msg_ko() { case "$1" in
 
   pg.prefix)     M="프로젝트 가드: %s" ;;
   pg.appendedit) M="이 경로는 추가만 가능하다(append-only). 기존 파일은 고칠 수 없다." ;;
-  pg.appendrm)   M="이 경로는 추가만 가능하다(append-only). 삭제나 이동을 막는다." ;;
   pg.conf)       M="- 설정: append_only = \"%s\"  (.check.toml)" ;;
   pg.appendtail) M="- 고쳐야 할 내용이 있으면 지난 파일을 바꾸지 말고 새 파일을 더해라." ;;
 
@@ -127,7 +126,6 @@ msg_en() { case "$1" in
 
   pg.prefix)     M="Project guard: %s" ;;
   pg.appendedit) M="This path is append-only. Existing files cannot be edited." ;;
-  pg.appendrm)   M="This path is append-only. Deleting and moving are blocked." ;;
   pg.conf)       M="- Setting: append_only = \"%s\"  (.check.toml)" ;;
   pg.appendtail) M="- If something has to change, add a new file instead of editing a past one." ;;
 

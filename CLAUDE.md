@@ -8,11 +8,11 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `tests/no-guess-gate/unit.sh` — 근거 게이트 186건. `rb.write` 29건 포함. 모델을 부르지 않는다.
 - `tests/done-gate/unit.sh` — 완료 게이트 81건. PR 본문 근거 21건 포함.
 - `tests/test-integrity/unit.sh` — 테스트 무결성 68건.
-- `tests/project-guard/unit.sh` — 프로젝트 가드 27건.
+- `tests/project-guard/unit.sh` — 프로젝트 가드 23건.
 - `tests/repo-profile/unit.sh` — 저장소 프로필 23건.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 9건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 442건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지 17건.  **합계 438건.**
 - `tests/fuzz.sh` — 망가진 입력을 열 훅에 던져 조용히 통과하지 않는지 본다. 모델을 부르지 않는다.
 - `tests/no-guess-gate/selftest.sh` — 실제 프롬프트 회귀 12케이스. Haiku를 부르고 몇 분 걸린다.
 - `tests/no-guess-gate/ab.sh` — 게이트 켠 채와 끈 채를 비교해 효과를 잰다. `SET=hard`가 압박 프롬프트.
@@ -44,7 +44,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `.check.toml` 이 읽는 키는 다섯이다. `test_command`·`fast_test_command`(완료 게이트), `append_only`(프로젝트 가드), `disabled_rules`(근거 게이트의 규칙과 다른 게이트의 항목을 하나씩 끄기. 이름 목록은 `common.sh`의 `NGG_ITEMS`), `lang`(게이트 메시지 언어. `common.sh`의 `ngg_lang_cfg`가 차단 메시지를 낼 때만 읽고, `NGG_LANG`이 있으면 무시한다). **파서는 한 줄에 키 하나다.** macOS 기본 파이썬(3.9)에 `tomllib` 이 없어 온전한 TOML 파서를 쓰지 않는다.
 - `plugin/hooks/done-gate/` — 코드를 고친 턴에 저장소 검사를 돌린다. 이 저장소의 `.check.toml`이 자기 테스트를 가리킨다.
 - `plugin/hooks/test-integrity/` — 테스트 무력화 편집, 테스트 파일 삭제, 러너 설정의 제외 추가를 막는다.
-- `plugin/hooks/project-guard/` — `append_only` 경로의 기존 파일 수정·삭제를 막는다.
+- `plugin/hooks/project-guard/` — `append_only` 경로의 기존 파일 수정을 막는다. 새 파일 추가와 삭제는 막지 않는다(V50). Edit·Write 에만 배선한다.
 - `plugin/hooks/repo-profile/` — `SessionStart`에 저장소 사실을 컨텍스트로 싣는다. 사실만 싣고 행동 지시는 넣지 않는다.
 - `skills/` — 사용자 전용 커맨드 여덟. 내장과 겹치는 것은 만들지 않는다. 새 스킬을 넣으면 `tests/skills-unit.sh`가 정의를 검사한다.
 - **훅을 임시 폴더로 복사해 돌리는 하네스는 `lib/`를 통째로 옮긴다.** `msg.sh`를 빠뜨리면 게이트는 여전히 막지만 모델이 받는 문장이 `ngg.r0` 같은 키 이름이 된다. 막히기만 하고 무엇을 하라는지 모르니 측정값이 통째로 달라진다. `tests/invariants.sh`가 `cp` 줄을 본다.

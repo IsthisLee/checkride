@@ -1,51 +1,29 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # shellcheck source-path=SCRIPTDIR
-# PreToolUse(Edit|Write|Bash): 저장소가 정한 구조 규칙을 그 순간에 강제한다.
+# PreToolUse(Edit|Write): append_only 경로의 기존 파일을 고치지 못하게 한다.
 #
 # 공식 best practices의 훅 예시가 같은 자리를 가리킨다.
 #   "Write a hook that blocks writes to the migrations folder."
-# 이 가드는 그보다 정밀하다. **새 파일 추가는 허용하고 기존 파일의 수정·삭제만 막는다.**
-# 마이그레이션은 계속 써야 하기 때문이다.
+# Rails 가이드도 "editing existing migrations that have been already committed to source control is not a good idea" 라고 적는다.
+# 이 가드는 그보다 좁다. **새 파일 추가는 허용하고 기존 파일의 수정만 막는다.** 마이그레이션은 계속 써야 하기 때문이다.
+# 삭제(rm)는 막지 않는다. 출처는 쓰기까지만 말하고, Rails 가이드는 스키마 파일이 기준이 되면 오래된 마이그레이션을
+# "delete or prune" 할 수 있다고 설명한다. 이동을 막을 근거도 없다(V50).
 #
 # 설정: 저장소 루트 .check.toml
 #   append_only = "supabase/migrations, db/migrate"
 # 설정이 없으면 아무것도 막지 않는다. 끄기: NGG_GUARD=0
 d="$(cd "$(dirname "$0")" && pwd)"; . "$d/../lib/common.sh"
 IN=$(cat)
-# 빠른 경로. 이 훅은 Bash 호출마다 돈다. Bash 에서 보는 것은 삭제·이동뿐이라,
-# 그 글자가 없으면 파이썬을 띄우지 않고 끝낸다(V40). 도구 이름이 애매하면 느린 경로로 간다.
-# --no-verify 커밋 차단(pg.noverify)은 막을 근거 문서를 찾지 못해 뺐다(V49).
-if quick_tool && [ "$QT" = Bash ]; then case "$IN" in *rm[[:space:]\"\\]*|*mv[[:space:]\"\\]*) ;; *) exit 0;; esac; fi
+# 빠른 경로. 배선은 Edit|Write 뿐이지만, 다른 도구 입력이 오면 파이썬을 띄우지 않고 끝낸다.
+if quick_tool; then case "$QT" in Edit|Write) ;; *) exit 0;; esac; fi
 read_in
 [ "${NGG_GUARD:-1}" = "0" ] && exit 0
+case "$TOOL_NAME" in Edit|Write) ;; *) exit 0;; esac
 find_root; root="$NGG_ROOT"; conf="$root/.check.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
 
 # block <머리> <내용> [항목]. 항목이 있으면 사람에게 한 번만 허용하는 법을 알린다.
 block() { { t pg.prefix "$1"; off_bad; echo "$2"; [ -z "${3:-}" ] || allow_hint "$3"; } >&2; exit 2; }
-# 명령에서 파일 인자를 뽑는다. 따옴표로 감싼 경로(공백이 든 파일명은 반드시 그렇다)를 살린다.
-# 따옴표 안의 공백은 구분자가 아니므로 셸과 같은 방식으로 쪼갠다.
-# 삭제 명령의 인자만 뽑는다. 명령 어디엔가 rm 이 있고 다른 문장에 경로가 있다고 짝지으면
-# 임시 폴더를 치우는 명령이 테스트 삭제로 읽힌다. 실제로 이 저장소 작업 중 다섯 번 그랬다.
-# 셸처럼 ; && || | 개행으로 문장을 나눈 뒤, 삭제로 시작하는 문장의 인자만 본다.
-rm_targets() {
-  printf '%s' "$1" | py -c 'import re,shlex,sys
-t = sys.stdin.read()
-for stmt in re.split(r"[;&|\n]+", t):
-    try: toks = shlex.split(stmt, posix=True)
-    except ValueError: toks = stmt.split()
-    if not toks: continue
-    i = 0
-    if toks[0] == "sudo": i = 1
-    if i >= len(toks): continue
-    head = toks[i]
-    if head == "git" and i + 1 < len(toks) and toks[i+1] == "rm": i += 2
-    elif head == "rm": i += 1
-    else: continue
-    for x in toks[i:]:
-        if x and not x.startswith("-"): print(x)'
-}
-
 
 [ -f "$conf" ] || exit 0
 paths=$(sed -n 's/^[[:space:]]*append_only[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1)
@@ -63,23 +41,7 @@ guarded() {
   done | grep -q hit
 }
 
-case "$TOOL_NAME" in
-  Edit|Write)
-    [ -n "$FILE_PATH" ] || exit 0
-    guarded "$FILE_PATH" || exit 0
-    [ -f "$FILE_PATH" ] || exit 0     # 새 파일 추가는 허용
-    block "$(tn pg.appendedit)" "$(t line.file "$FILE_PATH"; t pg.conf "$paths"; tn pg.appendtail)" ;;
-  Bash)
-    printf '%s' "$COMMAND" | grep -qE '(^|[;&|]|\s)(rm|git[[:space:]]+rm|mv)\b' || exit 0
-    while IFS= read -r tok; do
-      [ -n "$tok" ] || continue
-      case "$tok" in /*) f="$tok";; *) f="${CWD:-$root}/$tok";; esac          # 상대 경로는 셸이 있는 곳 기준
-      if guarded "$f" && [ -f "$f" ]; then
-        block "$(tn pg.appendrm)" "$(t line.cmd "$COMMAND"; t line.target "$tok"; tn pg.conf "$paths")"
-      fi
-    done <<EOF
-$(rm_targets "$COMMAND")
-EOF
-    ;;
-esac
-exit 0
+[ -n "$FILE_PATH" ] || exit 0
+guarded "$FILE_PATH" || exit 0
+[ -f "$FILE_PATH" ] || exit 0     # 새 파일 추가는 허용
+block "$(tn pg.appendedit)" "$(t line.file "$FILE_PATH"; t pg.conf "$paths"; tn pg.appendtail)"
