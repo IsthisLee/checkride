@@ -12,6 +12,8 @@
 
 [**English**](README.en.md) · 한국어
 
+[왜 필요한가](#왜-필요한가) · [누구에게 좋은가](#누구에게-좋은가) · [설치](#설치) · [무엇이 막히나](#무엇이-막히나) · [막히면 어떻게 되나](#막히면-어떻게-되나) · [오탐](#오탐) · [끄기와 제거](#끄기와-제거) · [더 읽기](#더-읽기) · [근거](#근거) · [비슷한 도구](#비슷한-도구)
+
 ### AI 모범 사례를 준수하도록 강제합니다.
 
 Claude Code 공식 문서를 비롯한 여러 개발 문서가 권하는 모범 사례를, Claude가 실제로 준수하도록 강제합니다. 턴이 끝날 때마다 그 사례를 지켰는지 검사하고, 지키지 않았으면 턴을 끝내지 못하게 막습니다.
@@ -174,18 +176,18 @@ Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 여섯 개를 검사�
 배선은 `plugin/hooks/hooks.json`에 있고, 훅은 모두 12개입니다. 하는 일은 **막음**과 **기록**으로 나뉩니다. 기록하는 훅은 막지 않고, 막는 훅이 판정할 때 쓸 정보만 남깁니다. `Stop`(턴 끝)에서 막는 것은 근거 게이트와 완료 게이트 둘뿐이고, 테스트 무결성과 프로젝트 가드는 편집이나 Bash를 실행하려는 순간(`PreToolUse`)에만 막습니다.
 
 
-| 게이트             | 이벤트(대상 도구)                               | 스크립트                       | 하는 일                                                                                                            |
-| --------------- | ---------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| **근거**          | `UserPromptSubmit`                       | `no-guess-gate/prompt.sh`  | 기록: 프롬프트와 `check allow`                                                                                         |
-|                 | `PreToolUse`(모든 도구)                      | `no-guess-gate/pre.sh`     | 기록: 쓴 도구(막지 않습니다)                                                                                               |
-|                 | `PostToolUse`·`PostToolUseFailure`(Bash) | `no-guess-gate/bashres.sh` | 기록: Bash의 성공·실패(R5가 봅니다)                                                                                        |
-|                 | `Stop`·`SubagentStop`                    | `no-guess-gate/stop.sh`    | **막음**: R0·R1·R2a·R2b·R3·R5                                                                                     |
-| **완료**          | `PreToolUse`(Bash)                       | `done-gate/pre.sh`         | **막음**: 근거 없이 성공·검증을 주장하는 PR 본문(`done.pr`)<br>**막음**: 전체 검사가 실패한 커밋(`done.commit`, `fast_test_command`를 나눈 저장소) |
-|                 | `PostToolUse`(Edit·Write)                | `done-gate/post.sh`        | 기록: 이 턴에 고친 파일                                                                                                  |
-|                 | `Stop`                                   | `done-gate/stop.sh`        | **막음**: 코드를 고친 턴에 검사가 실패하면 턴 종료(`done.turn`)                                                                    |
-| **테스트 무결성**     | `PreToolUse`(Edit·Write·Bash)            | `test-integrity/pre.sh`    | **막음**: 무력화 표기 추가, 단언 감소, 테스트 파일 삭제, 러너 설정의 제외 추가(`ti.*`)                                                       |
-| **프로젝트 가드**     | `PreToolUse`(Edit·Write)                 | `project-guard/pre.sh`     | **막음**: `append_only` 경로의 기존 파일 수정. 새 파일 추가와 삭제는 막지 않습니다                                                        |
-| 저장소 프로필(게이트 아님) | `SessionStart`                           | `repo-profile/session.sh`  | 싣기: 저장소 사실을 컨텍스트에 싣습니다. 막지 않습니다                                                                                 |
+| 게이트 | 이벤트(대상 도구) | 스크립트 | 하는 일 |
+| --- | --- | --- | --- |
+| **근거** | `UserPromptSubmit` | `no-guess-gate/prompt.sh` | **기록**: 사용자가 보낸 질문을 저장합니다. 턴 끝에 "이 질문이 저장소나 파일을 물었는지" 판단할 때 씁니다. 새 턴이 시작되면 쓴 도구 기록을 비웁니다.<br>줄 첫머리에 `check allow <항목>`이 있으면 그 항목을 이번 한 번만 통과시키도록 적어 둡니다. 사람이 쓴 프롬프트에서만 읽습니다 |
+| | `PreToolUse`(모든 도구) | `no-guess-gate/pre.sh` | **기록**: Claude가 이번 턴에 어떤 도구(Read, Grep, Bash 등)를 썼는지 남깁니다. 턴 끝에 "확인하지 않고 답했는지" 판단하는 근거가 됩니다. 막지는 않습니다 |
+| | `PostToolUse`·`PostToolUseFailure`(Bash) | `no-guess-gate/bashres.sh` | **기록**: 명령이 성공했는지 실패했는지 순서대로 남깁니다. 마지막 명령이 실패했는데 "통과했다"고 답하면 R5가 이 기록으로 잡습니다 |
+| | `Stop`·`SubagentStop` | `no-guess-gate/stop.sh` | **막음**: Claude가 답을 마치려는 순간 답을 검사해, 아래 경우면 턴을 끝내지 못하게 합니다. 서브에이전트가 끝날 때도 같습니다.<br>· R0: 저장소·파일 상태를 물었는데 도구를 하나도 쓰지 않고 답함<br>· R1: 확인하지 않고 파일이 있다·없다고 단정함<br>· R2a·R2b: 도구 없이 "확인이 필요합니다"로 미루거나 "아마 ~일 겁니다"로 추측함<br>· R3: 명령을 하나도 돌리지 않고 "테스트 통과했습니다"라고 함<br>· R5: 마지막 명령이 실패했는데 통과했다고 함<br>확인할 수 없는 이유를 밝히거나 사용자에게 되물으면 막지 않습니다 |
+| **완료** | `PreToolUse`(Bash) | `done-gate/pre.sh` | **막음**: `gh pr create` 직전에 PR 본문을 봅니다. "통과했습니다"처럼 성공을 주장하는데 실행한 명령과 출력(코드 블록)이나 스크린샷이 없으면 PR을 열지 못합니다(`done.pr`).<br>**막음**: `git commit` 직전에 전체 검사(`test_command`)를 돌려, 실패하면 커밋하지 못합니다(`done.commit`). 턴 끝 검사를 `fast_test_command`로 따로 나눈 저장소에서만 돕니다 |
+| | `PostToolUse`(Edit·Write) | `done-gate/post.sh` | **기록**: 이번 턴에 고친 파일 경로를 남깁니다. 턴 끝에 코드 파일을 고쳤는지 판단할 때 씁니다 |
+| | `Stop` | `done-gate/stop.sh` | **막음**: 이번 턴에 코드 파일을 고쳤다면 저장소의 검사 명령을 실제로 돌리고, 실패하면 턴을 끝내지 못하게 합니다(`done.turn`). 문서만 고친 턴은 돌리지 않습니다.<br>검사 명령은 `.check.toml` → `package.json` → `Makefile` → `pyproject.toml` 순으로 찾고, 못 찾거나 시간을 넘기면 알리기만 하고 막지 않습니다 |
+| **테스트 무결성** | `PreToolUse`(Edit·Write·Bash) | `test-integrity/pre.sh` | **막음**: 테스트를 통과시키려고 테스트 쪽을 손대는 편집을 실행 전에 막습니다.<br>· `.skip(`·`.only(`·`xit(`·`@pytest.mark.skip` 같은 끄기 표기를 늘릴 때(`ti.skip`)<br>· `expect(`·`assert` 같은 단언을 줄일 때(`ti.assert`)<br>· `rm`·`git rm`으로 테스트 파일을 지울 때(`ti.rm`)<br>· jest·vitest·pytest 설정에 테스트 제외 패턴을 늘릴 때(`ti.exclude`)<br>기댓값을 고치거나 단언을 더하는 편집은 막지 않습니다 |
+| **프로젝트 가드** | `PreToolUse`(Edit·Write) | `project-guard/pre.sh` | **막음**: `.check.toml`의 `append_only`에 적은 경로(예: 마이그레이션 폴더)에서 이미 있는 파일을 고치려 하면 막습니다. 새 파일을 추가하거나 파일을 지우는 것은 막지 않습니다. `append_only`를 적지 않으면 아무것도 막지 않습니다 |
+| 저장소 프로필(게이트 아님) | `SessionStart` | `repo-profile/session.sh` | **싣기**: 세션을 열 때 패키지 매니저, 스택, 검사 명령, append-only 경로, 끈 규칙, 게이트별 동작 상태를 스무 줄 안팎으로 Claude에게 알려 줍니다. 사실만 싣고 지시는 넣지 않으며, 막지 않습니다 |
 
 
 스크립트 경로는 `plugin/hooks/` 기준입니다. 의미 판정기 `judge.py`는 훅이 아닙니다. `stop.sh`가 R2a·R2b만 걸렸을 때 부르는 스크립트입니다.

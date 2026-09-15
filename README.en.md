@@ -12,6 +12,8 @@
 
 English · **[한국어](README.md)**
 
+[Why it's needed](#why-its-needed) · [Who it's for](#who-its-for) · [Install](#install) · [What gets blocked](#what-gets-blocked) · [When it blocks](#when-it-blocks) · [False positives](#false-positives) · [Turning it off](#turning-it-off) · [Read more](#read-more) · [Sources](#sources) · [Related](#related)
+
 ### The best practices are written down. Nobody checks whether they were followed.
 
 did-you-check does the checking. It turns what the Claude Code docs and other development writing *recommend* into something the tool *enforces*: every turn is checked against them, and a turn that breaks one does not end.
@@ -151,16 +153,16 @@ The wiring is in `plugin/hooks/hooks.json`: 12 hooks in all. Each one either **b
 
 | Gate | Event (tools) | Script | What it does |
 | --- | --- | --- | --- |
-| **Evidence** | `UserPromptSubmit` | `no-guess-gate/prompt.sh` | Records the prompt and any `check allow` |
-| | `PreToolUse` (every tool) | `no-guess-gate/pre.sh` | Records the tools used (never blocks) |
-| | `PostToolUse`·`PostToolUseFailure` (Bash) | `no-guess-gate/bashres.sh` | Records whether each Bash call succeeded or failed (read by R5) |
-| | `Stop`·`SubagentStop` | `no-guess-gate/stop.sh` | **Blocks** R0, R1, R2a, R2b, R3, R5 |
-| **Completion** | `PreToolUse` (Bash) | `done-gate/pre.sh` | **Blocks** a PR body that claims success or verification without evidence (`done.pr`)<br>**Blocks** a commit whose full check fails (`done.commit`, in repos that set `fast_test_command`) |
-| | `PostToolUse` (Edit·Write) | `done-gate/post.sh` | Records the files changed this turn |
-| | `Stop` | `done-gate/stop.sh` | **Blocks** the end of a turn that changed code while the check fails (`done.turn`) |
-| **Test integrity** | `PreToolUse` (Edit·Write·Bash) | `test-integrity/pre.sh` | **Blocks** added disable markers, fewer assertions, test file deletion, new runner-config exclusions (`ti.*`) |
-| **Project guard** | `PreToolUse` (Edit·Write) | `project-guard/pre.sh` | **Blocks** editing existing files under `append_only`. Adding new files and deleting are allowed |
-| Repo profile (not a gate) | `SessionStart` | `repo-profile/session.sh` | Loads repo facts into context. Never blocks |
+| **Evidence** | `UserPromptSubmit` | `no-guess-gate/prompt.sh` | **Records** the question you sent. At turn end it tells the gate whether you asked about the repo or a file. When a new turn starts after the previous one ended, the tool record is cleared.<br>If a line starts with `check allow <item>`, that item is set to pass once. Only prompts a person typed are read |
+| | `PreToolUse` (every tool) | `no-guess-gate/pre.sh` | **Records** which tools (Read, Grep, Bash, …) Claude used this turn. At turn end this is how the gate tells whether Claude answered without checking. Never blocks |
+| | `PostToolUse`·`PostToolUseFailure` (Bash) | `no-guess-gate/bashres.sh` | **Records** whether each command succeeded or failed, in order. If the last command failed and Claude says it passed, R5 catches it with this record |
+| | `Stop`·`SubagentStop` | `no-guess-gate/stop.sh` | **Blocks**: checks the answer as Claude tries to finish and keeps the turn open in these cases. The same runs when a subagent finishes.<br>· R0: you asked about the repo or a file and Claude answered without using any tool<br>· R1: Claude said a file exists or doesn't without checking<br>· R2a·R2b: with no tool calls, Claude put it off ("this needs checking") or guessed ("it's probably …")<br>· R3: Claude said "tests pass" without running a single command<br>· R5: the last command failed, yet Claude said it passed<br>An answer that says why it can't check, or asks you back, is not blocked |
+| **Completion** | `PreToolUse` (Bash) | `done-gate/pre.sh` | **Blocks**: right before `gh pr create`, reads the PR body. If it claims success ("tests pass") but has no command output (a code block) or screenshot, the PR does not open (`done.pr`).<br>**Blocks**: right before `git commit`, runs the full check (`test_command`); if it fails, the commit does not go through (`done.commit`). Runs only in repos that split out a quicker per-turn check with `fast_test_command` |
+| | `PostToolUse` (Edit·Write) | `done-gate/post.sh` | **Records** the paths of files changed this turn. Used at turn end to tell whether code files were changed |
+| | `Stop` | `done-gate/stop.sh` | **Blocks**: if code files changed this turn, actually runs the repo's check command and keeps the turn open if it fails (`done.turn`). Docs-only turns run nothing.<br>The check command is looked up in `.check.toml` → `package.json` → `Makefile` → `pyproject.toml`; if none is found or it times out, it only tells you and does not block |
+| **Test integrity** | `PreToolUse` (Edit·Write·Bash) | `test-integrity/pre.sh` | **Blocks** edits that make tests pass by changing the tests, before they run.<br>· adding disable markers such as `.skip(`, `.only(`, `xit(`, `@pytest.mark.skip` (`ti.skip`)<br>· removing assertions such as `expect(` or `assert` (`ti.assert`)<br>· deleting test files with `rm` or `git rm` (`ti.rm`)<br>· adding test exclusions to jest, vitest or pytest config (`ti.exclude`)<br>Changing an expected value or adding assertions is not blocked |
+| **Project guard** | `PreToolUse` (Edit·Write) | `project-guard/pre.sh` | **Blocks** editing a file that already exists under a path listed in `append_only` in `.check.toml` (a migrations folder, for example). Adding new files and deleting files are allowed. Without `append_only`, it blocks nothing |
+| Repo profile (not a gate) | `SessionStart` | `repo-profile/session.sh` | **Loads** about twenty lines of fact when a session opens: package manager, stack, check command, append-only paths, disabled rules, and each gate's status. Facts only, no instructions, and it never blocks |
 
 Script paths are relative to `plugin/hooks/`. The semantic judge `judge.py` is not a hook; `stop.sh` calls it only when R2a or R2b alone fired.
 
