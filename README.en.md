@@ -19,6 +19,7 @@ did-you-check does the checking. It turns what the Claude Code docs and other de
 | The practice being checked | The moment it is broken |
 |---|---|
 | **Never claim what you did not check** | "There's no such file" — without opening anything → that answer never leaves |
+| **Never overwrite a file you have not read** | Rewriting a config file with Write without ever opening it → the write does not go through until the file is read |
 | **Show evidence instead of asserting success** | "All done" — without running the tests → the check runs, and a failure keeps the turn open |
 | | Opening a PR whose body only says "tests pass" → the PR does not open until the command and its output are in it |
 | **Never disable or delete a test** | Adding `.skip` to make it pass → the edit itself is refused |
@@ -113,13 +114,13 @@ What the judge did is recorded in `events.log` as `judge=released` / `kept` / `f
 
 ### When it runs
 
-At `Stop` (turn end) only **two gates run: evidence and completion**. Test integrity and the project guard block only at the moment an edit or Bash call is about to run (`PreToolUse`).
+At `Stop` (turn end) only **two gates run: evidence and completion**. Test integrity and the project guard block only at the moment an edit or Bash call is about to run (`PreToolUse`). The evidence gate blocks one thing at that moment too: a Write that would overwrite an existing file not read this session (`rb.write`).
 
 | Event | Gates that run |
 |---|---|
 | `SessionStart` | repo profile |
 | `UserPromptSubmit` | evidence (`check allow`) |
-| `PreToolUse` | evidence (records tools) · completion (Bash) · test integrity · project guard |
+| `PreToolUse` | evidence (records tools, `rb.write`) · completion (Bash) · test integrity · project guard |
 | `PostToolUse` | evidence (Bash result) · completion (Edit·Write) |
 | `Stop` | evidence (R0–R5) · completion (check command) |
 | `SubagentStop` | evidence (R0–R5) |
@@ -202,6 +203,7 @@ Every practice this plugin checks names the sentence it came from. A rule with n
 | False "done" (R3), end-of-turn check, PR body | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
 | Disabled tests | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" |
 | Rewritten migrations | [Hooks](https://code.claude.com/docs/en/hooks) | "Write a hook that blocks writes to the migrations folder." |
+| Overwriting a file you never read (`rb.write`) | [Tools reference](https://code.claude.com/docs/en/tools-reference) | "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read." |
 
 Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) is a source too. Every rule cites its sentence in [the detail doc](docs/gates.en.md#sources).
 

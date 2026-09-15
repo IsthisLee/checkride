@@ -12,13 +12,13 @@ This plugin makes that asking automatic. It is like a car that beeps when you sk
 
 ## When each runs
 
-The four gates and the repo profile hook into different events. **At `Stop` (turn end) only the evidence gate and the completion gate run.** Test integrity and the project guard block at the moment an edit or Bash call is about to run, not when the turn ends. The wiring lives in `plugin/hooks/hooks.json`.
+The four gates and the repo profile hook into different events. **At `Stop` (turn end) only the evidence gate and the completion gate run.** Test integrity and the project guard block at the moment an edit or Bash call is about to run, not when the turn ends. The evidence gate blocks one thing before a tool call too: overwriting an existing file you have not read with Write (`rb.write`). The wiring lives in `plugin/hooks/hooks.json`.
 
 | Event | Evidence | Completion | Test integrity | Project guard | Repo profile |
 |---|---|---|---|---|---|
 | `SessionStart` | | | | | loads repo facts into context |
 | `UserPromptSubmit` | reads `check allow` | | | | |
-| `PreToolUse` | records every tool name (never blocks) | Bash | Edit·Write·Bash | Edit·Write·Bash | |
+| `PreToolUse` | records every tool name; blocks only a Write over an unread existing file (`rb.write`) | Bash | Edit·Write·Bash | Edit·Write·Bash | |
 | `PostToolUse` | records Bash result as S/F | Edit·Write | | | |
 | `PostToolUseFailure` | records the Bash failure | | | | |
 | `Stop` | R0–R5 | check command | | | |
@@ -97,6 +97,7 @@ Comma-separate several; case doesn't matter. These are the names:
 | Gate | Name | What stops |
 |---|---|---|
 | Evidence | `R0`, `R1`, `R2a`, `R2b`, `R3`, `R4`, `R5` | That one rule |
+| | `rb.write` | Blocking a Write over an existing file you have not read |
 | Completion | `done.turn` | The check at the end of a turn that changed code |
 | | `done.commit` | The full check right before a commit |
 | | `done.pr` | The evidence check on a PR body |
@@ -134,6 +135,31 @@ That check passes **once** within the turn, and the allowance is gone. An unused
 - Each pass is logged to `events.log` as `allowed=[ti.skip]`.
 
 The idea comes from Probity's `enforceTdd`: "reply in the session asking for the change to be let through, and it's allowed on the next attempt."
+
+## Evidence gate: never overwrite a file you have not read
+
+The evidence gate blocks exactly one kind of tool call: **a Write that would overwrite an existing file you have not read this session** (`rb.write`).
+
+Claude Code used to refuse edits to files it had not read. The official tools reference still states that rule:
+
+> "Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read. Newer models can edit an unread file when reading it wouldn't need a permission prompt and the Read tool is available."
+
+Since v2.1.228 Write follows the same rule, so newer models can overwrite an existing file they never read. Edit only applies when `old_string` matches the current content exactly, which makes it hard to wreck a file by accident. Write replaces the whole file. So the gate does not police edits in general; it puts back only this one hard-to-undo case.
+
+| Case | Verdict |
+|---|---|
+| Creating a new file | Passes |
+| Overwriting an empty file | Passes; there is nothing to lose |
+| A file read with Read this session | Passes, even if it was read in an earlier turn |
+| A single file viewed with a command like `cat`, `head`, `sed -n 'X,Yp'` or `grep` | Passes; these are commands the official docs count as a read |
+| A file you wrote with Write this session | Passes |
+| A file viewed through a pipe, or together with other files | Blocked; the docs do not count those as a read either |
+| A file you only changed with Edit | Blocked; you saw the part you changed, not the whole file |
+| A file the main conversation read, overwritten by a subagent | Blocked; they are separate conversations |
+
+The record lasts for the session, not the turn (`state/<session>/seen`). Different spellings of the same path count as the same file.
+
+When blocked, Claude reads the file and writes again. That is what a real session (claude-sonnet-5) did: the Write was blocked, it read the file, and the second Write went through ([V47](VERIFICATION.md)). To turn only this check off, put `rb.write` in `disabled_rules`; to let one through, write `check allow rb.write`.
 
 ## Completion gate: the check must pass
 
@@ -241,7 +267,7 @@ Installing this adds time to every turn. Here are the numbers: the median of 20 
 | `no-guess-gate/prompt.sh` | once per turn | 51ms |
 | `no-guess-gate/stop.sh` | end of turn | 161ms |
 | `done-gate/stop.sh` | end of turn | 44ms |
-| `no-guess-gate/pre.sh` | per tool call | 17ms |
+| `no-guess-gate/pre.sh` | per tool call | 17ms; about 45ms for a Write and about 67ms for a Bash call that views a file, such as `cat` (V47, median of 30). Only those two start Python |
 | `test-integrity/pre.sh` | per Edit, Write or Bash call | 46ms; 12ms for a Bash call with no delete in it |
 | `project-guard/pre.sh` | per Edit, Write or Bash call | 41ms; 13ms for a Bash call with no delete, move or commit in it |
 | `done-gate/pre.sh` | per Bash call | 12ms unless it is a commit or a PR |
@@ -287,6 +313,7 @@ Every rule cites where it came from. No rule ships without one.
 | [Best practices](https://code.claude.com/docs/en/best-practices) | R3, the completion gate's Stop-hook approach, and the PR body check (`done.pr`). *"Have Claude show evidence rather than asserting success."* |
 | [Hooks](https://code.claude.com/docs/en/hooks) · [Hooks guide](https://code.claude.com/docs/en/hooks-guide) | exit 2 blocking, the 8-block cap, timeouts, and using a model where judgment is needed. The `PostToolUseFailure` event R5 uses to learn a command failed |
 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | The test-integrity gate. *"cheating, for example by disabling or deleting tests."* |
+| [Tools reference](https://code.claude.com/docs/en/tools-reference) | `rb.write`. *"Claude Opus 4.6, Claude Haiku 4.5, and older models always require the read."* Once newer models were allowed to skip the read (v2.1.228), only whole-file overwrites with Write are blocked again |
 
 The sources are not only Anthropic's docs. Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) is a source too.
 

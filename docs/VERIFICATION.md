@@ -2936,6 +2936,65 @@ rc=0  소요=53s                                     # test_command 전체
 `settings.json` 에 `env` 를 넣은 뒤 같은 세션의 Bash 에서 `printenv NGG_LANG` 이 `ko` 를 돌려줬다(세션 시작 때는
 unset). 새 세션을 열지 않아도 도구 환경에는 닿는다. did-you-check 훅 프로세스의 환경은 직접 찍어 보지 않았다.
 
+## V45 배선 표의 근거 게이트 칸을 고치고 훅 지연을 다시 쟀다
+
+배경: README와 상세 문서의 "언제 도나" 표가 `PreToolUse` 줄에 근거 게이트를 괄호 설명 없이 적었다.
+다른 줄은 역할을 괄호로 적어서, 이 줄만 근거 게이트가 도구 호출 전에 막는 것처럼 읽혔다.
+실제로 `no-guess-gate/pre.sh` 는 도구 이름을 한 줄 남기고 끝나며 막는 경로(`exit 2`)가 없다.
+다른 세션이 쓴 문제 정리에 이 오독이 그대로 들어가 있었고, 그 정리를 옮긴 비교가 틀린 결론을 냈다.
+
+변경: `README.md`·`README.en.md` 122행, `docs/gates.md`·`docs/gates.en.md` 21행의 칸 하나씩. 제목과 앵커는 그대로다.
+
+실행:
+
+```
+printf '{"session_id":"probe1","tool_name":"Edit","tool_input":{"file_path":"/tmp/x.ts","old_string":"a","new_string":"b"}}' \
+  | NGG_STATE=<scratchpad>/ngg-pre-probe bash plugin/hooks/no-guess-gate/pre.sh; echo "exit=$?"
+grep -cE 'exit 2' plugin/hooks/no-guess-gate/pre.sh
+tests/invariants.sh; echo "exit=$?"
+```
+
+출력:
+
+```
+exit=0                  # stdout·stderr 없음. 상태 파일 state/probe1/tools 에 "Edit" 한 줄
+0
+전부 통과
+exit=0
+```
+
+지연 실측. 스크래치패드의 python 하네스로 훅마다 30회 돌려 중앙값·최댓값(ms)을 쟀다. 상태 폴더는 임시로 두고
+`NGG_*` 를 지웠다. 입력은 같은 세션으로 Read(README.md), Bash(`ls -la`), Edit(README.md `a`→`b`),
+Stop(도구를 쓴 턴의 한국어 산문 답, 위반 없음) 순서다. 커밋·PR 명령 경로는 재지 않았다.
+
+```
+기준: bash 빈 실행                 6.8    20.6
+기준: python3 빈 실행             23.6    27.1
+Read  | no-guess-gate/pre.sh      14.1    21.4
+Bash  | no-guess-gate/pre.sh      15.3    69.3
+Bash  | test-integrity/pre.sh     10.3    22.3
+Bash  | project-guard/pre.sh      11.6    17.5
+Bash  | done-gate/pre.sh          11.1    24.3
+Bash  | bashres.sh (Post)         15.4    18.9
+Edit  | no-guess-gate/pre.sh      15.1    20.5
+Edit  | test-integrity/pre.sh     46.9    70.8
+Edit  | project-guard/pre.sh      40.5    66.2
+Edit  | done-gate/post.sh (Post)  39.1    75.0
+Stop  | no-guess-gate/stop.sh    133.9   243.9
+Stop  | done-gate/stop.sh         70.9    99.2
+합계(순차로 셌을 때): Read 14 · Bash 64 · Edit 142 · Stop 205
+```
+
+판정: 문서 수정은 통과. Read 한 번의 근거 게이트 비용 14.1ms 는 앞선 지연 측정 기록의 18.7ms 와 같은 수준이라
+빠른 경로가 유지된다. 공식 hooks 문서가 "All matching hooks run in parallel." 이라 적으므로 도구 호출의 체감 지연은
+합이 아니라 가장 느린 훅이다(Edit 46.9ms). Edit 경로 세 훅과 Stop 두 훅의 시간은 대부분 python 기동이다
+(`read_in` 이 모든 입력을 python 으로 파싱하고, `stop.sh` 는 `xform` 과 JSON 면제 검사에서 python 을 두 번 더 띄운다).
+
+관련 관찰: V44 가 확인하지 못한 `env` 전달. 같은 세션 안에서 `settings.json` 에 `env` 를 넣은 뒤 셸 환경에
+값이 보였고, ecc 플러그인의 편집 게이트는 처음 만지는 파일을 막지 않았으며 그 상태 파일(`~/.gateguard/state-<세션>.json`)에
+편집 기록이 없었다. 새 세션을 열지 않아도 플러그인 훅(ecc)에 닿았다는 뜻이다.
+**did-you-check 훅 프로세스의 환경은 직접 찍어 보지 않았다.**
+
 ## V46 메시지 테스트가 둘러싼 저장소의 `.check.toml` 을 읽지 않게 했다
 
 이 저장소의 `.check.toml` 에 `lang = "ko"` 를 넣으면 `tests/lib/unit.sh` 의 로케일 폴백 검사 네 건이
@@ -3135,4 +3194,103 @@ Glob (그 밖의 도구)                   14.4   41.4
 - 컨텍스트 압축 뒤. `seen` 은 압축과 상관없이 남는다. Claude Code 가 압축 뒤 read-before-edit 를 어떻게 판정하는지 문서에서 찾지 못했다.
 - 12시간을 넘는 세션. `prompt.sh` 는 수정 시각이 720분 지난 세션 폴더를 지운다. `seen` 에 줄을 덧붙이는 것은 폴더의 수정 시각을 바꾸지 않으므로,
 코드상 긴 세션에서 기록이 지워지고 그 뒤 첫 Write 가 막힐 수 있다. 재지 않았다.
+
+## V48 R0 오탐 실측: 대화 기록으로 한 턴씩 판정
+
+배경: V43 과 README 는 R0 가 막은 횟수를 적었지만, 그 차단이 맞았는지는 재지 않았다. `events.log` 는 답의 앞 80바이트만 남기고
+프롬프트를 남기지 않아 판정 재료가 되지 못한다. Claude Code 대화 기록(`~/.claude/projects/*/*.jsonl`)에는 전체 대화가 남으므로 그것으로 판정했다.
+
+방법:
+
+1. 게이트 문구가 든 줄을 JSON 구조별로 나눴다. 실제 차단 피드백은 `type=user`, `isMeta=true` 이고 내용이 `Stop hook feedback:` 으로
+ 시작하는 줄뿐이었다. 도구 결과·파일 편집 첨부 안에 인용된 게이트 문구까지 센 앞선 두 집계는 버렸다(규칙 이름 자리에 `$v`·`%s` 가 섞여 나왔다).
+2. 그중 R0 가 든 줄을 턴 단위로 묶고, 턴마다 사용자 질문과 막힌 답의 앞부분을 뽑아 사람이 판정했다. 기준은 판정 전에 정했다.
+ 로컬 상태를 실측 없이 단정했으면 정당, 도구가 필요 없는 작업이거나 이미 실측했으면 오탐, 발췌만으로 가를 수 없으면 애매다.
+ 발췌와 저장소 이름은 개인 대화라 이 기록에 옮기지 않는다.
+
+실행(집계만 찍는다):
+
+```
+python3 - <<'PY'
+import glob, json, os, re
+root = os.path.join(os.path.expanduser("~"), ".claude", "projects")
+head = re.compile(r"근거 없는 결론 게이트 \[(R[0-5][ab]?(?: R[0-5][ab]?)*)\]")
+lines_r0 = occ_r0 = multi = side = 0
+for p in glob.glob(os.path.join(root, "*", "*.jsonl")):
+    for line in open(p, encoding="utf-8", errors="replace"):
+        if "근거 없는 결론 게이트 [" not in line: continue
+        try: o = json.loads(line)
+        except Exception: continue
+        m = o.get("message") if isinstance(o.get("message"), dict) else {}
+        if not (o.get("type") == "user" and o.get("isMeta") and isinstance(m.get("content"), str)
+                and m["content"].startswith("Stop hook feedback")): continue
+        groups = head.findall(m["content"]); n = sum(g.split().count("R0") for g in groups)
+        if n:
+            lines_r0 += 1; occ_r0 += n; multi += len(groups) > 1; side += bool(o.get("isSidechain"))
+print(f"R0 가 든 피드백 줄: {lines_r0} | R0 등장 횟수: {occ_r0} | 한 줄에 헤더 둘 이상: {multi} | 사이드체인 줄: {side}")
+PY
+```
+
+출력:
+
+```
+R0 가 든 피드백 줄: 141 | R0 등장 횟수: 141 | 한 줄에 헤더 둘 이상: 0 | 사이드체인 줄: 0
+```
+
+141줄을 턴으로 묶으면 113턴이다. 판정 결과:
+
+
+| 부류                                 | 턴       | 정당     | 오탐     | 애매    |
+| ---------------------------------- | ------- | ------ | ------ | ----- |
+| 다른 플러그인이 `claude -p` 로 띄운 자동 요약 세션 | 40      | 0      | 40     | 0     |
+| 사람이 직접 한 대화                        | 4       | 0      | 3      | 1     |
+| 게이트 회귀 테스트·A/B 측정 세션               | 63      | 40     | 23     | 0     |
+| 판정기가 띄운 중첩 세션(옛 판본)                | 6       | 0      | 6      | 0     |
+| **합계**                             | **113** | **40** | **72** | **1** |
+
+
+오탐 72턴의 원인:
+
+
+| 원인                                                                                                                                                                                                              | 턴   | 지금 코드                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------ |
+| 자동 요약 세션. ECC `scripts/lib/llm-summary.js` 153행이 `spawnSync('claude', ['--model', getLLMModel(), '-p'])` 로 띄우며, 환경변수 `CLAUDECODE=''`·`ECC_SKIP_LLM_SUMMARY=1`·`ECC_LLM_SUMMARY_SUBPROCESS=1` 만 넘기고 설정을 격리하지 않는다 | 40  | 재현된다                           |
+| 확인할 수 없다는 정직한 답을 불가 면제가 알아보지 못함                                                                                                                                                                                 | 17  | 재현된다(아래)                       |
+| 판정기가 띄운 중첩 세션                                                                                                                                                                                                   | 6   | `NGG_INNER` 로 막혔다              |
+| 서브에이전트를 쓴 턴의 도구 수를 0 으로 셈                                                                                                                                                                                       | 5   | 옛 판본에서 생긴 기록이다                 |
+| 백그라운드 완료 알림·턴 중간 메시지에서 도구 카운터가 비워짐                                                                                                                                                                              | 3   | `prompt.sh` 의 예외 1·2 로 코드상 막혔다 |
+| 이미 컨텍스트에 실린 CLAUDE.md 에 대한 질문                                                                                                                                                                                   | 1   | 재현된다(아래)                       |
+
+
+실행(현재 `stop.sh` 에 기록 속 문장을 그대로 넣었다. 판정기는 끄고 임시 상태 폴더에서 돌렸다):
+
+```
+probe() {  # $1 이름 $2 프롬프트 $3 답변. 도구 0건 턴으로 만든다
+  sid="p$RANDOM"; mkdir -p "$W/state/$sid"; : > "$W/state/$sid/tools"; printf '%s' "$2" > "$W/state/$sid/prompt"
+  python3 -c 'import json,sys; print(json.dumps(dict(session_id=sys.argv[1],hook_event_name="Stop",stop_hook_active=False,last_assistant_message=sys.argv[2],cwd=sys.argv[3]),ensure_ascii=False))' "$sid" "$3" "$W" \
+    | NGG_LANG=ko NGG_JUDGE=0 NGG_STATE="$W" CLAUDE_PROJECT_DIR="$W" bash plugin/hooks/no-guess-gate/stop.sh 2>&1 >/dev/null
+}
+```
+
+출력(rc=2 차단, rc=0 통과):
+
+```
+정직한 거절(cannot determine)           rc=2  근거 없는 결론 게이트 [R0 R2a]. 턴을 끝낼 수 없다.
+정직한 거절(can't answer)               rc=2  근거 없는 결론 게이트 [R0 R2a]. 턴을 끝낼 수 없다.
+정직한 거절(판단할 수 없)                    rc=2  근거 없는 결론 게이트 [R0]. 턴을 끝낼 수 없다.
+정직한 거절(확인 불가·알 수 없)                rc=2  근거 없는 결론 게이트 [R0]. 턴을 끝낼 수 없다.
+대조군: cannot verify (정규식에 있음)       rc=0
+대조군: 추측 단정(막혀야 정상)                 rc=2  근거 없는 결론 게이트 [R0]. 턴을 끝낼 수 없다.
+컨텍스트 속 CLAUDE.md 질문(113번)          rc=2  근거 없는 결론 게이트 [R0]. 턴을 끝낼 수 없다.
+```
+
+판정: 실제 사용(자동 요약 세션 + 사람 대화) 44턴에서 정당한 차단 0, 오탐 43, 애매 1 이다. 주원인 둘(자동 요약 세션, 불가 면제 누락)은
+현재 코드에서도 재현된다. 정당한 차단 40턴은 모두 압박 질문을 던진 테스트 세션에서 나왔으므로, R0 가 실제 추측을 잡는 능력 자체는 있다.
+
+**확인하지 못한 것:**
+
+- 판정은 발췌를 보고 한 사람이 했다. 두 번째 판정자는 없다.
+- 같은 필터로 앞서 한 집계에서는 R0 가 110건이었다. 한 줄에 헤더가 둘인 경우와 사이드체인 줄이 0 이라 셈 방식의 차이는 아니다.
+두 실행 사이에 기록 파일이 늘었는지는 확인하지 않았다.
+- 자동 요약 세션에서 난 차단이 요약 결과를 망가뜨렸는지는 보지 않았다.
 
