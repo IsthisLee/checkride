@@ -30,7 +30,9 @@ Claude Code 공식 문서를 비롯한 여러 개발 문서가 권하는 모범 
 
 다섯 가지 사례는 모두 **공식 문서와 개발 문서가 권하는 것입니다.** 각 사례가 어느 문장에서 나왔는지는 [근거](#근거)에 정리해 두었습니다.
 
-사용자가 한 번도 부탁하지 않아도 매번 검사합니다. **사용자가 잊어버려도 된다는 점이 핵심입니다. (아예 잊지는 말아요)**
+규칙은 항목마다 끌 수 있습니다. `/check:config`로 항목의 출처를 보고 고르면 `.check.toml`에 적혀 커밋에 남으므로, 무엇을 껐는지 팀이 함께 봅니다. 테스트 무결성·완료 게이트에서 오탐 한 건만 넘기려면 다음 프롬프트에 `check allow <항목>`을 한 줄로 쓰면 됩니다. 자세한 방법은 [끄기와 제거](#끄기와-제거)에 있습니다.
+
+사용자가 한 번도 부탁하지 않아도 매번 검사합니다. **되묻는 일은 훅이 맡고, 사용자는 결과를 판단하는 데 집중하면 됩니다.**
 
 > **왜 훅인가.** 같은 문서가 답합니다. "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens." (권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다.)
 
@@ -159,18 +161,29 @@ Claude가 답을 마치려는 순간, `Stop` 훅이 규칙 여섯 개를 검사�
 
 ### 언제 도나
 
-`Stop`(턴 끝)에서 도는 것은 **근거 게이트와 완료 게이트 둘뿐**입니다. 테스트 무결성과 프로젝트 가드는 편집이나 Bash를 실행하려는 순간(`PreToolUse`)에만 막습니다. 근거 게이트도 이 순간에 한 가지는 막습니다. 이번 세션에 읽지 않은 기존 파일을 Write로 통째로 덮어쓰려는 경우입니다(`rb.write`).
+게이트는 Claude Code의 **훅**으로 만들어져 있습니다. 둘은 같은 말이 아닙니다.
+
+- **훅**은 Claude Code가 정해진 순간에 스크립트를 돌리는 장치입니다. 스크립트가 exit 2로 끝나면 그 동작을 막습니다.
+- **게이트**는 이 플러그인이 "무엇을 검사해 막는가"를 기준으로 붙인 이름입니다. 게이트 하나가 훅 여러 개로 이뤄집니다.
+
+배선은 `plugin/hooks/hooks.json`에 있고, 훅은 모두 12개입니다. 하는 일은 **막음**과 **기록**으로 나뉩니다. 기록하는 훅은 막지 않고, 막는 훅이 판정할 때 쓸 정보만 남깁니다. `Stop`(턴 끝)에서 막는 것은 근거 게이트와 완료 게이트 둘뿐이고, 테스트 무결성과 프로젝트 가드는 편집이나 Bash를 실행하려는 순간(`PreToolUse`)에만 막습니다.
 
 
-| 이벤트                | 도는 게이트                                               |
-| ------------------ | ---------------------------------------------------- |
-| `SessionStart`     | 저장소 프로필                                              |
-| `UserPromptSubmit` | 근거(`check allow`)                                    |
-| `PreToolUse`       | 근거(도구 기록, `rb.write`) · 완료(Bash) · 테스트 무결성 · 프로젝트 가드 |
-| `PostToolUse`      | 근거(Bash 결과) · 완료(Edit·Write)                         |
-| `Stop`             | 근거(R0~R5) · 완료(검사 명령)                                |
-| `SubagentStop`     | 근거(R0~R5)                                            |
+| 게이트             | 이벤트(대상 도구)                               | 스크립트                       | 하는 일                                                                                                            |
+| --------------- | ---------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **근거**          | `UserPromptSubmit`                       | `no-guess-gate/prompt.sh`  | 기록: 프롬프트와 `check allow`                                                                                         |
+|                 | `PreToolUse`(모든 도구)                      | `no-guess-gate/pre.sh`     | 기록: 쓴 도구와 읽은 파일<br>**막음**: 읽지 않은 기존 파일을 Write로 덮어쓰기(`rb.write`)                                                                                               |
+|                 | `PostToolUse`·`PostToolUseFailure`(Bash) | `no-guess-gate/bashres.sh` | 기록: Bash의 성공·실패(R5가 봅니다)                                                                                        |
+|                 | `Stop`·`SubagentStop`                    | `no-guess-gate/stop.sh`    | **막음**: R0·R1·R2a·R2b·R3·R5                                                                                     |
+| **완료**          | `PreToolUse`(Bash)                       | `done-gate/pre.sh`         | **막음**: 근거 없는 PR 본문(`done.pr`)<br>**막음**: 전체 검사가 실패한 커밋(`done.commit`, `fast_test_command`를 나눈 저장소) |
+|                 | `PostToolUse`(Edit·Write)                | `done-gate/post.sh`        | 기록: 이 턴에 고친 파일                                                                                                  |
+|                 | `Stop`                                   | `done-gate/stop.sh`        | **막음**: 코드를 고친 턴에 검사가 실패하면 턴 종료(`done.turn`)                                                                    |
+| **테스트 무결성**     | `PreToolUse`(Edit·Write·Bash)            | `test-integrity/pre.sh`    | **막음**: 무력화 표기 추가, 단언 감소, 테스트 파일 삭제, 러너 설정의 제외 추가(`ti.*`)                                                       |
+| **프로젝트 가드**     | `PreToolUse`(Edit·Write·Bash)                 | `project-guard/pre.sh`     | **막음**: `append_only` 경로의 기존 파일 수정·삭제(`rm`·`git rm`)                                                        |
+| 저장소 프로필(게이트 아님) | `SessionStart`                           | `repo-profile/session.sh`  | 싣기: 저장소 사실을 컨텍스트에 싣습니다. 막지 않습니다                                                                                 |
 
+
+스크립트 경로는 `plugin/hooks/` 기준입니다. 의미 판정기 `judge.py`는 훅이 아닙니다. `stop.sh`가 R2a·R2b만 걸렸을 때 부르는 스크립트입니다.
 
 R0~R5도 매 턴 전부 검사하지는 않고, 조건이 맞을 때만 봅니다. R0·R1·R2a는 이 턴에 도구를 하나도 쓰지 않았을 때만 걸립니다. 자세한 배선과 조건은 [상세 문서](docs/gates.md#언제-무엇이-도나)에 있습니다.
 

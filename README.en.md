@@ -28,7 +28,9 @@ did-you-check does the checking. It turns what the Claude Code docs and other de
 
 Every one is **recommended by the official docs or by development writing**, and [Sources](#sources) names the sentence each came from.
 
-You never asked for any of it, and it is checked every time. **The point is that you get to forget.**
+Each rule can be switched off on its own. Pick items with `/check:config`, which shows where each one comes from; the choice is written to `.check.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
+
+You never asked for any of it, and it is checked every time. **The hooks do the asking; you focus on judging the results.**
 
 > **Why hooks?** The same docs answer that: "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."
 
@@ -141,16 +143,27 @@ What the judge did is recorded in `events.log` as `judge=released` / `kept` / `f
 
 ### When it runs
 
-At `Stop` (turn end) only **two gates run: evidence and completion**. Test integrity and the project guard block only at the moment an edit or Bash call is about to run (`PreToolUse`). The evidence gate blocks one thing at that moment too: a Write that would overwrite an existing file not read this session (`rb.write`).
+The gates are built from Claude Code **hooks**. The two words are not the same thing.
 
-| Event | Gates that run |
-|---|---|
-| `SessionStart` | repo profile |
-| `UserPromptSubmit` | evidence (`check allow`) |
-| `PreToolUse` | evidence (records tools, `rb.write`) · completion (Bash) · test integrity · project guard |
-| `PostToolUse` | evidence (Bash result) · completion (Edit·Write) |
-| `Stop` | evidence (R0–R5) · completion (check command) |
-| `SubagentStop` | evidence (R0–R5) |
+- A **hook** is Claude Code's mechanism for running a script at a set moment. If the script exits with code 2, that action is blocked.
+- A **gate** is this plugin's name for "what gets checked and blocked". One gate is made of several hooks.
+
+The wiring is in `plugin/hooks/hooks.json`: 12 hooks in all. Each one either **blocks** or **records**. A recording hook never blocks; it only leaves what a blocking hook needs to decide. At `Stop` (turn end) only the evidence and completion gates block; test integrity and the project guard block only when an edit or Bash call is about to run (`PreToolUse`).
+
+| Gate | Event (tools) | Script | What it does |
+| --- | --- | --- | --- |
+| **Evidence** | `UserPromptSubmit` | `no-guess-gate/prompt.sh` | Records the prompt and any `check allow` |
+| | `PreToolUse` (every tool) | `no-guess-gate/pre.sh` | Records the tools used and files read<br>**Blocks** a Write over an existing file not read this session (`rb.write`) |
+| | `PostToolUse`·`PostToolUseFailure` (Bash) | `no-guess-gate/bashres.sh` | Records whether each Bash call succeeded or failed (read by R5) |
+| | `Stop`·`SubagentStop` | `no-guess-gate/stop.sh` | **Blocks** R0, R1, R2a, R2b, R3, R5 |
+| **Completion** | `PreToolUse` (Bash) | `done-gate/pre.sh` | **Blocks** a PR body without evidence (`done.pr`)<br>**Blocks** a commit whose full check fails (`done.commit`, in repos that set `fast_test_command`) |
+| | `PostToolUse` (Edit·Write) | `done-gate/post.sh` | Records the files changed this turn |
+| | `Stop` | `done-gate/stop.sh` | **Blocks** the end of a turn that changed code while the check fails (`done.turn`) |
+| **Test integrity** | `PreToolUse` (Edit·Write·Bash) | `test-integrity/pre.sh` | **Blocks** added disable markers, fewer assertions, test file deletion, new runner-config exclusions (`ti.*`) |
+| **Project guard** | `PreToolUse` (Edit·Write·Bash) | `project-guard/pre.sh` | **Blocks** editing or deleting (`rm`, `git rm`) existing files under `append_only` |
+| Repo profile (not a gate) | `SessionStart` | `repo-profile/session.sh` | Loads repo facts into context. Never blocks |
+
+Script paths are relative to `plugin/hooks/`. The semantic judge `judge.py` is not a hook; `stop.sh` calls it only when R2a or R2b alone fired.
 
 R0–R5 are not all checked every turn; each fires only under its condition. R0, R1, and R2a fire only when zero tools ran this turn. See [the detail doc](docs/gates.en.md#when-each-runs) for the full wiring and conditions.
 
