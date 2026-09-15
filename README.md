@@ -58,6 +58,40 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 
 서브에이전트는 기본적으로 뒤에서 돌고, 그 호출 체인이 깊어질수록 사람이 매 턴을 눈으로 확인하기 어려워집니다. 자동으로 되묻는 장치는 사람이 덜 볼수록 오히려 쓸모가 커집니다. did-you-check는 서브에이전트가 끝나는 순간에도 같은 검사를 돌립니다(`SubagentStop`).
 
+### ❓ 턴이 끝나는 순간에 막으면 토큰이 너무 늘지 않나요? 행동 전에 지시해 두면 되지 않나요?
+
+**Opus 5에게는 행동 전에 검증을 지시해 두는 쪽이 오히려 토큰을 더 씁니다.** Anthropic의 [Opus 5 프롬프트 가이드](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5)는 Opus 5에게 주는 프롬프트에서 검증 지시를 지우라고 안내합니다. 다른 모델에 대한 안내는 아닙니다.
+
+> "Claude Opus 5 verifies its own work without being told to. If your prompt contains explicit verification instructions (…), remove them: instructions like these cause over-verification on Claude Opus 5, and removing them reduces wasted tokens with no loss in quality."
+>
+> 번역: Claude Opus 5는 시키지 않아도 자기 작업을 검증한다. 프롬프트에 명시적인 검증 지시가 있으면 지워라. 그런 지시는 Opus 5에서 과잉 검증을 일으키고, 지우면 품질 손실 없이 낭비되는 토큰이 줄어든다.
+
+게다가 미리 적어 둔 지시는 권고에 그칩니다. 위에서 인용한 대로 공식 문서는 CLAUDE.md 지시를 "advisory", 곧 권고라고 부릅니다.
+
+그리고 거짓 완료는 모델이 좋아지는 동안에도 줄어들지 않았습니다. 실제 코딩 에이전트 세션 20,574건을 분석한 [연구](https://arxiv.org/abs/2605.29442)(Tang 외, arXiv 2605.29442 v2)의 결론은 이렇습니다.
+
+> "while overall rates decline, constraint violations and inaccurate self-reporting grow in share."
+>
+> 번역: 전체 비율은 줄지만, 제약 위반과 부정확한 자기 보고가 차지하는 비중은 커진다.
+
+이 연구에서 부정확한 자기 보고는 에이전트가 성공이나 완료, 준비됐다고 너무 일찍 주장하는 경우("prematurely claiming success, completion, or readiness")를 말합니다. 이런 사례가 전체 문제 사례의 22.58%였습니다. 다른 문제는 줄어드는데 이 실패는 비중이 오히려 커졌으므로, 턴 끝에서 주장을 대조하는 검사는 계속 쓸모가 있다고 봅니다. 다만 추세를 분석한 구간이 2025년 2월부터 2026년 4월까지라, Opus 5가 나오기 전의 자료입니다.
+
+그래서 이 플러그인은 모델에게 미리 시키지 않고, 나온 답을 턴 끝에 밖에서 대조합니다. 비용은 막힐 때만 붙습니다.
+
+| 경우 | 드는 비용 |
+| --- | --- |
+| 걸리지 않은 턴 | 모델 토큰은 들지 않습니다. 정규식 검사만 돌고 약 256ms가 붙습니다 |
+| 막힌 턴 | Claude가 확인하고 다시 답하는 한 턴 분량입니다. 실제 사용에서 898번 검사 중 69번(약 8%)이었습니다 |
+| 의견인지 상태 주장인지 애매한 턴 | 작은 모델(haiku) 판정 한 번입니다. 차단의 약 4%에서만 부릅니다 |
+
+막힌 뒤 다시 답하는 턴의 비용도 줄었습니다. [Claude Code 변경 이력](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) 2.1.259는 차단 뒤의 턴이 캐시를 놓치던 문제를 고쳤습니다.
+
+> "Fixed blocking Stop hooks causing the turn after a block to lose the model's reasoning from that turn and, on some models, miss the prompt cache"
+>
+> 번역: 차단하는 Stop 훅 때문에 차단 뒤의 턴이 그 턴의 추론을 잃고, 일부 모델에서는 프롬프트 캐시를 놓치던 문제를 고쳤다.
+
+공짜는 아닙니다. 오탐으로 막히면 그 한 턴은 낭비이고, R0에서는 아직 오탐이 많습니다([V48](docs/VERIFICATION.md#v48-r0-오탐-실측-대화-기록으로-한-턴씩-판정)). 파일을 고치기 **전에** 조사를 강제하는 방식을 왜 두지 않았는지는 [설계 결정](docs/decisions.md#2-파일을-고치기-전에-조사를-강제해야-하는가)에 적었습니다. 인용한 문장은 모두 원문과 대조했습니다(2026-09-15).
+
 ## 누구에게 좋은가
 
 

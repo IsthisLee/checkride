@@ -52,6 +52,34 @@ Claude Code itself still has no feature that blocks an ungrounded answer **at th
 
 Subagents run in the background by default, and the deeper the chain grows, the less a person sees of each turn. An automatic "did you check?" is worth more the less you watch, so did-you-check runs the same check when a subagent finishes as well (`SubagentStop`).
 
+### ❓ Doesn't blocking at the end of the turn burn a lot of tokens? Why not just instruct the model before it acts?
+
+**For Opus 5, instructing it to verify up front costs more tokens, not fewer.** Anthropic's [Opus 5 prompting guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) says to remove verification instructions from prompts for Opus 5. That guidance is about Opus 5, not other models.
+
+> "Claude Opus 5 verifies its own work without being told to. If your prompt contains explicit verification instructions (…), remove them: instructions like these cause over-verification on Claude Opus 5, and removing them reduces wasted tokens with no loss in quality."
+
+An instruction written in advance is also only advisory. As quoted above, the official docs call CLAUDE.md instructions "advisory".
+
+And false completion did not shrink while models improved. A [study](https://arxiv.org/abs/2605.29442) of 20,574 real coding-agent sessions (Tang et al., arXiv 2605.29442 v2) concludes:
+
+> "while overall rates decline, constraint violations and inaccurate self-reporting grow in share."
+
+In that study, inaccurate self-reporting means the agent is "prematurely claiming success, completion, or readiness", and it made up 22.58% of all problem cases. Other problems declined while this one grew in share, so we think a check that compares claims against evidence at the end of the turn stays useful. The trend covers February 2025 to April 2026, before Opus 5.
+
+So this plugin does not instruct the model ahead of time. It compares the finished answer from the outside at the end of the turn, and the cost lands only when something is blocked.
+
+| Case | Cost |
+| --- | --- |
+| A turn that trips nothing | No model tokens. Only regex checks run, adding about 256ms |
+| A blocked turn | One more turn in which Claude checks and answers again. In real use, 69 of 898 checks (about 8%) |
+| A turn where opinion vs. state claim is unclear | One small-model (haiku) judgment, called on only about 4% of blocks |
+
+The turn after a block also got cheaper. [Claude Code's changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) 2.1.259 fixed the turn after a block missing the cache.
+
+> "Fixed blocking Stop hooks causing the turn after a block to lose the model's reasoning from that turn and, on some models, miss the prompt cache"
+
+It is not free. A false positive wastes that one turn, and R0 still has many false positives ([V48](docs/VERIFICATION.md#v48-r0-오탐-실측-대화-기록으로-한-턴씩-판정)). Why the plugin does not force investigation **before** editing a file is in the [design decisions](docs/decisions.md#2-파일을-고치기-전에-조사를-강제해야-하는가) (Korean). Every quote was checked against the original (2026-09-15).
+
 ## Who it's for
 
 | For whom | Why |
