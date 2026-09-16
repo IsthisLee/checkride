@@ -27,7 +27,7 @@ J
 ( cd "$P" && git init -q && git add -A && git -c user.email=t@t -c user.name=t commit -qm init )
 
 run() { # $1 이름  $2 도구  $3 프롬프트  → 결과를 $T/out 에
-  ( cd "$P" && CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 NGG_LANG=ko \
+  ( cd "$P" && CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 NGG_LANG=ko NGG_HEADLESS=1 \
       claude -p "$3" --plugin-dir "$PLUGIN" --allowedTools "$2" \
       --model haiku --max-turns 20 --setting-sources "" --output-format json 2>/dev/null ) \
     | python3 -c 'import sys,json;d=json.load(sys.stdin);print(str(d.get("result") or ""))' > "$T/out.$1" 2>/dev/null

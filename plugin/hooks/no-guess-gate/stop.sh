@@ -13,6 +13,14 @@ off=""; offbad=""
 log() { local lf; lf="$(state_root "$d")/state/events.log"
   echo "$HOOK_EVENT_NAME${AGENT_ID:+/agent} active=$STOP_HOOK_ACTIVE tools=$ntools bash=$nbash ctx=$1${judge_log:+ $judge_log}${off:+ off=[$off]}${offbad:+ off?=[$offbad]} viol=[$2] last=$(printf '%s' "$last" | head -c 80 | LC_ALL=C tr '\n' ' ')" >> "$lf"
   if [ "$(wc -l < "$lf" 2>/dev/null || echo 0)" -gt 2200 ]; then tail -n 2000 "$lf" > "$lf.tmp" 2>/dev/null && mv "$lf.tmp" "$lf"; fi; }
+# 사람이 보고 있지 않은 세션에서는 돌지 않는다. 다른 플러그인이 띄우는 자동 요약 세션이 실제 차단의
+# 대부분을 차지했는데(V48), 그 세션의 답은 사람에게 보이지 않아 되물을 상대가 없다. 두 변수 모두 공식
+# 훅 문서에 없어 실측으로만 확인했다(V52). 그래서 변수가 없으면 지금처럼 막는 쪽으로 판정한다.
+# 회귀 테스트와 CI 는 헤드리스로 돌면서 차단을 기대하므로 NGG_HEADLESS=1 로 되살린다.
+if [ "${NGG_HEADLESS:-}" != "1" ] &&
+   { [ "${CLAUDE_CODE_SESSION_ATTENDED:-}" = "0" ] || [ "${CLAUDE_CODE_ENTRYPOINT:-}" = "sdk-cli" ]; }; then
+  log - "(exempt:headless)"; touch "$s/turn_closed"; exit 0
+fi
 if [ "$nask" -gt 0 ]; then log - "(exempt:ask-tool)"; touch "$s/turn_closed"; exit 0; fi
 ASKRE='(\?[[:space:]]*$|which (one|takes priority|do you)|should I|do you want|would you like|please (confirm|clarify|tell me)|어느 쪽|어떻게 할까|할까요\?|원하시|확인해 주|알려 주|선택해 주)'
 if printf '%s' "$last" | grep -qiE "$ASKRE"; then log - "(exempt:question)"; touch "$s/turn_closed"; exit 0; fi
@@ -28,19 +36,27 @@ printf '%s' "$last" | grep -qiE "$HERELOCAL" && ctx=1
 # 바이트로 매칭해 한국어 글자를 한가운데서 자르고, 그러면 R1 이 조용히 안 걸린다. 교체(|)로 쓴다.
 R1PHRASE="(there('s| is| are) (no|a|an)|(does|doesn't|do not|don't) (contain|exist|have)|존재하지 않|파일이 없|파일이 있|디렉터리에 (없|있))"
 R1STATE='(없다([[:space:],.)]|$)|없습니다|없음([[:space:],.)]|$)|없어(요)?([[:space:],.)]|$)|있다([[:space:],.)]|$)|있습니다|있음([[:space:],.)]|$)|존재(한다|합니다|하지 않는다|하지 않습니다)([[:space:],.)]|$)|비어 ?있|is missing|not found|no such|does not exist|doesn'"'"'t exist|exists([[:space:],.)]|$)|is empty)'
-r1_hit() { printf '%s' "$last" | grep -qiE "$R1PHRASE" && return 0; printf '%s\n' "$last" | sed -E 's/(\.|!|\?|。)([[:space:]]|$)/\1\n/g' | grep -E "$PATHRE" | grep -v '수 있' | grep -qiE "$R1STATE"; }
+r1_hit() { printf '%s' "$noq" | grep -qiE "$R1PHRASE" && return 0; printf '%s\n' "$noq" | sed -E 's/(\.|!|\?|。)([[:space:]]|$)/\1\n/g' | grep -E "$PATHRE" | grep -v '수 있' | grep -qiE "$R1STATE"; }
 R2a='(should (verify|check|confirm)|need(s)? to (verify|check|confirm)|would need to (check|verify|run|look)|without checking|to be sure|확인 필요|실측 필요|검증 필요|확인해야|검증해야|확인이 필요|확인하지 않았|검증하지 않았|미확인)'
 # 불가 면제. 실측이 불가능한 이유를 밝힌 답. "안 했다"(NEG)와 다르다. R0·R2a·R2b에서 벗어나고 단정(R1)과 검증 주장(R3)에는 적용하지 않는다.
-CANNOT='(확인할 수 없|검증할 수 없|실행할 수 없|접근할 수 없|띄울 수 없|재현할 수 없|불가능(하다|합니다|해서|하다고)|(도구|명령|명령어|커맨드|bash|셸|쉘|툴) ?(실행|호출)?[^.]{0,25}(안 ?(된다|돼|됩니다|되고|돌아)|되지 않|실행되지 않|돌지 않|불가|막혀)|cannot (verify|check|run|access|reproduce|execute)|can'"'"'t (verify|check|run|access|reproduce|execute)|unable to (verify|check|run|access|reproduce|execute)|no (access|permission)|tools? (are|is) (not |un)?(available|working|running|broken|failing)|tool calls? (are |is )?(not|fail))'
+CANNOT='(확인할 수 없|검증할 수 없|실행할 수 없|접근할 수 없|띄울 수 없|재현할 수 없|판단할 수 없|단정할 수 없|알 수 없|불가능(하다|합니다|해서|하다고)|(도구|명령|명령어|커맨드|bash|셸|쉘|툴) ?(실행|호출)?[^.]{0,25}(안 ?(된다|돼|됩니다|되고|돌아)|되지 않|실행되지 않|돌지 않|불가|막혀)|cannot (verify|check|run|access|reproduce|execute|determine|tell)|can'"'"'t (verify|check|run|access|reproduce|execute|determine|tell)|unable to (verify|check|run|access|reproduce|execute|determine|tell)|no (access|permission)|tools? (are|is) (not |un)?(available|working|running|broken|failing)|tool calls? (are |is )?(not|fail))'
 # 의견형 유보. "나아 보인다"는 설계 의견이지 상태 주장이 아니다. R2b 판정 전에 지운다.
 EVALHEDGE='((더 |훨씬 |좀 더 )?(나아|낫|좋아|괜찮아|적절해|맞아|타당해|자연스러워|충분해|깔끔해|안전해|편해|쉬워|무난해|합리적으로|바람직해|유리해|나쁘지 않아) ?보(인다|임|입니다|여요|이네요|이는데|이지만)|(seems?|looks?|appears?|feels?) (like )?(a |the )?(good|better|best|fine|reasonable|appropriate|sensible|cleaner|simpler|safer|right|ok|okay|nice|worth|solid|clean|natural|clearer|preferable))'
 cannot=0; printf '%s' "$last" | grep -qiE "$CANNOT" && cannot=1
-# 인용은 사용이 아니다. 따옴표·백틱 안(80자 이내)과 공백 없는 괄호 목록("(보인다/보입니다)")은 R2a·R2b 판정 전에 지운다. R1은 원문을 본다.
+# 따옴표·백틱 안(80자 이내)을 지운다. 문서나 로그를 인용한 문장이 단정으로 읽히던 오탐을 막는다(V52).
 # shellcheck disable=SC2016,SC1112  # 파이썬 코드는 확장하지 않는다. 곡선 따옴표는 인용 부호를 찾기 위한 것으로 의도적이다
-STRIPQ='import sys,re; t=sys.stdin.read(); sys.stdout.write(re.sub(r"\"[^\"\n]{1,80}\"|“[^”\n]{1,80}”|‘[^’\n]{1,80}’|`[^`\n]{1,80}`|「[^」\n]{1,80}」|\([^()\s]{1,40}\)", " ", t))'
+STRIPQ='import sys,re; t=sys.stdin.read(); sys.stdout.write(re.sub(r"\"[^\"\n]{1,80}\"|“[^”\n]{1,80}”|‘[^’\n]{1,80}’|`[^`\n]{1,80}`|「[^」\n]{1,80}」", " ", t))'
+# 공백 없는 괄호 목록("(보인다/보입니다)")은 R2a·R2b 앞에서만 지운다. R1 까지 지우면 "설정 파일(config.json)이
+# 없습니다" 처럼 괄호에 파일 이름을 적은 단정이 통째로 빠져나간다.
+STRIPP='s/\([^()[:space:]]{1,40}\)/ /g'
 # shellcheck disable=SC2019,SC2018  # LC_ALL=C에서 ASCII만 낮춘다. 한글은 그대로 두는 것이 의도다
-xform() { py -c "$STRIPQ" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C sed -E "s/$EVALHEDGE//g"; }
-resid=$(printf '%s' "$last" | xform)
+xform() { py -c "$STRIPQ" | LC_ALL=C sed -E "$STRIPP" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C sed -E "s/$EVALHEDGE//g"; }
+# 인용은 사용이 아니다. 따옴표·백틱을 지운 본문을 R1 도 함께 본다. 파이썬을 턴마다 한 번만 띄우려고
+# 여기서 만들어 두고, R2a·R2b 용 resid 는 그 결과에서 셸로만 이어 만든다.
+# shellcheck disable=SC2019,SC2018
+noq=$(printf '%s' "$last" | py -c "$STRIPQ")
+# shellcheck disable=SC2019,SC2018  # LC_ALL=C에서 ASCII만 낮춘다. 한글은 그대로 두는 것이 의도다
+resid=$(printf '%s' "$noq" | LC_ALL=C sed -E "$STRIPP" | LC_ALL=C tr 'A-Z' 'a-z' | LC_ALL=C sed -E "s/$EVALHEDGE//g")
 # JSON 면제. 답 전체가 JSON 값이면 산문 주장 규칙의 대상이 아니다(판정·비교 출력). py 검증에 실패하면 면제하지 않는다.
 jsononly=0; printf '%s' "$last" | sed -E '1s/^[[:space:]]*```(json)?[[:space:]]*//; $s/[[:space:]]*```[[:space:]]*$//' | py -c 'import sys,json
 t=sys.stdin.read().strip()

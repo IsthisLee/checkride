@@ -46,7 +46,7 @@ one() { # $1 arm(on|off)  $2 idx  $3 prompt
     printf '{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"%s/pre.sh"}]}]}}' "$w" > "$w/settings.json"
   fi
   # 자동 메모리에 이 프로젝트의 게이트 규칙이 쌓여 있어 off 쪽 답까지 오염된다. 끊는다.
-  ( cd "$w" && CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 claude -p "$3" --settings ./settings.json --setting-sources "" \
+  ( cd "$w" && CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 NGG_HEADLESS=1 claude -p "$3" --settings ./settings.json --setting-sources "" \
       --allowedTools "Bash(ls:*),Bash(find:*),Bash(wc:*),Bash(git:*),Glob,Read,Grep" \
       --model haiku --max-turns 10 --output-format json 2>/dev/null \
     | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('num_turns'),'|',repr(str(d.get('result'))[:80]))" > "$w/result.txt" 2>&1

@@ -487,4 +487,30 @@ printf '{"session_id":"w1","hook_event_name":"PreToolUse","tool_name":"Write","c
   | NGG_STATE="$RBS" "$W/pre.sh" 2>/dev/null; check 0 $? "읽지 않은 기존 파일 Write → 통과(rb.write 없음)"
 [ -e "$RBS/state/w1/seen" ]; r=$?; check 1 "$r" "읽은 파일 기록(seen)을 더는 남기지 않는다"
 
+# 28. 오탐 수정 셋(V52).
+# (1) 사람이 보지 않는 세션(claude -p)에서는 게이트가 돌지 않는다. 다른 플러그인이 띄운 자동 요약 세션이
+#     실제 사용 차단의 대부분을 차지했다(V48). 변수가 없으면 지금처럼 막는다(안전 우선).
+HD="$T/headless"; PHD='{"session_id":"t28","hook_event_name":"UserPromptSubmit","prompt":"이 디렉터리에 package.json 있어?"}'
+SHD='{"session_id":"t28","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"package.json 파일이 없다."}'
+printf '%s' "$PHD" | NGG_STATE="$HD" "$W/prompt.sh"
+printf '%s' "$SHD" | CLAUDE_CODE_SESSION_ATTENDED=0 NGG_STATE="$HD" "$W/stop.sh" 2>/dev/null; check 0 $? "사람이 없는 세션(ATTENDED=0) → 게이트가 돌지 않는다"
+grep -q 'exempt:headless' "$HD/state/events.log"; check 0 $? "건너뛴 사실이 events.log 에 남는다"
+printf '%s' "$SHD" | CLAUDE_CODE_SESSION_ATTENDED=0 NGG_HEADLESS=1 NGG_STATE="$HD" "$W/stop.sh" 2>/dev/null; check 2 $? "NGG_HEADLESS=1 이면 사람이 없어도 막는다(CI·회귀 테스트용)"
+printf '%s' "$SHD" | NGG_STATE="$HD" "$W/stop.sh" 2>/dev/null; check 2 $? "변수가 없으면 지금처럼 막는다"
+
+# (2) 불가 면제가 알아보는 표현을 넓힌다. 정직하게 모른다고 답했는데 막히던 오탐이다(V48 원인 2).
+CN="$T/cannot2"; printf '%s' "$PHD" | NGG_STATE="$CN" "$W/prompt.sh"
+mk28() { printf '{"session_id":"t28","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"%s"}' "$1"; }
+mk28 "도구 없이는 판단할 수 없습니다." | NGG_STATE="$CN" "$W/stop.sh" 2>/dev/null; check 0 $? "불가 면제: 판단할 수 없"
+mk28 "이 세션에서는 알 수 없습니다." | NGG_STATE="$CN" "$W/stop.sh" 2>/dev/null; check 0 $? "불가 면제: 알 수 없"
+mk28 "I cannot determine that without running a tool." | NGG_STATE="$CN" "$W/stop.sh" 2>/dev/null; check 0 $? "불가 면제: cannot determine"
+mk28 "package.json 파일이 없다." | NGG_STATE="$CN" "$W/stop.sh" 2>/dev/null; check 2 $? "불가 면제 아님: 그냥 단정은 그대로 막는다"
+
+# (3) 인용은 사용이 아니다. R1 도 따옴표·백틱 안의 파일 이름은 단정으로 보지 않는다.
+QT="$T/quote"; PQT='{"session_id":"t28q","hook_event_name":"UserPromptSubmit","prompt":"플러그인 문서 설명해줘"}'
+printf '%s' "$PQT" | NGG_STATE="$QT" "$W/prompt.sh"
+mkq() { printf '{"session_id":"t28q","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"%s"}' "$1"; }
+mkq "스킬의 \`SKILL.md\` 를 고치면 즉시 반영된다는 설명이 있습니다." | NGG_STATE="$QT" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 백틱 안의 파일 이름은 단정이 아니다"
+mkq "docs/VERIFICATION.md 파일이 없습니다." | NGG_STATE="$QT" "$W/stop.sh" 2>/dev/null; check 2 $? "R1: 인용이 아닌 경로 단정은 그대로 막는다"
+
 echo; echo "실패 ${fail}건"; exit "$fail"
