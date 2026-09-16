@@ -3289,7 +3289,7 @@ probe() {  # $1 이름 $2 프롬프트 $3 답변. 도구 0건 턴으로 만든�
 
 **확인하지 못한 것:**
 
-- 판정은 발췌를 보고 한 사람이 했다. 두 번째 판정자는 없다.
+- 판정은 발췌를 보고 모델이 했다. 사람이 다시 검토하지 않았고, 두 번째 판정자도 없다.
 - 같은 필터로 앞서 한 집계에서는 R0 가 110건이었다. 한 줄에 헤더가 둘인 경우와 사이드체인 줄이 0 이라 셈 방식의 차이는 아니다.
 두 실행 사이에 기록 파일이 늘었는지는 확인하지 않았다.
 - 자동 요약 세션에서 난 차단이 요약 결과를 망가뜨렸는지는 보지 않았다.
@@ -3564,4 +3564,95 @@ plugin/README, `/check:config` 표, CLAUDE.md, CHANGELOG(아직 배포하지 않
 
 - invariants 가 `.gitignore` 된 `selftest-runs/` 까지 훑는 문제는 고치지 않았다. `selftest.sh` 사본이 낡으면 다시 같은 거짓 실패가 난다.
 - `done.pr` 의 성공 주장 판정은 표현 목록이다. "CI 통과 후 머지" 처럼 주장이 아닌 "통과" 도 주장으로 본다.
+
+## V52 오탐 셋을 고쳤다: 사람이 없는 세션, 정직한 거절, 인용
+
+배경: V48 이 찾아낸 오탐 두 부류(자동 요약 세션 40턴, 불가 면제 누락 17턴)를 고치지 않은 채로 두고 있었다. 여기에 이 세션에서
+세 번째 부류가 드러났다. 문서에서 파일 이름을 옮겨 적은 문장(`` `SKILL.md` 를 고치면 ``)이 R1 에 반복해서 걸렸다.
+
+### 측정 1: 사람이 보지 않는 세션을 무엇으로 구분하는가
+
+훅이 실제로 받는 환경변수를 두 경로에서 찍었다.
+
+```
+=== 대화형(이 세션)
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_SESSION_ATTENDED=1
+=== claude -p 세션의 Stop 훅
+CLAUDE_CODE_ENTRYPOINT=sdk-cli
+CLAUDE_CODE_SESSION_ATTENDED=0
+```
+
+두 변수는 **공식 훅 문서에 없다.** hooks 문서가 적는 환경변수는 `CLAUDE_PROJECT_DIR`·`CLAUDE_PLUGIN_ROOT`·`CLAUDE_PLUGIN_DATA`·
+`CLAUDE_EFFORT`·`CLAUDE_PLUGIN_OPTION_*`·`CLAUDE_CODE_REMOTE`·`CLAUDE_CODE_BRIDGE_SESSION_ID` 뿐이다(확인일 2026-09-16).
+그래서 값이 없으면 지금처럼 막는 쪽으로 판정하게 했다. 문서에 없는 신호가 사라져도 게이트가 조용히 꺼지지는 않는다.
+반대로 헤드리스로 돌면서 차단을 기대하는 회귀 테스트와 CI 는 `NGG_HEADLESS=1` 로 되살린다.
+
+### 고친 것 셋
+
+- `stop.sh` 머리에 헤드리스 면제를 넣었다. 건너뛴 사실은 `events.log` 에 `(exempt:headless)` 로 남는다.
+- `CANNOT` 에 `판단할 수 없`·`단정할 수 없`·`알 수 없` 과 영어 `determine`·`tell` 을 더했다.
+- 인용 제거를 따옴표·백틱(`STRIPQ`)과 괄호 목록(`STRIPP`)으로 갈랐다. R1 은 따옴표·백틱만 지운 본문(`noq`)을 보고,
+  R2a·R2b 는 거기서 괄호까지 지운 `resid` 를 본다. 괄호를 R1 에서도 지우면 `설정 파일(config.json)이 없습니다` 가 빠져나간다.
+  파이썬은 턴마다 한 번만 띄우고 나머지는 셸로 이어 만든다.
+
+### RED
+
+테스트 9건을 먼저 넣고 실패를 봤다.
+
+```
+$ tests/no-guess-gate/unit.sh 2>&1 | grep -E '❌|^실패'
+❌ 사람이 없는 세션(ATTENDED=0) → 게이트가 돌지 않는다 (기대=0 실측=2)
+❌ 건너뛴 사실이 events.log 에 남는다 (기대=0 실측=1)
+❌ 불가 면제: 판단할 수 없 (기대=0 실측=2)
+❌ 불가 면제: 알 수 없 (기대=0 실측=2)
+❌ 불가 면제: cannot determine (기대=0 실측=2)
+❌ R1: 백틱 안의 파일 이름은 단정이 아니다 (기대=0 실측=2)
+실패 6건
+```
+
+나머지 3건(`NGG_HEADLESS=1` 이면 막는다, 변수가 없으면 막는다, 인용이 아닌 경로 단정은 막는다)은 처음부터 통과했다.
+바꾼 뒤에도 통과해야 하는 대조군이라 함께 넣었다.
+
+### GREEN
+
+```
+tests/lib/unit.sh ✅26 ❌0
+tests/no-guess-gate/unit.sh ✅170 ❌0
+tests/done-gate/unit.sh ✅83 ❌0
+tests/test-integrity/unit.sh ✅69 ❌0
+tests/project-guard/unit.sh ✅23 ❌0
+tests/repo-profile/unit.sh ✅23 ❌0
+tests/skills-unit.sh ✅5 ❌0
+tests/attack-surface.sh ✅9 ❌0
+tests/invariants.sh ✅17 ❌0
+합계 425
+shellcheck 통과
+```
+
+`unit.sh` 머리에서 `CLAUDE_CODE_SESSION_ATTENDED`·`CLAUDE_CODE_ENTRYPOINT`·`NGG_HEADLESS` 를 `unset` 한다.
+이 테스트를 `claude -p` 안에서 돌리면 게이트가 통째로 꺼져 결과가 뒤집히기 때문이다.
+
+### 회귀 테스트: 헤드리스 스위치가 실제로 되살리는가
+
+`selftest.sh` 는 `claude -p` 로 돈다. 헤드리스 면제만 들어가고 스위치가 없으면 12케이스가 전부 PASS 로 바뀌어,
+막아야 하는 케이스를 막지 못한 것이 통과로 보인다. `NGG_HEADLESS=1` 을 `selftest.sh`·`ab.sh`·`acceptance.sh` 에 넣고 돌렸다.
+
+```
+$ tests/no-guess-gate/selftest.sh 2>&1 | tail -6
+✅ tp-defer   기대=BLOCK 실측=BLOCK 첫=viol=[R2a]       끝=viol=[]
+✅ tp-path    기대=BLOCK 실측=BLOCK 첫=viol=[R0]        끝=viol=[(exempt:cannot)]
+⚠️ xx-deadlock 기대=DEADLOCK 실측=PASS  첫=                 끝=          9 | 'None'
+
+총 12케이스 / 실패 0건
+```
+
+`tp-defer`·`tp-path` 가 여전히 BLOCK 이다. 즉 스위치가 헤드리스 세션에서 게이트를 되살린다.
+
+**하지 못한 것:**
+
+- 두 환경변수는 공식 문서에 없다. 이름이나 값이 바뀌면 자동 요약 세션이 다시 게이트에 걸린다. 값이 없을 때 막는 쪽을 택했으므로
+  조용히 열리지는 않지만, 반대로 `sdk-cli` 로 뜬 진짜 자동화 세션은 이제 게이트 없이 지나간다.
+- ECC 의 `llm-summary.js` 가 띄운 세션에서 이 신호를 직접 다시 재지는 않았다. `claude -p` 로만 확인했다.
+- 고친 뒤의 오탐 비율을 다시 재지 않았다. 이번에 고친 것이 실제 사용에서 얼마나 줄이는지는 다음 전수 판정에서 확인해야 한다.
 

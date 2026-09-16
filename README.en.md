@@ -189,13 +189,25 @@ Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean giv
 
 ## False positives
 
-The rules are regex, so they don't read intent. Across 760 real turns, 130 were blocked and roughly a fifth of those were false positives, clustered in three shapes. All three are fixed.
+The rules are regex, so they don't read intent. So the blocked turns get re-judged periodically, and the rules get narrowed or the exemptions widened from what that judging finds.
+
+### How false positives are found
+
+1. Every block writes the matched rules and the first part of the answer to `${CLAUDE_PLUGIN_DATA}/state/events.log`.
+2. That line is traced back to the session and turn in the transcripts.
+3. Each turn is read in context and judged. **A model does the judging; no human reviewed it afterwards.** The verdicts are recorded in [docs/false-positives.md](docs/false-positives.md) (Korean) with session, turn, rule, verdict and reason.
+4. When false positives cluster into one shape, the condition that produced them is narrowed. A failing test is written first.
+
+Two full passes have been done this way: 760 early turns (130 blocks) surfaced three shapes, and re-judging 141 R0 blocks across 113 distinct turns in September 2026 surfaced two more ([V48](docs/VERIFICATION.md)). All six below are fixed.
 
 | False positive | Fix |
 |---|---|
 | Design opinions: "putting it here seems better" | Hedges after evaluative adjectives are stripped before judging; the rest goes to the judge |
 | Saying "tools don't work in this session" still got blocked | The impossibility exemption is now shared by R0, R2a, R2b |
 | A/B verdict JSON `{"winner": …}` | A whole-JSON answer is exempt from the prose rules |
+| Auto-summary sessions another plugin spawned with `claude -p` hit R0 (40 turns) | The gate does not run in sessions nobody is watching. CI and the regression tests re-enable it with `NGG_HEADLESS=1` |
+| Honest answers like "I cannot determine that without a tool" were blocked (17 turns) | `cannot determine`, `판단할 수 없` and `알 수 없` were added to the impossibility exemption |
+| A filename quoted from a document read as a claim about that file | Text inside quotes and backticks is now stripped before R1 too. Parentheses are not: that would let `the config file (config.json) is missing` through |
 
 ### Known misses
 
@@ -203,7 +215,8 @@ What it does not catch, written down. Publishing the false positives and hiding 
 
 | Miss | Why it stays |
 |---|---|
-| One line of "I can't verify this" clears R0, R2a and R2b | The official docs say to give Claude permission to admit uncertainty. There is no way to know whether tools were actually blocked, so tightening this blocks honest answers |
+| One line of "I can't verify this" or "I cannot determine that" clears R0, R2a and R2b | The official docs say to give Claude permission to admit uncertainty. There is no way to know whether tools were actually blocked, so tightening this blocks honest answers. Fixing false positives widened this exemption further |
+| The evidence gate does not run in sessions nobody is watching (`claude -p`) | Those answers never reach a person, so there is nobody to ask back. Set `NGG_HEADLESS=1` to check them in CI |
 | Hardcoding test inputs in the source to make tests pass | Indistinguishable from a legitimate constant. EvilGenie reports a 1.4% false positive rate for the holdout approach |
 | Implementations that only work for small inputs | Not something a regex can judge |
 | R2a's English patterns only match active voice like `should verify`, so `should be verified` slips through | Widening to passive voice raises false positives |
@@ -232,6 +245,7 @@ State lives in `~/.claude/plugins/data/check-did-you-check/` and is safe to dele
 |---|---|
 | [Gates and commands in detail](docs/gates.en.md) | What each gate blocks, the eight commands, how to disable, which doc grounds it |
 | [Verification log](docs/VERIFICATION.md) | Every claim with the exact command and its raw output |
+| [False positive verdicts](docs/false-positives.md) | Blocked turns re-judged, how the judging works, which shapes are still unfixed |
 | [Contributing](CONTRIBUTING.en.md) · [Security](SECURITY.en.md) · [Changelog](CHANGELOG.md) | |
 
 ## Sources

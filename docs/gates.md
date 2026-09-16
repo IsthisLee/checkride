@@ -346,7 +346,7 @@ Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guide
 claude --plugin-dir .                         # 설치본 대신 이 폴더를 그 세션에 로드
 claude plugin validate .                      # 매니페스트와 훅 배선 검사
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 415건. 모델을 부르지 않는다
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 합계 425건. 모델을 부르지 않는다
 tests/fuzz.sh                                 # 망가진 입력 24종 × 훅 열 = 240회
 tests/no-guess-gate/selftest.sh               # 실제 프롬프트 회귀 12케이스, 몇 분
 tests/no-guess-gate/judge-accuracy.sh         # 판정기 정확도·소요 시간, 몇 분

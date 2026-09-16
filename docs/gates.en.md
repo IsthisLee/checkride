@@ -313,7 +313,7 @@ The reason for using hooks at all is in the docs too:
 claude --plugin-dir .                         # load this folder instead of the installed copy
 claude plugin validate .                      # manifest and hook wiring
 for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do
-  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 415 assertions, no model calls
+  tests/$g/unit.sh || break; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   # 425 assertions, no model calls
 tests/fuzz.sh                                 # 24 malformed inputs x ten hooks = 240 runs
 tests/no-guess-gate/selftest.sh               # 12-case regression against real prompts, minutes
 tests/no-guess-gate/judge-accuracy.sh         # judge accuracy and latency, minutes
