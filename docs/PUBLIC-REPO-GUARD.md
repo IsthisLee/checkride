@@ -42,7 +42,16 @@ Node 를 요구하지 않고 `bash` 와 `git` 만으로 돈다. 다른 저장소
 ```bash
 ./setup.sh                  # 훅을 켠다
 ./setup.sh --init-patterns  # 공용 패턴 파일의 견본을 만든다(없을 때만)
+./setup.sh --force          # 이미 다른 훅 관리자가 잡고 있어도 덮어쓴다
 ./setup.sh --help           # 이 설명을 본다
+```
+
+**이미 husky 나 lefthook 을 쓰는 저장소라면 덮어쓰지 않습니다.** `core.hooksPath` 는 값을 하나만 가지므로,
+덮으면 그쪽 훅이 조용히 죽습니다. `setup.sh` 가 그 상황을 감지하면 멈추고 공존하는 방법을 알려 줍니다.
+그쪽 관리자의 `pre-commit` 에 한 줄을 넣으면 둘 다 돕니다.
+
+```bash
+"$(git rev-parse --show-toplevel)"/.githooks/pre-commit || exit 1
 ```
 
 ## husky 를 쓰지 않는 이유
