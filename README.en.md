@@ -1,31 +1,18 @@
-<h1 align="center">did-you-check</h1>
+# did-you-check
 
-<p align="center">
-  <a href="https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml"><img src="https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg" alt="test"></a>
-  <a href="https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml"><img src="https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
-  <a href="https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check"><img src="https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge" alt="OpenSSF Scorecard"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="license"></a>
-  <a href="#install"><img src="https://img.shields.io/badge/Claude%20Code-plugin-8A63D2" alt="Claude Code"></a>
-  <a href="https://github.com/IsthisLee/did-you-check/releases"><img src="https://img.shields.io/github/v/release/IsthisLee/did-you-check?label=version&color=informational" alt="version"></a>
-  <a href="#install"><img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational" alt="platform"></a>
-  <a href="SECURITY.en.md"><img src="https://img.shields.io/badge/external%20services-none-brightgreen" alt="external services"></a>
-  <a href="https://github.com/IsthisLee/did-you-check/commits"><img src="https://img.shields.io/github/last-commit/IsthisLee/did-you-check" alt="last commit"></a>
-</p>
+[![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml)
+[![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A63D2)](#install)
+[![version](https://img.shields.io/github/v/release/IsthisLee/did-you-check?label=version&color=informational)](https://github.com/IsthisLee/did-you-check/releases)
+[![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)](#install)
+[![external services](https://img.shields.io/badge/external%20services-none-brightgreen)](SECURITY.en.md)
+[![last commit](https://img.shields.io/github/last-commit/IsthisLee/did-you-check)](https://github.com/IsthisLee/did-you-check/commits)
 
-<p align="center">
-  <a href="#what-gets-blocked"><b>What gets blocked</b></a> ·
-  <a href="#install"><b>Install</b></a> ·
-  <a href="#when-it-blocks"><b>When it blocks</b></a> ·
-  <a href="#why-its-needed"><b>Why it's needed</b></a> ·
-  <a href="#who-its-for"><b>Who it's for</b></a> ·
-  <a href="#false-positives"><b>False positives</b></a> ·
-  <a href="#turning-it-off"><b>Turning it off</b></a> ·
-  <a href="#read-more"><b>Read more</b></a> ·
-  <a href="#sources"><b>Sources</b></a> ·
-  <a href="#related"><b>Related</b></a>
-</p>
+[What gets blocked](#what-gets-blocked) · [Install](#install) · [When it blocks](#when-it-blocks) · [Why it's needed](#why-its-needed) · [Who it's for](#who-its-for) · [False positives](#false-positives) · [Turning it off](#turning-it-off) · [Read more](#read-more) · [Sources](#sources) · [Related](#related)
 
-<p align="center"><sub><b>Read in:</b> English · <a href="README.md">한국어</a></sub></p>
+**Read in:** English · [한국어](README.md)
 
 ---
 
