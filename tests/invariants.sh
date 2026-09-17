@@ -112,6 +112,31 @@ MSGCOVER
 then ok "메시지 키: 훅이 부르는 것과 카탈로그가 정확히 같다($(grep -cE '^  [a-z][a-z0-9.]*\)' "$R/plugin/hooks/lib/msg.sh") 줄, 두 언어)"
 else bad "메시지 키가 어긋난다"; fi
 
+# docs/PUBLIC-REPO-GUARD.md 는 다른 저장소로 옮길 사람이 읽는 문서라 훅 본문을 인용해 둔다.
+# 손으로 옮긴 인용은 조용히 낡는다. 인용과 실제 파일이 한 글자라도 다르면 여기서 막는다.
+if python3 - "$R" <<'GUARDDOC'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+hook = (root / ".githooks/pre-commit").read_text(encoding="utf-8").rstrip("\n")
+doc = (root / "docs/PUBLIC-REPO-GUARD.md").read_text(encoding="utf-8")
+blocks = re.findall(r"```bash\n(.*?)\n```", doc, re.S)
+hits = [b for b in blocks if b.startswith("#!/usr/bin/env bash")]
+assert len(hits) == 1, f"훅을 인용한 코드 블록이 {len(hits)}개다(1개여야 한다)"
+assert hits[0] == hook, "문서의 훅 인용이 .githooks/pre-commit 과 다르다"
+GUARDDOC
+then ok "PUBLIC-REPO-GUARD.md 의 훅 인용이 실제 파일과 같다"
+else bad "PUBLIC-REPO-GUARD.md 의 훅 인용이 낡았다. 문서를 실제 파일로 다시 맞춰라"; fi
+
+# setup.sh 는 CONTRIBUTING 의 설치 절차가 부르는 파일이다. 없거나 실행 비트가 없으면
+# 클론한 사람이 첫 줄에서 멈춘다.
+if [ -x "$R/setup.sh" ]; then ok "setup.sh 가 있고 실행 비트가 있다"
+else bad "setup.sh 가 없거나 실행 비트가 없다"; fi
+for c in "$R/CONTRIBUTING.md" "$R/CONTRIBUTING.en.md"; do
+  n=${c##*/}
+  if grep -q './setup.sh' "$c"; then ok "${n} 가 setup.sh 를 안내한다"
+  else bad "${n} 가 setup.sh 를 안내하지 않는다"; fi
+done
+
 echo
 if [ "$fail" -eq 0 ]; then echo "전부 통과"; else echo "실패 ${fail}건"; fi
 exit "$fail"

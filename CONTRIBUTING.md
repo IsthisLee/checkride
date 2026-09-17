@@ -13,7 +13,7 @@
 ```bash
 git clone https://github.com/IsthisLee/did-you-check
 cd did-you-check
-git config core.hooksPath .githooks   # 개인 정보 커밋을 막는 훅
+./setup.sh                            # 개인 정보 커밋을 막는 훅을 켠다
 claude --plugin-dir .                 # 설치본 대신 이 폴더를 그 세션에 로드
 ```
 
@@ -58,4 +58,4 @@ PR에는 실행한 검사의 출력을 붙인다. 직접 검토하지 않은 코
 
 ## 올리면 안 되는 것
 
-`.githooks/pre-commit`이 홈 경로, 이메일, 사적인 경로가 든 커밋을 막는다. `git config core.hooksPath .githooks`로 켜 두면 실수해도 걸린다. 훅이 막았는데 오탐이라고 판단되면 `--no-verify` 대신 이슈로 알려 달라.
+`.githooks/pre-commit`이 홈 경로, 이메일, 사적인 경로가 든 커밋을 막는다. `./setup.sh`로 켜 두면 실수해도 걸린다. 켜는 방법과 패턴 목록을 두는 곳은 [docs/PUBLIC-REPO-GUARD.md](docs/PUBLIC-REPO-GUARD.md)에 있다. 훅이 막았는데 오탐이라고 판단되면 `--no-verify` 대신 이슈로 알려 달라.

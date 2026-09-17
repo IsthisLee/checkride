@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # 공개 저장소 가드: 내부 문서와 개인 식별 정보가 커밋에 섞이는 것을 막는다.
 #   - 경로: .private/ 아래, docs/design-plan-review*, docs/README-review*, docs/superpowers/ 는 커밋 금지
-#   - 내용: 홈 경로(/Users/<이름>, /home/<이름>) + .private/guard-patterns 에 적힌 개인 패턴(한 줄에 하나, git 무시 폴더라 커밋되지 않음)
+#     (저장소마다 다르므로 아래 case 문을 그 저장소에 맞게 고친다)
+#   - 내용: 홈 경로(/Users/<이름>, /home/<이름>) + 개인 패턴(한 줄에 하나). 패턴 출처는 둘이다.
+#       1) 공용: $GIT_GUARD_PATTERNS, 없으면 ${XDG_CONFIG_HOME:-$HOME/.config}/git-guard/patterns
+#          저장소 밖에 있으므로 여러 저장소가 한 목록을 공유한다. 이쪽에 적으면 저장소마다 복사하지 않아도 된다.
+#       2) 저장소별: .private/guard-patterns
+#          git 무시 폴더라 커밋되지 않는다. 그 저장소에만 해당하는 패턴을 적는다.
+#     둘 다 있으면 합쳐서 적용한다. 둘 다 없으면 홈 경로만 막는다.
 # 우회는 git commit --no-verify 뿐이며, 사람이 의도적으로 할 때만 쓴다.
 set -u
 root="$(git rev-parse --show-toplevel)"
@@ -14,10 +20,16 @@ for f in $paths; do
   esac
 done
 pattern='/Users/[A-Za-z]|/home/[A-Za-z]'
-if [ -f "$root/.private/guard-patterns" ]; then
-  extra=$(grep -v '^\s*#' "$root/.private/guard-patterns" | grep -v '^\s*$' | paste -sd '|' -)
+# 패턴 파일 한 개를 읽어 pattern 에 덧붙인다. 주석 줄과 빈 줄은 버린다.
+add_patterns() {
+  local file="$1" extra
+  [ -f "$file" ] || return 0
+  extra=$(grep -v '^[[:space:]]*#' "$file" | grep -v '^[[:space:]]*$' | paste -sd '|' -)
   [ -n "$extra" ] && pattern="$pattern|$extra"
-fi
+  return 0
+}
+add_patterns "${GIT_GUARD_PATTERNS:-${XDG_CONFIG_HOME:-${HOME:-}/.config}/git-guard/patterns}"
+add_patterns "$root/.private/guard-patterns"
 for f in $paths; do
   [ -f "$f" ] || continue
   if git show ":$f" | grep -n -E "$pattern" >/dev/null; then
