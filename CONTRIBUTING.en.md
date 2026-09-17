@@ -58,4 +58,12 @@ Attach the output of the checks you ran. Do not open a pull request with code yo
 
 ## What must not be committed
 
-`.githooks/pre-commit` blocks commits containing home paths, email addresses, or private paths. Turn it on with `./setup.sh` and it catches the slip for you. How it is wired and where the pattern list lives is in [docs/PUBLIC-REPO-GUARD.md](docs/PUBLIC-REPO-GUARD.md). If it blocks something you believe is a false positive, open an issue rather than reaching for `--no-verify`.
+`.githooks/pre-commit` blocks commits containing home paths, email addresses, or private paths. Turn it on with `./setup.sh` and it catches the slip for you.
+
+The hook file is committed, but that alone does nothing. Git looks for hooks in `.git/hooks`, and `core.hooksPath`, which points somewhere else, lives in `.git/config` and never travels with a clone. So each person who clones runs `./setup.sh` once. The session profile's first lines tell you whether it is on.
+
+The strings it blocks come from two places. Home paths (`/Users/<name>`, `/home/<name>`) are baked into the hook; everything else comes from a pattern file. The shared one is `~/.config/git-guard/patterns`, the per-repo one is `.private/guard-patterns`. Both sit outside the repo or inside an ignored folder, so neither is committed. **Never commit a pattern file: it holds, in plain text, exactly the values the guard exists to keep out.**
+
+If you already use husky or lefthook, `./setup.sh` refuses to overwrite and stops. `core.hooksPath` holds one value, so overwriting kills that manager's hooks silently. Add the line it prints to that manager's own `pre-commit` and both run. Why husky is not used here is in [the design decisions](docs/decisions.md#7-커밋-가드에-husky-를-쓰지-않습니다).
+
+Know what the hook cannot do: it cannot undo what is already pushed, it only blocks patterns you listed, and `--no-verify` bypasses it. If it blocks something you believe is a false positive, open an issue rather than reaching for `--no-verify`.
