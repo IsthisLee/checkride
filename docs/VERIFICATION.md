@@ -3656,3 +3656,124 @@ $ tests/no-guess-gate/selftest.sh 2>&1 | tail -6
 - ECC 의 `llm-summary.js` 가 띄운 세션에서 이 신호를 직접 다시 재지는 않았다. `claude -p` 로만 확인했다.
 - 고친 뒤의 오탐 비율을 다시 재지 않았다. 이번에 고친 것이 실제 사용에서 얼마나 줄이는지는 다음 전수 판정에서 확인해야 한다.
 
+
+## V53 훅 활성화를 setup.sh 로 옮기고, 패턴 목록을 저장소 밖 공용 파일로 뺀다
+
+배경: `.githooks/pre-commit` 은 커밋돼 있지만 `core.hooksPath` 를 설정해야만 돈다. 그 설정은 `.git/config` 에 있고
+`.git/` 은 커밋되지 않아 클론과 함께 전달되지 않는다. 또 개인 패턴이 `.private/guard-patterns` 한 곳에만 있어
+다른 저장소에 같은 가드를 걸려면 패턴을 저장소마다 복사해야 했다. husky 로 바꾸면 나아지는지 먼저 쟀다.
+
+### 측정 1: husky 도 같은 core.hooksPath 를 쓰는가
+
+공식 문서(`https://typicode.github.io/husky/get-started.html`, `.../how-to.html`, 확인일 2026-09-16)에는
+`core.hooksPath` 언급이 없다. 그래서 빈 저장소에 실제로 설치해 확인했다.
+
+실행: `npm install --save-dev husky && npx husky init` (격리된 임시 폴더)
+
+출력:
+
+```
+husky 버전: 9.1.7
+
+=== init 이후 core.hooksPath 값 ===
+file:.git/config	.husky/_
+
+=== package.json 의 scripts ===
+{"test":"echo \"Error: no test specified\" && exit 1","prepare":"husky"}
+```
+
+판정: husky 도 같은 `core.hooksPath` 를 같은 `.git/config` 에 쓴다. 전달되지 않는 성질은 husky 로 바꿔도 그대로다.
+husky 가 더하는 것은 `npm install` 의 `prepare` 단계에 그 설정을 얹는 것뿐인데, 이 저장소는 `package.json` 이 없어
+얹을 `npm install` 이 없다. 훅 하나를 켜자고 Node 런타임 요구를 새로 들이게 되므로 **husky 를 쓰지 않는다.**
+대신 같은 일을 하는 `setup.sh` 를 두었다. 요구 사항은 그대로 `bash` 와 `git` 뿐이다.
+
+### 측정 2: 고친 훅이 실제 커밋을 막는가
+
+패턴 출처를 둘로 늘렸다. 공용은 `$GIT_GUARD_PATTERNS`(없으면 `${XDG_CONFIG_HOME:-$HOME/.config}/git-guard/patterns`),
+저장소별은 기존 `.private/guard-patterns` 다. 임시 저장소에서 `git commit` 을 실제로 시도해 종료 코드로 판정했다.
+
+출력:
+
+```
+--- 1) 패턴 파일 둘 다 없음 ---
+✅ 평범한 파일 → 통과 (ok)
+✅ 홈 경로 → 차단 (block)
+✅ 공용 패턴 값(목록 없음) → 통과 (ok)
+--- 2) 공용 패턴 파일만 (새 기능) ---
+✅ 공용 패턴의 이메일 → 차단 (block)
+✅ 공용 패턴의 사내 도메인 → 차단 (block)
+✅ 공용 패턴에 없는 값 → 통과 (ok)
+--- 3) 저장소별 패턴 + 공용 동시 ---
+✅ 저장소 패턴 → 차단 (block)
+✅ 공용 패턴도 여전히 차단 (block)
+--- 4) 경로 차단 ---
+✅ .private/ 경로 → 차단 (block)
+
+통과 9건, 실패 0건
+```
+
+판정: 아홉 경우 모두 기대대로다. 공용 파일만 있어도 막고, 저장소별 파일과 함께 있으면 둘 다 적용된다.
+
+### 측정 3: 실제 개인 패턴을 공용으로 옮긴 뒤에도 막는가
+
+`.private/guard-patterns` 의 세 줄을 `~/.config/git-guard/patterns` 로 옮기고(권한 `-rw-------`),
+`.private` 가 없는 임시 저장소에서 확인했다. 패턴 값이 기록에 남지 않도록 출력은 버리고 종료 코드만 봤다.
+
+```
+✅ 공용 패턴만으로 차단된다
+✅ 무관한 내용은 통과한다
+```
+
+판정: 공용 파일 하나로 여러 저장소를 덮을 수 있다. 이로써 `.private/` 는 패턴 보관 목적으로는 더 필요하지 않다.
+
+### 측정 4: 문서의 훅 인용이 낡으면 잡히는가
+
+`docs/PUBLIC-REPO-GUARD.md` 는 다른 저장소로 옮길 사람이 읽는 문서라 훅 본문을 인용한다. 손으로 옮긴 인용은 조용히 낡으므로
+`tests/invariants.sh` 에 대조 검사를 넣고, 일부러 한 글자를 어긋나게 만들어 RED 를 먼저 봤다.
+
+```
+AssertionError: 문서의 훅 인용이 .githooks/pre-commit 과 다르다
+❌ PUBLIC-REPO-GUARD.md 의 훅 인용이 낡았다. 문서를 실제 파일로 다시 맞춰라
+실패 1건
+```
+
+되돌린 뒤:
+
+```
+✅ PUBLIC-REPO-GUARD.md 의 훅 인용이 실제 파일과 같다
+✅ setup.sh 가 있고 실행 비트가 있다
+✅ CONTRIBUTING.md 가 setup.sh 를 안내한다
+✅ CONTRIBUTING.en.md 가 setup.sh 를 안내한다
+
+전부 통과
+```
+
+`tests/lint-expand.py` 의 검사 대상에 `setup.sh` 를 더했다. 이것도 일부러 `"$n개"` 를 넣어 RED 를 확인했다
+(`setup.sh:74 $n개`) 뒤 되돌렸다.
+
+### 측정 5: 저장소 전체 검사
+
+실행: `.check.toml` 의 검사 명령 전부
+
+출력:
+
+```
+전체 검사 종료 코드: 0
+
+lib              전부 통과
+no-guess-gate    실패 0건
+done-gate        실패 0건
+test-integrity   실패 0건
+project-guard    실패 0건
+repo-profile     실패 0건
+skills           실패 0건
+attack-surface   전부 통과
+invariants       전부 통과
+```
+
+`shellcheck -x -s bash setup.sh .githooks/pre-commit tests/invariants.sh` 도 경고 없음.
+
+### 일부러 하지 않은 것
+
+- `.githooks/` 전용 테스트 묶음을 새로 만들지 않았다. 원래 없었고, 검사 명령과 출력을 이 항목에 남기는 것이 이 저장소의 기존 방식이다.
+- 훅의 경로 차단 목록(`case` 문)은 저장소마다 다르므로 설정 파일로 빼지 않았다. 옮길 때 고치라고 주석과 문서에 적었다.

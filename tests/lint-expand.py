@@ -9,7 +9,8 @@ PAT = re.compile(r'(?<!\\)\$[A-Za-z_][A-Za-z0-9_]*[^\x00-\x7F]')
 
 def main() -> int:
     root = sys.argv[1] if len(sys.argv) > 1 else "."
-    pats = ["plugin/hooks/*.sh", "plugin/hooks/*/*.sh", "tests/*.sh", "tests/*/*.sh", ".githooks/*"]
+    pats = ["plugin/hooks/*.sh", "plugin/hooks/*/*.sh", "tests/*.sh", "tests/*/*.sh",
+            ".githooks/*", "setup.sh"]
     out = []
     for g in pats:
         for p in sorted(glob.glob(os.path.join(root, g))):

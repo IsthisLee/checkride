@@ -13,7 +13,7 @@ You need `bash`, `python3`, and Claude Code. It runs on macOS, Linux, and Window
 ```bash
 git clone https://github.com/IsthisLee/did-you-check
 cd did-you-check
-git config core.hooksPath .githooks   # blocks commits carrying personal paths
+./setup.sh                            # turn on the hook that blocks personal data in commits
 claude --plugin-dir .                 # load this folder in that session instead of the installed copy
 ```
 
@@ -58,4 +58,4 @@ Attach the output of the checks you ran. Do not open a pull request with code yo
 
 ## What must not be committed
 
-`.githooks/pre-commit` blocks commits containing home paths, email addresses, or private paths. Turn it on with `git config core.hooksPath .githooks` and it catches the slip for you. If it blocks something you believe is a false positive, open an issue rather than reaching for `--no-verify`.
+`.githooks/pre-commit` blocks commits containing home paths, email addresses, or private paths. Turn it on with `./setup.sh` and it catches the slip for you. How it is wired and where the pattern list lives is in [docs/PUBLIC-REPO-GUARD.md](docs/PUBLIC-REPO-GUARD.md). If it blocks something you believe is a false positive, open an issue rather than reaching for `--no-verify`.
