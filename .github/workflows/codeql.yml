@@ -1,7 +1,10 @@
 name: CodeQL
 
-# CodeQL 은 인터프리터 언어 중 Python 을 지원한다. 이 저장소의 셸(bash)은
-# CodeQL 대상이 아니라 judge.py·fuzz-inputs.py·lint-expand.py 등 .py 파일만 본다.
+# CodeQL 이 이 저장소에서 보는 것은 둘이다. 셸(bash)은 CodeQL 대상 언어가 아니다.
+#   - python  : judge.py·fuzz-inputs.py·lint-expand.py
+#   - actions : .github/workflows/*.yml 과 액션 메타데이터 YAML.
+#               고정되지 않은 액션, 과한 토큰 권한, 스크립트 인젝션을 본다.
+# 언어 식별자는 CodeQL 공식 문서의 Supported languages 표를 따른다(확인일 2026-09-18).
 on:
   push:
     branches: [main]
@@ -19,23 +22,28 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze (python)
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       security-events: write
       actions: read
       contents: read
+    strategy:
+      # 한 언어가 실패해도 나머지 분석 결과는 올라가야 한다.
+      fail-fast: false
+      matrix:
+        language: [python, actions]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@faaca9a8f6edddba5725ffe5adefdab6669a2eca  # v3.38.0
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
         with:
-          languages: python
+          languages: ${{ matrix.language }}
 
-      # Python 은 인터프리터 언어라 빌드 단계가 필요 없다(autobuild 생략).
+      # python 도 actions 도 빌드 단계가 필요 없다(autobuild 생략).
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@faaca9a8f6edddba5725ffe5adefdab6669a2eca  # v3.38.0
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63  # v4.38.0
         with:
-          category: "/language:python"
+          category: "/language:${{ matrix.language }}"
