@@ -12,7 +12,7 @@
 | 결정 | 이유 | 근거 |
 |---|---|---|
 | [규칙을 부탁하지 않고 훅으로 강제합니다](#1-부탁하지-않고-훅으로-강제합니다) | CLAUDE.md 지시는 권고라서 지켜진다는 보장이 없습니다 | [[1]](https://code.claude.com/docs/en/best-practices) |
-| [파일을 고치기 전에 조사를 시키는 게이트는 두지 않습니다](#2-파일을-고치기-전에-조사를-강제해야-하는가) | [말한 사실만 믿고 게이트를 열어서](#왜-물러났나) 실제 조사는 보장하지 못했고, 이미 조사한 경우에도 막았습니다. 효과는 확인되지 않았는데 긴 세션의 반복 루프가 보고됐고, 최신 모델은 시키지 않아도 조사합니다 | [[5]](https://github.com/zunoworks/gateguard), [[6]](https://github.com/zunoworks/gateguard/blob/main/benchmarks/painbench/RESULTS.md), [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5), [[11]](https://github.com/affaan-m/ECC) |
+| [파일을 고치기 전에 조사를 시키는 게이트는 두지 않습니다](#2-파일을-고치기-전에-조사를-먼저-시켜야-하는가) | [말한 사실만 믿고 게이트를 열어서](#왜-물러났나) 실제 조사는 보장하지 못했고, 이미 조사한 경우에도 막았습니다. 효과는 확인되지 않았는데 긴 세션의 반복 루프가 보고됐고, 최신 모델은 시키지 않아도 조사합니다 | [[5]](https://github.com/zunoworks/gateguard), [[6]](https://github.com/zunoworks/gateguard/blob/main/benchmarks/painbench/RESULTS.md), [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5), [[11]](https://github.com/affaan-m/ECC) |
 | [근거 없는 주장은 턴이 끝나는 순간에 검사합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | 거짓 주장은 답 그 자체라서, 답이 완성된 뒤에야 검사할 수 있습니다 | 판단, [[2]](https://code.claude.com/docs/en/hooks), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
 | [막는 대상이 출처 문서에 없는 규칙은 뺐습니다(R4, `pg.noverify`, `rb.write`)](#6-근거가-없는-규칙은-뺐습니다) | 문서가 권하는 대처(근거 없는 주장 철회)를 막거나, 막으라는 문서가 아예 없었습니다 | [[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
 | [모델에게 "확인하라"고 지시하지 않고, 나온 답을 밖에서 대조합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | Opus 5는 스스로 검증하므로, 검증 지시를 넣으면 과잉 검증으로 토큰만 늘고 품질은 그대로라고 공식 가이드가 안내합니다. 밖에서 대조하면 규칙에 걸린 턴에만 비용이 듭니다 | [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) |
@@ -31,7 +31,7 @@ Claude Code 공식 문서는 CLAUDE.md와 훅의 차이를 이렇게 설명합�
 
 그래서 이 플러그인은 규칙을 문서로 부탁하지 않고, 어기면 턴이 끝나지 않는 훅으로 만들었습니다. 연속으로 8번 막히면 Claude Code가 훅을 무시하고 턴을 끝내므로, 게이트에 무한히 갇히지는 않습니다.
 
-## 2. 파일을 고치기 전에 조사를 강제해야 하는가
+## 2. 파일을 고치기 전에 조사를 먼저 시켜야 하는가
 
 게이트를 설계하면서 가장 오래 따진 질문은 이것입니다. **"Claude가 파일을 고치기 전에 먼저 살펴보도록 강제해야 하는가?"** 2026년 9월까지 이 질문에 대한 답은 세 단계로 바뀌어 왔고, 이 플러그인의 결정도 그 흐름을 따랐습니다.
 
