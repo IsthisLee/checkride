@@ -13,6 +13,7 @@
 # 사용법:
 #   ./setup.sh                  훅을 켠다
 #   ./setup.sh --init-patterns  공용 개인 패턴 파일의 견본을 만든다(없을 때만)
+#   ./setup.sh --force          이미 다른 훅 관리자가 잡고 있어도 덮어쓴다
 set -u
 
 HOOKS_DIR=.githooks
@@ -21,9 +22,11 @@ GLOBAL_PATTERNS="${GIT_GUARD_PATTERNS:-${XDG_CONFIG_HOME:-${HOME:-}/.config}/git
 die() { printf '%s\n' "setup: $1" >&2; exit 1; }
 
 init_patterns=0
+force=0
 for arg in "$@"; do
   case "$arg" in
     --init-patterns) init_patterns=1;;
+    --force) force=1;;
     -h|--help) awk 'NR>1 { if ($0 !~ /^#/) exit; sub(/^# ?/, ""); print }' "$0"; exit 0;;
     *) die "모르는 인자: ${arg}";;
   esac
@@ -42,6 +45,18 @@ for h in "$HOOKS_DIR"/*; do
   [ -x "$h" ] || { chmod +x "$h" && printf '%s\n' "실행 비트를 채웠다: ${h}"; }
 done
 [ "$hooks" -gt 0 ] || die "${HOOKS_DIR}/ 에 훅 파일이 없다."
+
+# core.hooksPath 는 값을 하나만 가진다. 이미 다른 훅 관리자(husky·lefthook 등)가 잡고 있는데
+# 덮으면 그쪽 훅이 조용히 죽는다. 막히는 일이 없어지므로 아무도 눈치채지 못한다.
+# 실측: husky 가 잡은 저장소를 덮자 husky 의 pre-commit 이 돌지 않고 커밋이 통과했다.
+existing=$(git config core.hooksPath 2>/dev/null || true)
+if [ -n "$existing" ] && [ "$existing" != "$HOOKS_DIR" ] && [ "$force" -eq 0 ]; then
+  printf '%s\n' "setup: core.hooksPath 가 이미 '${existing}' 다. 덮으면 그쪽 훅이 조용히 죽는다." >&2
+  printf '%s\n' "  공존하려면 그쪽 관리자의 pre-commit 에 이 한 줄을 넣어라:" >&2
+  printf '%s\n' "      \"\$(git rev-parse --show-toplevel)\"/${HOOKS_DIR}/pre-commit || exit 1" >&2
+  printf '%s\n' "  기존 훅을 버리고 덮어쓰려면: ./setup.sh --force" >&2
+  exit 1
+fi
 
 git config core.hooksPath "$HOOKS_DIR" || die "core.hooksPath 설정에 실패했다."
 
