@@ -7,3 +7,10 @@ updates:
       interval: weekly
     commit-message:
       prefix: ci
+    groups:
+      # codeql-action 의 init·analyze·upload-sarif 는 같은 버전이어야 한다. 따로 올라가면
+      # "Loaded a configuration file for version X, but running version Y" 로 죽어
+      # 각 PR 이 절대 통과하지 못한다. 2026-09-17 에 PR 12·13·14 가 그렇게 갈라졌다.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
