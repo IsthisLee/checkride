@@ -1,3 +1,5 @@
+<div align="center">
+
 # did-you-check
 
 ![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)
@@ -9,8 +11,6 @@
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)
 ![external services](https://img.shields.io/badge/external%20services-none-brightgreen)
 ![last commit](https://img.shields.io/github/last-commit/IsthisLee/did-you-check)
-
-<div align="center">
 
 [무엇이 막히나](#무엇이-막히나) · [설치](#설치) · [막히면 어떻게 되나](#막히면-어떻게-되나) · [왜 필요한가](#왜-필요한가) · [누구에게 좋은가](#누구에게-좋은가) · [오탐](#오탐) · [끄기와 제거](#끄기와-제거) · [더 읽기](#더-읽기) · [근거](#근거) · [비슷한 도구](#비슷한-도구)
 

@@ -1,3 +1,5 @@
+<div align="center">
+
 # did-you-check
 
 [![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml)
@@ -9,8 +11,6 @@
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)](#install)
 [![external services](https://img.shields.io/badge/external%20services-none-brightgreen)](SECURITY.en.md)
 [![last commit](https://img.shields.io/github/last-commit/IsthisLee/did-you-check)](https://github.com/IsthisLee/did-you-check/commits)
-
-<div align="center">
 
 [What gets blocked](#what-gets-blocked) · [Install](#install) · [When it blocks](#when-it-blocks) · [Why it's needed](#why-its-needed) · [Who it's for](#who-its-for) · [False positives](#false-positives) · [Turning it off](#turning-it-off) · [Read more](#read-more) · [Sources](#sources) · [Related](#related)
 
