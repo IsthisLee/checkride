@@ -16,6 +16,7 @@
 | [근거 없는 주장은 턴이 끝나는 순간에 검사합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | 거짓 주장은 답 그 자체라서, 답이 완성된 뒤에야 검사할 수 있습니다 | 판단, [[2]](https://code.claude.com/docs/en/hooks), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
 | [막는 대상이 출처 문서에 없는 규칙은 뺐습니다(R4, `pg.noverify`, `rb.write`)](#6-근거가-없는-규칙은-뺐습니다) | 문서가 권하는 대처(근거 없는 주장 철회)를 막거나, 막으라는 문서가 아예 없었습니다 | [[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
 | [모델에게 "확인하라"고 지시하지 않고, 나온 답을 밖에서 대조합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | Opus 5는 스스로 검증하므로, 검증 지시를 넣으면 과잉 검증으로 토큰만 늘고 품질은 그대로라고 공식 가이드가 안내합니다. 밖에서 대조하면 규칙에 걸린 턴에만 비용이 듭니다 | [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) |
+| [기여자용 커밋 가드에 husky 를 쓰지 않습니다](#7-커밋-가드에-husky-를-쓰지-않습니다) | husky 도 같은 `core.hooksPath` 를 같은 `.git/config` 에 써서 전달되지 않는 성질은 그대로인데, 이 저장소에는 `package.json` 이 없어 Node 런타임 요구만 새로 생깁니다 | 실측, [[15]](https://typicode.github.io/husky/get-started.html) |
 
 ## 1. 부탁하지 않고 훅으로 강제합니다
 
@@ -205,6 +206,33 @@ ECC의 GateGuard 게이트는 이 플러그인과 목적이 일부 겹칩니다.
 
 **판단:** 규칙을 빼면 그만큼 덜 막습니다. 이 저장소는 "근거 없는 규칙은 넣지 않는다"를 원칙으로 두므로, 덜 막는 쪽을 택했습니다. R4가 없어도 확인 없이 같은 주장을 되풀이한 답은 R0~R3·R5에 다시 걸립니다.
 
+## 7. 커밋 가드에 husky 를 쓰지 않습니다
+
+이 저장소는 공개 저장소라, 홈 경로나 개인 이메일이 커밋에 섞이는 것을 `.githooks/pre-commit` 으로 막습니다.
+훅 파일은 커밋되지만 그것만으로는 아무 일도 일어나지 않습니다. git 은 훅을 `$GIT_DIR/hooks` 에서 찾고,
+그 위치를 바꾸는 `core.hooksPath` 는 `.git/config` 에 저장되어 **클론과 함께 전달되지 않기** 때문입니다.
+
+훅 활성화를 자동화하는 표준 도구가 husky 입니다. 쓸지 정하려고 빈 저장소에 실제로 설치해 봤습니다(2026년 9월 16일).
+
+```
+$ npm install --save-dev husky && npx husky init
+$ git config --show-origin core.hooksPath
+file:.git/config	.husky/_
+```
+
+**husky 도 같은 `core.hooksPath` 를 같은 `.git/config` 에 씁니다.** 전달되지 않는 성질은 husky 로 바꿔도
+그대로입니다. husky 가 더하는 것은 `package.json` 에 `"prepare": "husky"` 를 넣어 `npm install` 이 끝날 때
+그 설정을 자동으로 걸어 주는 한 단계뿐입니다.
+
+그 한 단계는 Node 프로젝트에서만 값을 냅니다. 이 저장소는 `bash` 와 `python3` 로만 돌고 `package.json` 이
+없으므로 얹을 `npm install` 이 없습니다. husky 를 들이면 훅 하나를 켜자고 Node 런타임 요구와 `package.json`
+과 락파일이 새로 생깁니다. 얻는 것은 명령 한 줄을 덜 치는 것이고, 잃는 것은 Node 없이 도는 성질입니다.
+그래서 같은 일을 `setup.sh` 가 직접 합니다.
+
+**대신 husky 를 쓰는 저장소를 망가뜨리지 않게 했습니다.** `core.hooksPath` 는 값을 하나만 가지므로, 다른 훅
+관리자가 이미 잡고 있는데 덮으면 그쪽 훅이 조용히 죽습니다. `setup.sh` 는 그 상황을 감지하면 멈추고 공존하는
+방법을 알립니다. 근거는 [검증 기록](VERIFICATION.md)의 V53·V55에 있습니다.
+
 ## 출처
 
 1. Claude Code, [Best practices](https://code.claude.com/docs/en/best-practices).
@@ -221,3 +249,4 @@ ECC의 GateGuard 게이트는 이 플러그인과 목적이 일부 겹칩니다.
 12. Anthropic, [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations).
 13. Kent Beck, [Augmented Coding: Beyond the Vibes](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes). 2026-09-15 확인.
 14. Gabor 외, [EvilGenie: A Reward Hacking Benchmark](https://arxiv.org/abs/2511.21654): arXiv 2511.21654 v2(2026-05-17), "Modified Testing Procedure" 절. 2026-09-15 확인.
+15. husky, [Get started](https://typicode.github.io/husky/get-started.html). 2026-09-16 확인. `core.hooksPath` 언급이 없어 빈 저장소에 직접 설치해 확인했습니다.
