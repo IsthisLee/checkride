@@ -74,6 +74,8 @@ msg_ko() { case "$1" in
   rp.wait)       M="검사 명령 없어 대기" ;;
   rp.noconf)     M="설정 없어 막는 것 없음" ;;
   rp.disabled)   M="끈 규칙: %s  (.check.toml 의 disabled_rules)" ;;
+  rp.guardon)    M="커밋 가드: 켜짐 (core.hooksPath = %s)" ;;
+  rp.guardoff)   M="커밋 가드: 꺼짐. %s/ 에 훅이 있지만 core.hooksPath 가 없어 돌지 않는다. ./setup.sh 나 git config core.hooksPath %s 로 켠다." ;;
 esac ; }
 
 msg_en() { case "$1" in
@@ -142,4 +144,6 @@ msg_en() { case "$1" in
   rp.wait)       M="idle, no check command" ;;
   rp.noconf)     M="unconfigured, blocks nothing" ;;
   rp.disabled)   M="Disabled rules: %s  (disabled_rules in .check.toml)" ;;
+  rp.guardon)    M="Commit guard: on (core.hooksPath = %s)" ;;
+  rp.guardoff)   M="Commit guard: off. %s/ holds hooks but core.hooksPath is unset, so none of them run. Turn it on with ./setup.sh or git config core.hooksPath %s." ;;
 esac ; }

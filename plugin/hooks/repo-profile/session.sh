@@ -59,6 +59,14 @@ appendonly=""
 disabled=""
 [ -f .check.toml ] && disabled=$(sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' .check.toml | head -1)
 
+# 훅 폴더는 커밋되지만 core.hooksPath 는 .git/config 에 있어 클론과 함께 오지 않는다.
+# 그래서 가드가 꺼진 저장소는 막히는 일이 없어 사람도 에이전트도 모른 채 지나간다.
+# 워크트리와 새 클론에서 조용히 꺼지는 것이 이 배선의 유일한 실패 방식이라 세션마다 보인다.
+hooksdir=""
+for d in .githooks .husky; do [ -d "$d" ] && { hooksdir="$d"; break; }; done
+hookspath=""
+[ -n "$hooksdir" ] && hookspath=$(git -C "$root" config core.hooksPath 2>/dev/null || true)
+
 {
   tn rp.head "$name"
   [ -n "$branch" ] && tn rp.branch "$branch"
@@ -69,6 +77,10 @@ disabled=""
   else t rp.nocmd; fi
   [ -n "$appendonly" ] && t rp.appendonly "$appendonly"
   [ -n "$disabled" ] && t rp.disabled "$disabled"
+  if [ -n "$hooksdir" ]; then
+    if [ -n "$hookspath" ]; then t rp.guardon "$hookspath"
+    else t rp.guardoff "$hooksdir" "$hooksdir"; fi
+  fi
   if [ -n "$cmd" ]; then g1=$(tn rp.on); else g1=$(tn rp.wait); fi
   if [ -n "$appendonly" ]; then g2=$(tn rp.on); else g2=$(tn rp.noconf); fi
   t rp.gates "$g1" "$g2"

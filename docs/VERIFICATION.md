@@ -3777,3 +3777,81 @@ invariants       전부 통과
 
 - `.githooks/` 전용 테스트 묶음을 새로 만들지 않았다. 원래 없었고, 검사 명령과 출력을 이 항목에 남기는 것이 이 저장소의 기존 방식이다.
 - 훅의 경로 차단 목록(`case` 문)은 저장소마다 다르므로 설정 파일로 빼지 않았다. 옮길 때 고치라고 주석과 문서에 적었다.
+
+## V54 커밋 가드가 꺼진 저장소를 세션 머리에서 알린다
+
+배경: V53 으로 `setup.sh` 를 만들었지만, 그것을 돌려야 한다는 사실을 아는 것은 그 대화에 있던 사람뿐이다.
+새 세션은 모른다. 훅 폴더는 커밋되지만 `core.hooksPath` 는 `.git/config` 에 있어 클론과 함께 오지 않으므로,
+가드가 꺼진 저장소에서는 **막히는 일이 없어 사람도 에이전트도 모른 채 지나간다.** 조용히 꺼지는 것이
+이 배선의 유일한 실패 방식이다. 세션 머리에 한 줄을 실어 드러낸다.
+
+### 측정 1: RED 를 먼저 본다
+
+`tests/repo-profile/unit.sh` 에 6건을 먼저 넣고 구현 없이 돌렸다.
+
+```
+❌ 가드: 훅 폴더가 있는데 hooksPath 가 없으면 꺼짐으로 싣는다 (기대=0 실측=1)
+❌ 가드: 켜는 법을 함께 싣는다 (기대=0 실측=1)
+❌ 가드: hooksPath 가 있으면 켜짐으로 싣는다 (기대=0 실측=1)
+✅ 가드: 훅 폴더가 없으면 그 줄을 넣지 않는다
+❌ 가드: .husky 도 훅 폴더로 인식한다 (기대=0 실측=1)
+
+실패 4건
+```
+
+처음 돌렸을 때는 실패가 5건이었고, 그중 "훅 폴더가 없으면 그 줄을 넣지 않는다" 는 **테스트가 틀린 것이었다.**
+`grep -q '가드'` 가 기존 `rp.gates` 의 `프로젝트 가드` 에 걸렸다. 검사 문자열을 `커밋 가드` 로 좁혀 고쳤다.
+구현이 아니라 측정 도구가 틀린 경우다.
+
+### 측정 2: 구현 후 GREEN
+
+```
+✅ 가드: 훅 폴더가 있는데 hooksPath 가 없으면 꺼짐으로 싣는다
+✅ 가드: 켜는 법을 함께 싣는다
+✅ 가드: hooksPath 가 있으면 켜짐으로 싣는다
+✅ 가드: 훅 폴더가 없으면 그 줄을 넣지 않는다
+✅ 가드: .husky 도 훅 폴더로 인식한다
+✅ en: 가드 줄에도 한글이 없다
+
+실패 0건
+```
+
+### 측정 3: 실제 출력
+
+이 저장소(가드 켜짐):
+
+```
+[check 프로필] did-you-check  (브랜치 main)
+검사 명령: for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   (출처: .check.toml)
+커밋 가드: 켜짐 (core.hooksPath = .githooks)
+게이트: 근거(항상) · 완료(켜짐) · 테스트 무결성(항상) · 프로젝트 가드(설정 없어 막는 것 없음)
+```
+
+훅 폴더만 있고 `core.hooksPath` 가 없는 저장소:
+
+```
+커밋 가드: 꺼짐. .githooks/ 에 훅이 있지만 core.hooksPath 가 없어 돌지 않는다. ./setup.sh 나 git config core.hooksPath .githooks 로 켠다.
+```
+
+영어:
+
+```
+Commit guard: off. .githooks/ holds hooks but core.hooksPath is unset, so none of them run. Turn it on with ./setup.sh or git config core.hooksPath .githooks.
+```
+
+### 측정 4: 저장소 전체 검사
+
+```
+종료 코드: 0
+```
+
+`shellcheck -x -s bash plugin/hooks/repo-profile/session.sh plugin/hooks/lib/msg.sh tests/repo-profile/unit.sh` 경고 없음.
+`CLAUDE.md` 의 숫자를 23 → 29, 합계 425 → 431 로 맞췄다.
+
+### 판단과 경계
+
+- **훅 폴더가 없는 저장소에는 줄을 넣지 않는다.** 가드를 쓰지 않는 저장소에까지 권유를 싣으면 프로필이 잔소리가 된다.
+  프로필은 사실만 싣고 행동 지시를 넣지 않는다는 기존 원칙과도 맞다.
+- `.husky` 도 훅 폴더로 인식한다. 다른 저장소에 옮겨 쓰는 것이 목적이고, husky 를 쓰는 저장소에서도
+  `core.hooksPath` 가 없으면 같은 방식으로 조용히 꺼지기 때문이다.
+- **사실만 싣고 강제하지는 않는다.** 이 한 줄은 세션 머리에 상태를 보일 뿐 차단하지 않는다. 차단은 훅의 일이다.

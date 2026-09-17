@@ -92,4 +92,25 @@ out=$(run "$PE"); printf '%s' "$out" | grep -q 'disabled_rules'; r=$?; check 1 "
 mkdir -p "$PD/sub/deeper"
 out=$(run "$PD/sub/deeper"); printf '%s' "$out" | grep -q 'R2b'; check 0 $? "루트: 하위 폴더에서 열어도 루트의 설정을 싣는다"
 
+# 훅 폴더는 커밋되지만 core.hooksPath 는 .git/config 에 있어 클론과 함께 오지 않는다.
+# 그래서 가드가 꺼진 저장소는 막히는 일이 없어 사람도 에이전트도 모른다. 워크트리와 새
+# 클론에서 조용히 꺼지는 문제가 이 한 줄로 드러나야 한다.
+gitrepo() { git init -q "$1" && git -C "$1" config user.name t && git -C "$1" config user.email t@example.invalid; }
+
+PG1="$T/guard-off"; mkdir -p "$PG1"; gitrepo "$PG1"; mkdir -p "$PG1/.githooks"; : > "$PG1/.githooks/pre-commit"
+out=$(run "$PG1"); printf '%s' "$out" | grep -q '커밋 가드: 꺼짐'; check 0 $? "가드: 훅 폴더가 있는데 hooksPath 가 없으면 꺼짐으로 싣는다"
+printf '%s' "$out" | grep -q 'setup.sh\|core.hooksPath'; check 0 $? "가드: 켜는 법을 함께 싣는다"
+
+PG2="$T/guard-on"; mkdir -p "$PG2"; gitrepo "$PG2"; mkdir -p "$PG2/.githooks"; : > "$PG2/.githooks/pre-commit"
+git -C "$PG2" config core.hooksPath .githooks
+out=$(run "$PG2"); printf '%s' "$out" | grep -q '커밋 가드: 켜짐'; check 0 $? "가드: hooksPath 가 있으면 켜짐으로 싣는다"
+
+PG3="$T/guard-none"; mkdir -p "$PG3"; gitrepo "$PG3"
+out=$(run "$PG3"); printf '%s' "$out" | grep -q '커밋 가드'; r=$?; check 1 "$r" "가드: 훅 폴더가 없으면 그 줄을 넣지 않는다"
+
+PG4="$T/guard-husky"; mkdir -p "$PG4"; gitrepo "$PG4"; mkdir -p "$PG4/.husky"; : > "$PG4/.husky/pre-commit"
+out=$(run "$PG4"); printf '%s' "$out" | grep -q '커밋 가드: 꺼짐'; check 0 $? "가드: .husky 도 훅 폴더로 인식한다"
+
+out=$(NGG_LANG=en run "$PG1"); nohangul "$out"; check 0 $? "en: 가드 줄에도 한글이 없다"
+
 echo; echo "실패 ${fail}건"; exit "$fail"
