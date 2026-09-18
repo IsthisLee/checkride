@@ -42,6 +42,10 @@ cat plugin/hooks/hooks.json          # every event and what it runs
 
 ## What has already been fixed
 
+[![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check)
+
+
 **Prompt injection into the judge.** The judge hands Claude's answer to a model. An answer with a verdict JSON planted inside it could be read as the verdict and release the gate. The answer text is now wrapped in a data block, braces and verdict keywords are neutralized, and only the last JSON in the response is read. The regression test is group 12 of `unit.sh`; the record is `docs/VERIFICATION.md` V4f.
 
 **Silent disabling.** If `python3` was missing or a hook exceeded its time, the gate could pass the turn without saying anything. It now reports on stderr and exits 1, and the wiring pins a timeout. V4b, V4g.

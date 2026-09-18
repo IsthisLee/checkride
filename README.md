@@ -1,22 +1,13 @@
-<div align="center">
-
 # did-you-check
 
 ![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)
-![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)
-![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)
-![license](https://img.shields.io/badge/license-MIT-blue.svg)
-![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-8A63D2)
 ![version](https://img.shields.io/github/v/release/IsthisLee/did-you-check?label=version&color=informational)
+![license](https://img.shields.io/badge/license-MIT-blue.svg)
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)
-![external services](https://img.shields.io/badge/external%20services-none-brightgreen)
-![last commit](https://img.shields.io/github/last-commit/IsthisLee/did-you-check)
 
 [무엇이 막히나](#무엇이-막히나) · [설치](#설치) · [막히면 어떻게 되나](#막히면-어떻게-되나) · [왜 필요한가](#왜-필요한가) · [누구에게 좋은가](#누구에게-좋은가) · [오탐](#오탐) · [끄기와 제거](#끄기와-제거) · [더 읽기](#더-읽기) · [근거](#근거) · [비슷한 도구](#비슷한-도구)
 
 **읽기:** 한국어 · [English](README.en.md)
-
-</div>
 
 ---
 

@@ -42,6 +42,10 @@ cat plugin/hooks/hooks.json          # 어느 이벤트에 무엇이 걸리는�
 
 ## 우리가 이미 막은 것
 
+[![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check)
+
+
 **판정기 프롬프트 주입.** 판정기는 Claude의 답을 모델에게 넘긴다. 답 안에 판정 JSON을 심어 두면 판정으로 읽혀 게이트가 풀릴 수 있었다. 답 텍스트를 데이터 블록으로 감싸고, 중괄호와 판정 키워드를 중화하고, 응답의 마지막 JSON만 읽도록 고쳤다. 회귀 테스트가 `unit.sh` 12군에 있다. 기록은 `docs/VERIFICATION.md` V4f.
 
 **조용한 무력화.** `python3`가 없거나 훅이 시간을 넘기면 게이트가 아무 말 없이 통과시킬 수 있었다. 지금은 stderr로 알리고 exit 1로 끝내며, 배선에 타임아웃을 못 박았다. V4b, V4g.
