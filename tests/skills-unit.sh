@@ -51,10 +51,11 @@ for n in spec tdd ship auto; do
 done
 check 0 0 "핵심 넷은 공식·검증 문서를 원문으로 인용한다"
 
-# 스킬은 설치본에 그대로 실려 모든 사용자가 받는다. 한국어로 쓰면 영어권 사용자가
-# 커맨드 목록부터 못 읽고, 모델도 한국어 지시를 받아 영어권 사용자에게 한국어로 답한다.
-# 게이트 문장은 msg.sh 가 로케일로 가르지만 SKILL.md 는 갈릴 수 없다. 그래서 영어로 쓰고
-# "사용자의 언어로 답하라"를 본문에 박는다. 한국어 사용자는 그대로 한국어 답을 받는다.
+# 스킬은 설치본에 그대로 실려 모든 사용자가 받는다. 배포 대상을 한국어 사용자로 좁혔으므로
+# 본문을 한국어로 쓴다. 사람이 읽는 것은 커맨드 목록의 description 이고, 본문은 모델이 읽는다.
+# 둘 다 한국어여야 사용자가 /check: 를 칠 때 무엇을 고르는지 읽을 수 있다.
+# 한국어로 써도 영어권 사용자가 부를 수는 있으므로 "내가 쓰는 언어로 답한다"는 남겨 둔다.
+# 인용한 원문(영어)은 그대로 두고 번역을 붙인다. 그래서 영어가 섞이는 것은 정상이다.
 python3 - "$G" <<'SKILLLANG'
 import os, re, sys
 root = sys.argv[1]
@@ -63,11 +64,21 @@ for name in sorted(os.listdir(root)):
     if not os.path.isfile(p):
         continue
     t = open(p, encoding="utf-8").read()
-    ko = re.findall(r"[가-힣]", t)
-    assert not ko, f"{name}: 한글 {len(ko)}자. 설치본 스킬은 영어로 쓴다"
-    assert re.search(r"language I am writing to you in", t), \
-        f"{name}: 사용자의 언어로 답하라는 줄이 없다"
+    fm, body = t.split("---\n", 2)[1], t.split("---\n", 2)[2]
+    ko = re.findall(r"[가-힣]", body)
+    assert len(ko) >= 200, f"{name}: 본문 한글 {len(ko)}자. 설치본 스킬은 한국어로 쓴다"
+    # description 은 커맨드 목록에서 사람이 읽는 유일한 줄이라 여기가 한국어여야 한다.
+    # 한 글자만 세면 영어 문장에 한국어 단어 하나를 끼운 것도 통과한다. 실측한 최솟값이
+    # spec 의 25자이므로 15자로 잡는다(여유 10자). 비율은 쓰지 않는다. 고유명사와 인용이
+    # 많은 description 은 비율이 29.8%까지 내려가 문턱을 안정적으로 잡을 수 없다.
+    d = dict(re.findall(r"^([a-z-]+):\s*(.+)$", fm, re.M)).get("description", "")
+    kod = re.findall(r"[가-힣]", d)
+    assert len(kod) >= 15, f"{name}: description 한글 {len(kod)}자. 커맨드 목록에 뜨는 줄은 한국어로 쓴다"
+    # 어미는 문장마다 갈린다("답한다"·"답하고"). 원문 검사가 어미를 뺀
+    # "language I am writing to you in" 만 봤던 것과 같은 방식으로 불변 부분만 본다.
+    assert re.search(r"내가 쓰는 언어로 답", body), \
+        f"{name}: 내가 쓰는 언어로 답하라는 줄이 없다"
 SKILLLANG
-check 0 $? "스킬 여덟: 영어로 쓰고 사용자 언어로 답하라고 지시한다"
+check 0 $? "스킬 여덟: 한국어로 쓰고 내가 쓰는 언어로 답하라고 지시한다"
 
 echo; echo "실패 ${fail}건"; exit "$fail"

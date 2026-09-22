@@ -78,4 +78,6 @@ To get past one false positive, write `check allow <item>` on its own line in yo
 
 Start with `/check:init`. Ask `/check:status` when something blocks you.
 
+The eight command files are written in Korean, so their one-line descriptions read as Korean in the command list. They still reply in whatever language you write in, and the sentences they quote from the official docs are kept in the original English.
+
 Messages follow your locale; `NGG_LANG=ko|en` overrides. Full docs, the source for every rule, and the measurement log: **https://github.com/IsthisLee/did-you-check**

@@ -1,79 +1,79 @@
 ---
 name: config
-description: Pick which checks this repo enforces and set the gate's language. Shows every gate item and its source, then writes disabled_rules and lang to .check.toml, or the language to global settings.
+description: 이 저장소가 무엇을 강제할지 고르고 게이트 언어를 정한다. 항목과 출처를 보여 준 뒤 .check.toml에 disabled_rules와 lang을, 또는 전역 설정에 언어를 쓴다.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write, AskUserQuestion
 ---
 
-# Choose what to enforce
+# 무엇을 강제할지 고른다
 
-Let me pick, check by check, what did-you-check enforces in this repo. **Everything starts on.** Turning something off is a decision written into `.check.toml`, so it shows up in the pull request and the team can see it.
+did-you-check 가 이 저장소에서 무엇을 강제할지 검사 하나씩 고르게 한다. **모든 검사는 켜진 채로 시작한다.** 무언가를 끄는 것은 `.check.toml` 에 적히는 결정이고, 그래서 풀 리퀘스트에 드러나 팀이 볼 수 있다.
 
-**Reply in whatever language I am writing to you in,** and write config comments in that language.
+**내가 쓰는 언어로 답하고,** 설정 파일의 주석도 그 언어로 쓴다.
 
-## 1. Read the current state
+## 1. 현재 상태를 읽는다
 
-Read `.check.toml` at the repo root. Take the `disabled_rules` line and the `lang` line if they are there. **Those two lines, plus `env.NGG_LANG` in `~/.claude/settings.json` when I choose a global language, are the only things this command changes.** Leave every other key and comment exactly as it is.
+저장소 루트의 `.check.toml` 을 읽는다. `disabled_rules` 줄과 `lang` 줄이 있으면 가져온다. **이 커맨드가 바꾸는 것은 그 두 줄, 그리고 전역 언어를 고를 때의 `~/.claude/settings.json` 의 `env.NGG_LANG` 뿐이다.** 나머지 키와 주석은 그대로 둔다.
 
-Check the environment too. If `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD` or `NGG_JUDGE` is `0`, that switch turns a whole gate off regardless of the file. Say so. If `NGG_LANG` is `ko` or `en`, it forces the gate's language regardless of the file; say so, because `lang` in the file has no effect while it is set.
+환경도 확인한다. `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD`, `NGG_JUDGE` 중 `0` 인 것이 있으면 그 스위치가 파일과 무관하게 게이트 하나를 통째로 끈다. 그 사실을 알린다. `NGG_LANG` 이 `ko` 나 `en` 이면 파일과 무관하게 게이트 언어를 강제하므로, 그것이 설정돼 있는 동안 파일의 `lang` 은 효력이 없다고 알린다.
 
-`NGG_LANG` can also sit in the `env` block of `~/.claude/settings.json`. Look only at that one key there. That file can hold tokens, so never print it whole.
+`NGG_LANG` 은 `~/.claude/settings.json` 의 `env` 블록에도 있을 수 있다. 거기서는 그 키 하나만 본다. **그 파일에는 토큰이 들어 있을 수 있으므로 절대 통째로 출력하지 않는다.**
 
-## 2. Show every item
+## 2. 항목을 전부 보여 준다
 
-One table with five columns: **Gate, Name, Blocks, Source, On/Off.** Use these rows and copy the Source text as written.
+표 하나에 다섯 열을 둔다. **게이트, 이름, 막는 것, 출처, 켜짐/꺼짐**이다. 아래 행을 쓰고 출처는 적힌 그대로 옮긴다.
 
-**Never drop the Source column.** It is the reason this command exists: I should see where a rule comes from before I switch it off. A table without it is not the table this command promises.
+**출처 열을 절대 빼지 않는다.** 이 커맨드가 존재하는 이유가 그것이다. 규칙을 끄기 전에 그 규칙이 어디서 왔는지 보여야 한다. 출처 없는 표는 이 커맨드가 약속한 표가 아니다.
 
-| Gate | Name | Blocks | Source |
+| 게이트 | 이름 | 막는 것 | 출처 |
 |---|---|---|---|
-| Evidence | `R0` | Answering about this repo's state without running a tool | Prompting best practices, "investigate and read relevant files BEFORE answering questions about the codebase" |
-| Evidence | `R1` | Asserting a file's state without looking | Prompting best practices, "Never make any claims about code before investigating unless you are certain of the correct answer" |
-| Evidence | `R2a` | In a question about the codebase, ending on "this needs to be verified" without running a tool | Prompting best practices, "investigate and read relevant files BEFORE answering questions about the codebase". Saying why it cannot be checked is exempt: Reduce hallucinations, "Allow Claude to say I don't know" |
-| Evidence | `R2b` | With zero tool calls, guessing at local state ("probably") | Prompting best practices, "Never speculate about code you have not opened" |
-| Evidence | `R3` | Claiming tests passed with zero Bash calls | Best practices, "Have Claude show evidence rather than asserting success" |
-| Evidence | `R5` | Claiming success when the last command failed | Best practices, "Have Claude show evidence rather than asserting success" |
-| Completion | `done.turn` | Ending a turn that changed code before the check passes | Best practices, "As a deterministic gate: a Stop hook runs your check as a script and blocks the turn from ending until it passes." |
-| Completion | `done.commit` | Committing before the full check passes | Kent Beck, "Only commit when ALL tests are passing." |
-| Completion | `done.pr` | Opening a PR whose body claims tests passed or something was verified, with no command output | Best practices, "Have Claude show evidence rather than asserting success" |
-| Test integrity | `ti.skip` | Adding `.skip`-style markers to tests | Kent Beck, "disabling or deleting tests" |
-| Test integrity | `ti.assert` | Removing assertions | EvilGenie (arXiv 2511.21654), "Modified Testing Procedure": "The agent modifies the test cases or the code that runs the testing procedure." |
-| Test integrity | `ti.rm` | Deleting test files | Kent Beck, same sentence |
-| Test integrity | `ti.exclude` | Adding exclusions to test-runner config | EvilGenie (arXiv 2511.21654), same section |
+| 근거 | `R0` | 도구를 돌리지 않고 이 저장소의 상태에 답하는 것 | Prompting best practices, "investigate and read relevant files BEFORE answering questions about the codebase" (코드베이스에 관한 질문에 답하기 전에 관련 파일을 조사하고 읽어라) |
+| 근거 | `R1` | 열어 보지 않고 파일의 상태를 단정하는 것 | Prompting best practices, "Never make any claims about code before investigating unless you are certain of the correct answer" (정답을 확신하지 않는 한 조사하기 전에 코드에 대해 주장하지 마라) |
+| 근거 | `R2a` | 코드베이스에 관한 질문에서 도구를 돌리지 않고 "확인이 필요하다"로 끝내는 것 | Prompting best practices, "investigate and read relevant files BEFORE answering questions about the codebase" (위와 같다). 확인할 수 없는 이유를 밝히는 것은 면제다. Reduce hallucinations, "Allow Claude to say I don't know" (Claude 가 모른다고 말할 수 있게 하라) |
+| 근거 | `R2b` | 도구를 한 번도 쓰지 않고 로컬 상태를 추측하는 것("아마") | Prompting best practices, "Never speculate about code you have not opened" (열어 보지 않은 코드를 추측하지 마라) |
+| 근거 | `R3` | Bash 실행 0건인데 테스트가 통과했다고 주장하는 것 | Best practices, "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라) |
+| 근거 | `R5` | 마지막 명령이 실패했는데 성공을 주장하는 것 | Best practices, 위와 같은 문장 |
+| 완료 | `done.turn` | 코드를 바꾼 턴을 검사 통과 전에 끝내는 것 | Best practices, "As a deterministic gate: a Stop hook runs your check as a script and blocks the turn from ending until it passes." (결정적 게이트로서, Stop 훅이 검사를 스크립트로 돌리고 통과할 때까지 턴이 끝나는 것을 막는다) |
+| 완료 | `done.commit` | 전체 검사 통과 전에 커밋하는 것 | Kent Beck, "Only commit when ALL tests are passing." (모든 테스트가 통과할 때만 커밋하라) |
+| 완료 | `done.pr` | 명령 출력 없이 테스트 통과나 검증을 주장하는 PR 본문 | Best practices, "Have Claude show evidence rather than asserting success" (성공을 주장하는 대신 근거를 보여 주게 하라) |
+| 테스트 무결성 | `ti.skip` | 테스트에 `.skip` 계열 표시를 붙이는 것 | Kent Beck, "disabling or deleting tests" (테스트를 비활성화하거나 지우는 것) |
+| 테스트 무결성 | `ti.assert` | 단언을 지우는 것 | EvilGenie (arXiv 2511.21654), "Modified Testing Procedure": "The agent modifies the test cases or the code that runs the testing procedure." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다) |
+| 테스트 무결성 | `ti.rm` | 테스트 파일을 지우는 것 | Kent Beck, 위와 같은 문장 |
+| 테스트 무결성 | `ti.exclude` | 테스트 러너 설정에 제외를 추가하는 것 | EvilGenie (arXiv 2511.21654), 위와 같은 절 |
 
-Append-only paths have no name here. They are on only when `append_only` is set, and `/check:init` handles that.
+append-only 경로에는 여기 이름이 없다. `append_only` 가 설정돼 있을 때만 켜지고, 그것은 `/check:init` 이 맡는다.
 
-## 3. Ask what to turn off
+## 3. 무엇을 끌지 묻는다
 
-Use `AskUserQuestion` with multi-select, one question per gate, listing that gate's items. The question is **which to turn off**, not which to keep. It allows at most four options per question, so split the evidence gate's six items across two questions. If I only want to change one gate, ask about that one.
+`AskUserQuestion` 의 다중 선택으로 묻는다. 게이트마다 질문 하나씩 두고 그 게이트의 항목을 나열한다. 질문은 **무엇을 끌 것인가**이지 무엇을 남길 것인가가 아니다. 한 질문에 선택지가 넷까지만 되므로 근거 게이트의 여섯 항목은 두 질문으로 나눈다. 게이트 하나만 바꾸고 싶다고 하면 그 하나만 묻는다.
 
-Before asking, say this once: for a single false positive, writing `check allow <item>` on its own line in the next prompt lets one action through without turning anything off. That does not cover `R0`–`R5`.
+묻기 전에 한 번 알린다. 오탐이 한 번뿐이라면 다음 프롬프트에 `check allow <항목>` 을 한 줄로 적어서 아무것도 끄지 않고 그 동작 하나만 통과시킬 수 있다. 다만 이것은 `R0`~`R5` 에는 적용되지 않는다.
 
-## 4. Write it
+## 4. 쓴다
 
-Show the `disabled_rules` line before and after, and get a yes before writing. Then:
+`disabled_rules` 줄의 전과 후를 보여 주고 승낙을 받은 뒤에 쓴다. 그다음은 이렇다.
 
-- If the file exists, replace that one line, or add it if it was missing.
-- If the file does not exist, create it with that line and a one-line comment saying why.
-- If nothing is off anymore, remove the line.
+- 파일이 있으면 그 한 줄만 바꾸고, 없던 줄이면 더한다.
+- 파일이 없으면 그 줄과 왜 그런지를 적은 주석 한 줄로 새로 만든다.
+- 꺼 둔 것이 더는 없으면 그 줄을 지운다.
 
-Names are comma-separated and case does not matter. Do not write a name that is not in the table above; the gates report unknown names but turn nothing off.
+이름은 쉼표로 구분하고 대소문자는 가리지 않는다. 위 표에 없는 이름은 쓰지 않는다. 게이트는 모르는 이름을 보고하기만 할 뿐 아무것도 끄지 않는다.
 
-## 5. Language
+## 5. 언어
 
-The gate speaks the repo's language. Resolve the current one in this order and tell me which applies:
+게이트는 저장소의 언어로 말한다. 현재 언어를 이 순서로 판정하고 어느 것이 적용되는지 알린다.
 
-1. `NGG_LANG` (`ko`/`en`) if set — an environment override the file cannot change. Say whether it comes from the shell or from `~/.claude/settings.json`.
-2. `lang` in `.check.toml` (`ko`/`en`) if set.
-3. Otherwise the locale (`LC_ALL` > `LC_MESSAGES` > `LANG`): a `ko*` locale gives Korean, anything else English.
+1. `NGG_LANG` (`ko`/`en`) 이 설정돼 있으면 그것이다. 파일이 바꿀 수 없는 환경 우선값이다. 셸에서 왔는지 `~/.claude/settings.json` 에서 왔는지 밝힌다.
+2. `.check.toml` 의 `lang` (`ko`/`en`) 이 설정돼 있으면 그것이다.
+3. 둘 다 없으면 로케일이다(`LC_ALL` > `LC_MESSAGES` > `LANG`). `ko` 계열이면 한국어, 그 밖에는 영어다.
 
-Offer to pin it with `AskUserQuestion` in two questions: first the language (Korean, English, or follow the locale), then where to write it.
+`AskUserQuestion` 두 질문으로 고정할지 제안한다. 먼저 언어를 묻고(한국어, 영어, 로케일을 따름), 그다음 어디에 쓸지 묻는다.
 
-- **This repo.** Change only the `lang` line in `.check.toml`: add or replace `lang = "ko"` / `lang = "en"`, or remove the line to follow the locale. It shows up in the pull request and applies to everyone who opens the repo. If `NGG_LANG` is set, note that the file change takes effect only once it is unset.
-- **Global.** Change only `env.NGG_LANG` in `~/.claude/settings.json`: set it to `ko` / `en`, or remove the key to follow the locale. Put the trade-off in the option's description: it applies to every repo on this machine, it beats every repo's `lang`, and it is in no pull request. Keep every other key and the file's formatting, and do not print the file. If the gate still speaks the old language afterwards, tell me to start a new session.
+- **이 저장소.** `.check.toml` 의 `lang` 줄만 바꾼다. `lang = "ko"` 또는 `lang = "en"` 을 더하거나 바꾸고, 로케일을 따르려면 그 줄을 지운다. 풀 리퀘스트에 드러나고 이 저장소를 여는 모든 사람에게 적용된다. `NGG_LANG` 이 설정돼 있으면 그것을 지워야 파일 변경이 효력을 낸다고 알린다.
+- **전역.** `~/.claude/settings.json` 의 `env.NGG_LANG` 만 바꾼다. `ko` / `en` 으로 설정하거나, 로케일을 따르려면 그 키를 지운다. 절충점을 선택지 설명에 적는다. 이 기계의 모든 저장소에 적용되고, 저장소마다의 `lang` 을 이기며, 어떤 풀 리퀘스트에도 드러나지 않는다. 나머지 키와 파일의 형식은 그대로 두고 **파일을 출력하지 않는다.** 바꾼 뒤에도 게이트가 옛 언어로 말하면 새 세션을 시작하라고 알린다.
 
-Get a yes before writing, and show the line or key before and after.
+쓰기 전에 승낙을 받고, 바뀌는 줄이나 키의 전과 후를 보여 준다.
 
-## 6. Report
+## 6. 보고
 
-The same table as step 2, with the new state, and the gate's effective language. Then say where the change will be visible: in the diff of `.check.toml`, in the repo profile at the start of every session, and as `off=[...]` in `events.log` whenever a disabled check would have blocked. A global language is not in any diff; it lives only in `~/.claude/settings.json`.
+2 단계와 같은 표를 새 상태로 다시 내고, 게이트의 실효 언어를 적는다. 그다음 이 변경이 어디에서 보이는지 말한다. `.check.toml` 의 diff, 매 세션 머리의 저장소 프로필, 그리고 꺼 둔 검사가 막았을 상황마다 `events.log` 에 남는 `off=[...]` 다. 전역 언어는 어떤 diff 에도 없고 `~/.claude/settings.json` 에만 있다.

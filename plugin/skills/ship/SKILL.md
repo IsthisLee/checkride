@@ -1,38 +1,40 @@
 ---
 name: ship
-description: Run the checks, commit, push, open the PR. The PR body carries the commands you ran and their output as evidence.
+description: 검사를 돌리고 커밋하고 푸시하고 PR을 연다. PR 본문에는 돌린 명령과 그 출력을 근거로 넣는다.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Edit
 ---
 
-# Ship it
+# 배포한다
 
-Get the checks passing, commit, and open a pull request. If $ARGUMENTS is given, use it as the PR title.
+검사를 통과시키고, 커밋하고, 풀 리퀘스트를 연다. $ARGUMENTS 가 주어지면 그것을 PR 제목으로 쓴다.
 
-**Reply in whatever language I am writing to you in,** and write the commit message and PR body in that language.
+**내가 쓰는 언어로 답하고,** 커밋 메시지와 PR 본문도 그 언어로 쓴다.
 
-Willison's anti-pattern warning is the reason this command exists.
+이 커맨드가 존재하는 이유는 Willison 의 안티패턴 경고다.
 
 > "Don't file pull requests with code you haven't reviewed yourself."
 > "Agents write convincing looking pull request descriptions. You need to review these too!"
+>
+> 번역: 직접 검토하지 않은 코드로 풀 리퀘스트를 올리지 마라. 에이전트는 그럴듯해 보이는 풀 리퀘스트 설명을 쓴다. 그것 역시 검토해야 한다.
 
-## The order
+## 순서
 
-1. **Read `git status` and `git diff` first.** Do not open a PR without knowing what you changed.
-2. **Run the checks.** `test_command` from `.check.toml`, or whatever this repo uses. Keep the output. If it fails, stop here and fix it — the completion gate will block you anyway.
-3. Run lint and type-checking too if they are separate.
-4. Write the commit message. Put **what changed and why** in the body. Follow the repo's format.
-5. Push and open the PR with `gh pr create`.
+1. **`git status` 와 `git diff` 를 먼저 읽는다.** 무엇을 바꿨는지 모르는 채로 PR 을 열지 않는다.
+2. **검사를 돌린다.** `.check.toml` 의 `test_command`, 또는 이 저장소가 쓰는 명령이다. 출력을 보관한다. 실패하면 여기서 멈추고 고친다. 어차피 완료 게이트가 막는다.
+3. 린트와 타입 검사가 따로 있으면 그것도 돌린다.
+4. 커밋 메시지를 쓴다. 본문에 **무엇을 왜 바꿨는지**를 적는다. 저장소의 형식을 따른다.
+5. 푸시하고 `gh pr create` 로 PR 을 연다.
 
-## What the PR body must carry
+## PR 본문에 반드시 담아야 하는 것
 
-- **What changed and why.** One paragraph.
-- **The checks you ran and their output.** Paste the command and the result. "Tests pass" on its own is not evidence.
-- **What you verified by hand.** If the screen changed, how you looked at it and what you clicked.
-- **A note for the reviewer.** Where to look hardest, and what you are still unsure about.
+- **무엇을 왜 바꿨는지.** 한 문단이다.
+- **돌린 검사와 그 출력.** 명령과 결과를 그대로 붙인다. "테스트 통과"라는 말만으로는 근거가 아니다.
+- **손으로 확인한 것.** 화면이 바뀌었다면 어떻게 봤고 무엇을 눌렀는지 적는다.
+- **리뷰어를 위한 메모.** 어디를 가장 주의 깊게 봐야 하는지, 내가 아직 확신하지 못하는 것이 무엇인지 적는다.
 
-The completion gate enforces the second item. `gh pr create` is refused when the body has no closed code block and no image, unless the branch changes only non-code files. Paste real output. The gate checks the form, not whether the output is genuine — that part is on you.
+완료 게이트가 두 번째 항목을 강제한다. 본문에 닫힌 코드 블록도 이미지도 없으면 `gh pr create` 가 거부된다. 다만 브랜치가 코드가 아닌 파일만 바꿨다면 예외다. 실제 출력을 붙여라. **게이트는 형식을 검사할 뿐 그 출력이 진짜인지는 보지 못한다.** 그 부분은 사람의 몫이다.
 
-## Last thing
+## 마지막으로
 
-After opening it, ask me whether **I have read that body.** Making someone else read a description you never read yourself is rude.
+PR 을 연 뒤에 **내가 그 본문을 읽었는지** 묻는다. 자기가 읽지도 않은 설명을 남에게 읽히는 것은 무례한 일이다.
