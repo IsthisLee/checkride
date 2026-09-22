@@ -1,6 +1,6 @@
 ---
-name: init
-description: did-you-check를 이 저장소에 맞춘다. 검사 명령을 찾아 .check.toml에 쓰고, append-only 경로와 비밀 파일 차단을 제안한다.
+name: setup-checks
+description: 이 저장소의 검사 명령과 지킬 폴더를 확정한다. 검사를 실제로 돌려 보고 .check.toml에 쓰고, append-only 경로와 비밀 파일 차단을 제안한다.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, AskUserQuestion
 ---
