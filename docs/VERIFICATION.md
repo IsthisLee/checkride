@@ -4664,3 +4664,112 @@ README.en.md   25,397 → 23,036자
 - **서브에이전트가 파일을 고치는 동안 측정하면 줄 번호가 어긋난다.** 작업이 끝난 뒤에 재야 한다.
 - **과잉 적용을 따로 막아야 했다.** 「그중 막는 것은 다섯이고」처럼 수사가 서술어 자리에 온 것은 그대로
   두는 것이 맞다. 검토자에게 그것을 명시적으로 확인하라고 일렀다.
+
+## V63 저장소와 플러그인과 접두를 checkride 로 바꾼다
+
+저장소는 `did-you-check`, 플러그인과 커맨드 접두는 `check` 로 갈라져 있었다. 설치 명령 한 줄에 서로 다른
+두 단어가 나왔다.
+
+```
+전   /plugin marketplace add IsthisLee/did-you-check
+     /plugin install check@did-you-check
+     /check:setup-checks
+
+후   /plugin marketplace add IsthisLee/checkride
+     /plugin install checkride@checkride
+     /checkride:setup-checks
+```
+
+`checkride` 는 항공 실기 심사다. 심사관이 옆자리에 동승해 절차를 짚어 주고 기준을 벗어나면 제지하지만
+대신 조종하지는 않는다. 커맨드가 절차를 주고 게이트가 제지하며 일은 Claude 가 한다는 구조와 같다.
+
+**스타 0·포크 0 인 지금이 이름을 바꾸는 가장 싼 시점이다.** 깨질 사용자가 없다.
+
+### 옛 이름이 남으면 실패하는 검사를 먼저 넣었다
+
+치환을 빠뜨리면 설치 명령과 커맨드가 갈린다. `tests/invariants.sh` 에 검사를 먼저 넣고 RED 를 본 뒤
+치환했다.
+
+**그 검사가 처음에는 통과할 수 없었다.** 검색 패턴 문자열 안에 옛 이름이 그대로 들어 있어 `grep` 이
+**자기 자신을 항상 잡았다.** `--exclude=invariants.sh` 를 더해 고쳤다.
+
+```bash
+old=$(grep -rln "did-you-check\|/check:" ... "$R" | wc -l)
+#                ^^^^^^^^^^^^^^^^^^^^^^ 이 줄 자체가 매치된다
+```
+
+**RED 를 보는 것만으로는 부족하고 GREEN 이 도달 가능한지도 봐야 한다.** 실패하는 것을 확인했다고 해서
+그 검사가 성공할 수 있다는 뜻은 아니다.
+
+제외 목록은 넷이다. `VERIFICATION.md`·`CHANGELOG.md`(이력), `invariants.sh`(자기 자신),
+`decisions.md`(182행이 2026-09-22 실측한 상태 폴더 목록). **`decisions.md` 에 앞으로 옛 이름이 들어가면
+못 잡는 구멍이 있다.** 이름을 바꿀 때 쓰는 일회성 검사라 감수했다.
+
+구분력은 확인했다.
+
+```
+$ printf '\n임시: /check:setup-checks 와 did-you-check\n' >> README.md
+$ tests/invariants.sh
+❌ 옛 이름이 1개 파일에 남았다
+$ (되돌린 뒤)
+✅ 옛 이름이 남아 있지 않다
+```
+
+### 일괄 치환이 잡지 못한 자리들
+
+`did-you-check` 만 바꾸면 **앞의 `check` 가 남는다.** 그것도 플러그인 이름이다.
+
+```
+/plugin install check@did-you-check   →  치환 후 check@checkride   →  손으로 checkride@checkride
+```
+
+계획은 `install` 만 지목했는데 실제로는 `disable`·`uninstall` 명령 9곳과 `${CLAUDE_PLUGIN_DATA}` 상태
+폴더명 4곳이 더 있었다. 구현자가 스스로 찾아냈다.
+
+**상태 폴더명을 한 번 잘못 고쳤다.** `check-did-you-check` 를 `check-checkride` 로 바꿨는데 `checkride-checkride`
+가 맞다. 이 폴더는 `<플러그인 이름>-<마켓플레이스 이름>` 형식이고 둘 다 `checkride` 가 됐다. 개발 기계의
+실제 폴더 목록이 형식을 증명한다.
+
+```
+$ ls ~/.claude/plugins/data/
+ecc-ecc                                    ← 이름이 같으면 두 번 반복된다
+understand-anything-understand-anything
+check-did-you-check
+```
+
+README 가 틀린 경로를 알려 주면 사용자가 상태를 지우려 할 때 찾지 못한다.
+
+### 검사를 통과시키려 기록을 고치지 않았다
+
+`docs/decisions.md:182` 는 2026-09-22 에 실측한 상태 폴더 목록이다. 치환에 휩쓸렸다가 되돌렸더니
+방금 넣은 검사가 그 줄과 걸려 전체 검사가 깨졌다. **기록을 고치는 대신 검사의 제외 목록을 늘렸다.**
+`CHANGELOG.md:81` 이 정한 원칙이 그것이다. 검사를 통과시키려 사실을 고치는 것이 이 플러그인이 막으려는
+행동이다.
+
+### SVG 는 치환해도 안전했다
+
+처음에는 "다시 그려야 하니 별도 후속으로 뺀다"고 판단했다. **파일을 열어 보지 않고 내린 판단이었다.**
+열어 보니 옛 이름이 `<title>`·`aria-label`(접근성 텍스트, 폭 무관)과
+`<text text-anchor="middle">`(가운데 정렬)에만 있었다. `x=380` 이 `width=760` 의 정확히 절반이라
+길이가 바뀌어도 중앙에 유지된다.
+
+### 결과
+
+```
+$ grep -rln "did-you-check\|/check:" --exclude-dir=.git --exclude-dir=.private \
+    --exclude-dir=.superpowers --exclude=VERIFICATION.md --exclude=CHANGELOG.md \
+    --exclude=invariants.sh --exclude=decisions.md .
+(출력 없음)
+
+$ tests/invariants.sh          →  ✅ 옛 이름이 남아 있지 않다
+$ 전체 검사                     →  실패 줄 0, 종료 코드 0
+$ claude plugin validate .      →  ✔ Validation passed
+```
+
+### 판단
+
+- **파일을 열기 전에 내린 판단은 대체로 과하다.** SVG 를 "다시 그려야 한다"고 본 것이 그랬고, 앞서
+  `gates.md` 가 README 를 정본으로 가리킨다는 것도 열어 보고서야 알았다.
+- **검사를 쓸 때 RED 만 보면 안 된다.** GREEN 이 도달 가능한 상태가 존재하는지 함께 봐야 한다.
+- **일괄 치환은 한 단어만 본다.** `check@did-you-check` 처럼 같은 문자열이 다른 뜻으로 두 번 나오는
+  자리는 손으로 확인해야 한다.
