@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="276" viewBox="0 0 760 276" role="img" aria-label="Cases where the gate actually blocked this agent: R0 an answer with no check, R1 a file-state assertion, R2b a guess about local state, R3 a passing claim for tests that never ran" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
-  <title>checkride: cases where the gate actually blocked this agent</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="316" viewBox="0 0 760 316" role="img" aria-label="Four cases where the evidence gate actually blocked this agent. These are four of the evidence gate's six rules, and three more gates exist beyond it: R0 an answer with no check, R1 a file-state assertion, R2b a guess about local state, R3 a passing claim for tests that never ran" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+  <title>checkride: cases where the evidence gate blocked this agent (four of six rules)</title>
 
   <!-- table body -->
   <rect x="8" y="8" width="744" height="260" rx="8" fill="#0d1117"/>
@@ -58,4 +58,7 @@
   <text x="334" y="256" fill="#ff7b72">answer from the output"</text>
   <text x="557" y="236" fill="#7ee787">Ran the tests for real,</text>
   <text x="557" y="256" fill="#7ee787">pasted the output</text>
+  <!-- scope footnote -->
+  <text x="8" y="288" fill="#8b949e" font-size="11">Four of the evidence gate's six rules; the rest are R2a and R5.</text>
+  <text x="8" y="304" fill="#8b949e" font-size="11">Three more gates exist: completion, test integrity, project guard.</text>
 </svg>
