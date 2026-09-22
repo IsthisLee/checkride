@@ -3,7 +3,7 @@
 # 턴 끝에는 이것만 (빠름)
 fast_test_command = "tests/lib/unit.sh && tests/no-guess-gate/unit.sh && tests/skills-unit.sh"
 # 커밋 직전에 이것 (전체)
-test_command = "for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile setup; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh"
+test_command = "for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile setup; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh && tests/doc-counts.sh"
 
 # 특정 규칙이 이 저장소에서 계속 오탐이면 여기에 적어 끈다. 환경변수와 달리 PR에 보인다.
 # disabled_rules = "R2b"
