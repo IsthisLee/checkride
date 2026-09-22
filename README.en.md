@@ -22,6 +22,10 @@ The examiner never takes the controls. They call out the procedure, and stop you
 | **[Eight commands](#eight-commands)** | Tells you what to do, and in what order | Only when you type it |
 | **[Four gates](#what-gets-blocked)** | Keeps a turn from ending on an answer that skipped a best practice | Runs on its own |
 
+This is how the commands drive it. `/checkride:full-cycle` alone walks the five steps from explore to pull request, and goes back to implementation whenever review turns up a defect.
+
+<p align="center"><img src="docs/assets/commands.en.svg" alt="A command driving the workflow from explore to pull request" width="760"></p>
+
 Pick items with `/checkride:config`, which shows where each one comes from; the choice is written to `.check.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
 
 You never asked for any of it, and it is checked every time. **The hooks do the asking; you focus on judging the results.**
@@ -30,9 +34,11 @@ Why hooks instead of a request? [Why it's needed](#why-its-needed) answers that.
 
 <p align="center"><img src="docs/assets/demo.en.svg" alt="An ungrounded answer is blocked, then the model measures and answers again" width="760"></p>
 
-**This plugin makes no exception for itself.** Below are real cases where the gate blocked this very agent during actual use. It tried to assert file state without looking and hit R1; it tried to pass off checkable local state as "seems like…" and hit R2b. Only after both were blocked did it measure the files and the source, then answer again.
+**This plugin makes no exception for itself.** Below are four real cases where a gate blocked this very agent during actual use. It tried to answer "are there tests?" without running a single tool and hit R0; it tried to assert file state without looking and hit R1; it tried to pass off checkable local state as "seems like…" and hit R2b; it claimed tests passed without running them and hit R3. Every time, only after being blocked did it measure the files, the source, and the actual output, then answer again.
 
-<p align="center"><img src="docs/assets/cases.en.svg" alt="Cases where the gate actually blocked this agent" width="760"></p>
+<p align="center"><img src="docs/assets/cases.en.svg" alt="Four cases where the evidence gate blocked this agent — four of that gate's six rules" width="760"></p>
+
+**That table is not the whole picture.** All four cases come from the evidence gate, and even there they cover only four of its six rules. What the remaining rules and the other three gates block is listed in full under [What gets blocked](#what-gets-blocked).
 
 Across projects in real use, the gate checked 898 answers and blocked 69 of them. R0 (answering without checking file state) and R2b (guessing at local state) account for most. The counting command and raw output are in the [verification log](docs/VERIFICATION.md#v43-적용-사례-실측).
 

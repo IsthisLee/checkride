@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="276" viewBox="0 0 760 276" role="img" aria-label="게이트가 이 에이전트를 실제로 막은 사례: R0은 확인 없는 답을, R1은 파일 상태 단정을, R2b는 로컬 상태 추측을, R3은 안 돌린 테스트의 통과 주장을 막았다" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
-  <title>checkride: 게이트가 이 에이전트를 실제로 막은 사례</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="304" viewBox="0 0 760 304" role="img" aria-label="근거 게이트가 이 에이전트를 실제로 막은 사례 네 건. 근거 게이트의 규칙 여섯 개 가운데 네 개이고, 게이트는 이것 말고도 세 개가 더 있다: R0은 확인 없는 답을, R1은 파일 상태 단정을, R2b는 로컬 상태 추측을, R3은 안 돌린 테스트의 통과 주장을 막았다" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
+  <title>checkride: 근거 게이트가 이 에이전트를 실제로 막은 사례 (규칙 여섯 개 가운데 네 개)</title>
 
   <!-- table body -->
   <rect x="8" y="8" width="744" height="260" rx="8" fill="#0d1117"/>
@@ -56,4 +56,6 @@
   <text x="334" y="256" fill="#ff7b72">그 출력을 근거로"</text>
   <text x="557" y="236" fill="#7ee787">테스트를 실제로 돌려</text>
   <text x="557" y="256" fill="#7ee787">출력을 붙여 답함</text>
+  <!-- scope footnote -->
+  <text x="8" y="292" fill="#8b949e" font-size="11">근거 게이트의 규칙 여섯 개 가운데 네 개다. 나머지는 R2a · R5 이고, 게이트는 완료 · 테스트 무결성 · 프로젝트 가드가 더 있다.</text>
 </svg>

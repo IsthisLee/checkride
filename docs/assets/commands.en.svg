@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="452" viewBox="0 0 760 452" role="img" aria-label="a command driving the workflow from explore to pull request" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
+  <title>checkride: the commands drive the workflow</title>
+
+  <rect width="760" height="452" rx="10" fill="#0d1117"/>
+  <rect width="760" height="30" rx="10" fill="#161b22"/>
+  <rect y="20" width="760" height="10" fill="#161b22"/>
+  <circle cx="18" cy="15" r="5" fill="#ff5f56"/>
+  <circle cx="36" cy="15" r="5" fill="#ffbd2e"/>
+  <circle cx="54" cy="15" r="5" fill="#27c93f"/>
+  <text x="380" y="19" font-size="11" fill="#8b949e" text-anchor="middle">claude — checkride</text>
+
+  <text x="20" y="58" fill="#79c0ff">&gt; /checkride:full-cycle add a retry on failed login</text>
+
+  <text x="20" y="90"  fill="#8b949e">Claude</text>
+  <text x="20" y="110" fill="#c9d1d9">Sized it up: too big for one sentence. Walking the five steps.</text>
+
+  <text x="20"  y="142" fill="#3fb950">1 Explore</text>
+  <text x="130" y="142" fill="#8b949e">handed to the built-in Explore subagent</text>
+
+  <text x="20"  y="168" fill="#3fb950">2 Plan</text>
+  <text x="130" y="168" fill="#8b949e">plan mode. No code changes before approval</text>
+
+  <text x="20"  y="194" fill="#3fb950">3 Implement</text>
+  <text x="130" y="194" fill="#8b949e">/checkride:tdd — failing test, confirm RED, minimum code</text>
+
+  <text x="20"  y="220" fill="#3fb950">4 Review</text>
+  <text x="130" y="220" fill="#8b949e">calls the built-in /code-review</text>
+  <text x="130" y="240" fill="#d29922">2 findings affect correctness → back to step 3</text>
+
+  <text x="20"  y="272" fill="#3fb950">3 Implement</text>
+  <text x="130" y="272" fill="#8b949e">fixed</text>
+
+  <text x="20"  y="298" fill="#3fb950">4 Review</text>
+  <text x="130" y="298" fill="#8b949e">called again. Nothing left</text>
+  <text x="130" y="318" fill="#8b949e">At most two trips back. More than that, it stops and reports</text>
+
+  <text x="20"  y="350" fill="#3fb950">5 Finish</text>
+  <text x="130" y="350" fill="#8b949e">/checkride:finish — checks, lint, commit, push, PR</text>
+
+  <rect x="20" y="374" width="720" height="58" rx="6" fill="#161b22"/>
+  <text x="36" y="396" fill="#8b949e">All four gates are running the whole time — with or without the commands.</text>
+  <text x="36" y="418" fill="#8b949e">Assert without evidence and it blocks; commit on broken checks and it blocks.</text>
+</svg>
