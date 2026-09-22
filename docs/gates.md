@@ -1,4 +1,4 @@
-# did-you-check: 게이트와 커맨드 상세
+# checkride: 게이트와 커맨드 상세
 
 README는 짧게 두고 자세한 내용은 이 문서에 적습니다. 각 게이트가 무엇을 어떻게 막는지, 무엇으로 끄는지, 근거가 어느 문서인지를 다룹니다.
 
@@ -283,7 +283,7 @@ append_only = "supabase/migrations, db/migrate"
 게이트는 무엇을 막을지 알아야 하고, Claude는 이 저장소에서 무엇을 돌려야 하는지 알아야 합니다. 세션이 시작될 때 `SessionStart` 훅이 스무 줄 안팎의 사실을 컨텍스트에 넣습니다.
 
 ```
-[check 프로필] did-you-check  (브랜치 main)
+[check 프로필] checkride  (브랜치 main)
 패키지 매니저: pnpm
 스택: next, react, typescript, vitest
 검사 명령: pnpm test   (출처: package.json scripts.test → vitest run)
@@ -328,14 +328,14 @@ append-only 경로: supabase/migrations
 
 | 커맨드 | 하는 일 |
 |---|---|
-| `/check:spec` | 큰 기능 전에 `AskUserQuestion`으로 사용자를 인터뷰해 `SPEC.md`를 씁니다 |
-| `/check:setup-checks` | 검사 명령을 실제로 돌려 보고 `.check.toml`에 확정합니다. 기준선·append-only·비밀 파일 차단도 제안합니다 |
-| `/check:tdd` | 실패 테스트 먼저, RED 확인, 최소 구현 순서로 진행합니다 |
-| `/check:finish` | 검사·린트를 돌리고 커밋·푸시·PR 을 만듭니다. PR 본문에 돌린 명령과 출력을 근거로 넣습니다 |
-| `/check:handoff` | 다음 세션이 읽을 인수인계를 씁니다 |
-| `/check:status` | 게이트 상태를 전부 실측해 보고합니다 |
-| `/check:full-cycle` | 탐색 → 계획 → 구현 → 검토 → PR 을 순서대로 진행합니다 |
-| `/check:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적습니다. 게이트 언어도 저장소(`.check.toml`의 `lang`)나 전역(`~/.claude/settings.json`의 `env.NGG_LANG`)에 고정합니다 |
+| `/checkride:spec` | 큰 기능 전에 `AskUserQuestion`으로 사용자를 인터뷰해 `SPEC.md`를 씁니다 |
+| `/checkride:setup-checks` | 검사 명령을 실제로 돌려 보고 `.check.toml`에 확정합니다. 기준선·append-only·비밀 파일 차단도 제안합니다 |
+| `/checkride:tdd` | 실패 테스트 먼저, RED 확인, 최소 구현 순서로 진행합니다 |
+| `/checkride:finish` | 검사·린트를 돌리고 커밋·푸시·PR 을 만듭니다. PR 본문에 돌린 명령과 출력을 근거로 넣습니다 |
+| `/checkride:handoff` | 다음 세션이 읽을 인수인계를 씁니다 |
+| `/checkride:status` | 게이트 상태를 전부 실측해 보고합니다 |
+| `/checkride:full-cycle` | 탐색 → 계획 → 구현 → 검토 → PR 을 순서대로 진행합니다 |
+| `/checkride:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적습니다. 게이트 언어도 저장소(`.check.toml`의 `lang`)나 전역(`~/.claude/settings.json`의 `env.NGG_LANG`)에 고정합니다 |
 
 **커맨드는 한국어로 쓰여 있고, 사용자가 쓴 언어로 답합니다.** `SKILL.md`는 로케일로 가를 수 없는 파일입니다. 게이트 문장은 `msg.sh`가 언어별로 가르지만 커맨드는 그럴 수 없어서, 배포 대상을 한국어 사용자로 정하고 본문과 `description`을 한국어로 씁니다. 사람이 읽는 것은 커맨드 목록에 뜨는 `description`이므로, 그것이 한국어여야 무엇을 고르는지 읽을 수 있습니다. 한국어로 쓰여 있어도 영어권 사용자가 부를 수 있도록 본문에 "내가 쓰는 언어로 답한다"는 지시를 남겨 두었습니다. 인용한 공식 문서의 원문은 영어 그대로 두고 번역을 붙입니다. 2026-09-11(`71147c3`)에는 반대로 영어로 썼는데, 그 결정과 2026-09-22에 뒤집은 이유는 [검증 기록](VERIFICATION.md)의 V31·V57에 있습니다.
 
@@ -355,7 +355,7 @@ append-only 경로: supabase/migrations
 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`·`ti.rm`. "cheating, for example by disabling or deleting tests" (속임수, 예컨대 테스트를 비활성화하거나 지우는 것). `done.commit`. "Only commit when: 1. ALL tests are passing" (모든 테스트가 통과할 때만 커밋하라) |
 | Gabor 외, [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17) "Modified Testing Procedure" | `ti.assert`·`ti.exclude`. "The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases." (에이전트가 테스트 케이스나 테스트를 돌리는 코드를 고친다. 테스트 케이스가 받아들이는 답을 바꾸거나 테스트 케이스를 지우거나 무시할 수 있다) |
 
-Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:setup-checks`·`/check:tdd`·`/check:finish`)의 근거로 씁니다. 한 번만 허용하기는 막는 규칙이 아니라 푸는 장치이고, Probity에서 가져왔습니다.
+Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/checkride:setup-checks`·`/checkride:tdd`·`/checkride:finish`)의 근거로 씁니다. 한 번만 허용하기는 막는 규칙이 아니라 푸는 장치이고, Probity에서 가져왔습니다.
 
 훅을 쓰는 이유도 공식 문서에 있습니다.
 

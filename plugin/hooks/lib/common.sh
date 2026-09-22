@@ -99,7 +99,7 @@ ngg_lang_cfg() { local conf cl; case "${NGG_LANG:-}" in ko|en) return 0;; esac
   case "$cl" in ko|ko_*|ko.*) NGG_L=ko;; en|en_*|en.*) NGG_L=en;; esac; }
 lc() { printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'; }
 # item_off <이름> — 꺼져 있으면 끈 사실을 events.log 에 남기고 0 을 돌려준다.
-# 남기지 않으면 왜 안 막았는지 나중에 알 수 없다. /check:status 가 이 줄을 읽는다.
+# 남기지 않으면 왜 안 막았는지 나중에 알 수 없다. /checkride:status 가 이 줄을 읽는다.
 item_off() { local tok sd
   for tok in $(off_list); do
     [ "$(lc "$tok")" = "$1" ] || continue

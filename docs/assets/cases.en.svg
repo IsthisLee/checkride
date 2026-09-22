@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="276" viewBox="0 0 760 276" role="img" aria-label="Cases where the gate actually blocked this agent: R0 an answer with no check, R1 a file-state assertion, R2b a guess about local state, R3 a passing claim for tests that never ran" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
-  <title>did-you-check: cases where the gate actually blocked this agent</title>
+  <title>checkride: cases where the gate actually blocked this agent</title>
 
   <!-- table body -->
   <rect x="8" y="8" width="744" height="260" rx="8" fill="#0d1117"/>

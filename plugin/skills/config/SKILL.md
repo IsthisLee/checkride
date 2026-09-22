@@ -7,7 +7,7 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, AskUserQuestion
 
 # 무엇을 강제할지 고른다
 
-did-you-check 가 이 저장소에서 무엇을 강제할지 검사 하나씩 고르게 한다. **모든 검사는 켜진 채로 시작한다.** 무언가를 끄는 것은 `.check.toml` 에 적히는 결정이고, 그래서 풀 리퀘스트에 드러나 팀이 볼 수 있다.
+checkride 가 이 저장소에서 무엇을 강제할지 검사 하나씩 고르게 한다. **모든 검사는 켜진 채로 시작한다.** 무언가를 끄는 것은 `.check.toml` 에 적히는 결정이고, 그래서 풀 리퀘스트에 드러나 팀이 볼 수 있다.
 
 **내가 쓰는 언어로 답하고,** 설정 파일의 주석도 그 언어로 쓴다.
 
@@ -41,7 +41,7 @@ did-you-check 가 이 저장소에서 무엇을 강제할지 검사 하나씩 �
 | 테스트 무결성 | `ti.rm` | 테스트 파일을 지우는 것 | Kent Beck, 위와 같은 문장 |
 | 테스트 무결성 | `ti.exclude` | 테스트 러너 설정에 제외를 추가하는 것 | EvilGenie (arXiv 2511.21654), 위와 같은 절 |
 
-append-only 경로에는 여기 이름이 없다. `append_only` 가 설정돼 있을 때만 켜지고, 그것은 `/check:setup-checks` 가 맡는다.
+append-only 경로에는 여기 이름이 없다. `append_only` 가 설정돼 있을 때만 켜지고, 그것은 `/checkride:setup-checks` 가 맡는다.
 
 ## 3. 무엇을 끌지 묻는다
 

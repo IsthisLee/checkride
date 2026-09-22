@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "name": "did-you-check",
+  "name": "checkride",
   "version": "1.0.0",
   "description": "Checks whether the best practices in the Claude Code docs and other verified sources were actually followed, and blocks the turn when they were not: no claim without evidence, no \"done\" without a passing check, no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
   "owner": {
@@ -9,15 +9,15 @@
   },
   "plugins": [
     {
-      "name": "check",
+      "name": "checkride",
       "version": "1.8.0",
       "description": "Checks whether the best practices in the Claude Code docs and other verified sources were actually followed, and blocks the turn when they were not: no claim without evidence, no \"done\" without a passing check, no disabled tests, no rewritten migrations. Four hooks, a repo profile, and eight commands.",
       "author": {
         "name": "IsthisLee",
         "url": "https://github.com/IsthisLee"
       },
-      "homepage": "https://github.com/IsthisLee/did-you-check",
-      "repository": "https://github.com/IsthisLee/did-you-check",
+      "homepage": "https://github.com/IsthisLee/checkride",
+      "repository": "https://github.com/IsthisLee/checkride",
       "license": "MIT",
       "category": "development",
       "tags": [

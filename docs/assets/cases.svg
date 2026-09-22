@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="276" viewBox="0 0 760 276" role="img" aria-label="게이트가 이 에이전트를 실제로 막은 사례: R0은 확인 없는 답을, R1은 파일 상태 단정을, R2b는 로컬 상태 추측을, R3은 안 돌린 테스트의 통과 주장을 막았다" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">
-  <title>did-you-check: 게이트가 이 에이전트를 실제로 막은 사례</title>
+  <title>checkride: 게이트가 이 에이전트를 실제로 막은 사례</title>
 
   <!-- table body -->
   <rect x="8" y="8" width="744" height="260" rx="8" fill="#0d1117"/>

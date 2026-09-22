@@ -11,8 +11,8 @@
 필요한 것은 `bash`, `python3`, 그리고 Claude Code다. macOS와 Linux, 그리고 Git Bash가 있는 Windows에서 돌아간다.
 
 ```bash
-git clone https://github.com/IsthisLee/did-you-check
-cd did-you-check
+git clone https://github.com/IsthisLee/checkride
+cd checkride
 ./setup.sh                            # 개인 정보 커밋을 막는 훅을 켠다
 claude --plugin-dir .                 # 설치본 대신 이 폴더를 그 세션에 로드
 ```

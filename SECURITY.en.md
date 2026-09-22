@@ -15,7 +15,7 @@ Hooks **run shell commands as you.** Installing this plugin means trusting that 
 
 **The judge is the only thing that leaves this machine, and it goes through your own Claude Code.** Nothing is sent to any external service. Turn the judge off with `NGG_JUDGE=0`.
 
-What `events.log` keeps is part of the prompt and the first 80 characters of the answer. In a repo handling sensitive material, clear `${CLAUDE_PLUGIN_DATA}/state/` periodically or switch the gate off for that repo (`claude plugin disable check@did-you-check --scope project`).
+What `events.log` keeps is part of the prompt and the first 80 characters of the answer. In a repo handling sensitive material, clear `${CLAUDE_PLUGIN_DATA}/state/` periodically or switch the gate off for that repo (`claude plugin disable checkride@checkride --scope project`).
 
 ## Checking for yourself what you are installing
 
@@ -24,8 +24,8 @@ This plugin runs a shell as you, so you should be able to verify what you are ge
 **Release tags are signed.** Fetch and verify.
 
 ```bash
-git clone https://github.com/IsthisLee/did-you-check
-cd did-you-check
+git clone https://github.com/IsthisLee/checkride
+cd checkride
 git tag -v v1.4.1        # should print Good "git" signature
 ```
 
@@ -42,8 +42,8 @@ cat plugin/hooks/hooks.json          # every event and what it runs
 
 ## What has already been fixed
 
-[![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check)
+[![CodeQL](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/checkride/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/checkride)
 
 
 **Prompt injection into the judge.** The judge hands Claude's answer to a model. An answer with a verdict JSON planted inside it could be read as the verdict and release the gate. The answer text is now wrapped in a data block, braces and verdict keywords are neutralized, and only the last JSON in the response is read. The regression test is group 12 of `unit.sh`; the record is `docs/VERIFICATION.md` V4f.

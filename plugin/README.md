@@ -23,41 +23,41 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 
 전부 **직접 쳐야만** 돈다. Claude가 알아서 부르지 않는다.
 
-`/check:setup-checks` · `config` · `spec` · `tdd` · `finish` · `handoff` · `status` · `full-cycle`
+`/checkride:setup-checks` · `config` · `spec` · `tdd` · `finish` · `handoff` · `status` · `full-cycle`
 
-어떤 검사를 강제할지 고르려면 `/check:config`를 친다. 항목마다 출처를 보여 주고 고른 것만 끈다.
+어떤 검사를 강제할지 고르려면 `/checkride:config`를 친다. 항목마다 출처를 보여 주고 고른 것만 끈다.
 
-막힌 이유가 궁금하면 `/check:status`가 최근 판정을 보여 준다.
+막힌 이유가 궁금하면 `/checkride:status`가 최근 판정을 보여 준다.
 
 커맨드는 **내가 쓴 언어로 답한다.** 게이트 문장이 로케일을 따르는 것과 같다.
 
 ## 처음 할 일
 
 ```
-/check:setup-checks
+/checkride:setup-checks
 ```
 
 검사 명령을 찾아 `.check.toml`에 확정하고 `append_only` 경로를 제안한다. 쓰기 전에 물어본다.
 
 ## 메시지 언어
 
-`NGG_LANG=ko` 또는 `en`. 주지 않으면 `.check.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 보고 `ko` 계열일 때만 한국어다. 저장소마다 정하려면 `.check.toml`에 `lang`을, 모든 저장소에 걸려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 둔다. `/check:config`로 둘 다 고를 수 있다.
+`NGG_LANG=ko` 또는 `en`. 주지 않으면 `.check.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 보고 `ko` 계열일 때만 한국어다. 저장소마다 정하려면 `.check.toml`에 `lang`을, 모든 저장소에 걸려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 둔다. `/checkride:config`로 둘 다 고를 수 있다.
 
 ## 끄기
 
 ```
-claude plugin disable check@did-you-check --scope project
+claude plugin disable checkride@checkride --scope project
 ```
 
-상태는 `~/.claude/plugins/data/check-did-you-check/`에 있고 지워도 된다.
+상태는 `~/.claude/plugins/data/check-checkride/`에 있고 지워도 된다.
 
 ## 더 읽기
 
 전체 문서, 규칙마다의 근거, 실측 기록은 저장소에 있다.
 
-**https://github.com/IsthisLee/did-you-check**
+**https://github.com/IsthisLee/checkride**
 
-설치한 코드를 직접 확인하는 법은 [SECURITY.md](https://github.com/IsthisLee/did-you-check/blob/main/SECURITY.md)에 있다. 릴리스 태그는 서명돼 있다.
+설치한 코드를 직접 확인하는 법은 [SECURITY.md](https://github.com/IsthisLee/checkride/blob/main/SECURITY.md)에 있다. 릴리스 태그는 서명돼 있다.
 
 ---
 
@@ -65,7 +65,7 @@ claude plugin disable check@did-you-check --scope project
 
 Checks, every turn, whether the best practices the Claude Code docs recommend were actually followed. Your `settings.json` and `CLAUDE.md` are not touched.
 
-25 files. Four gates run on `Stop` and `PreToolUse`, plus a session repo profile and eight user-only commands. Pick which checks to enforce with `/check:config`.
+25 files. Four gates run on `Stop` and `PreToolUse`, plus a session repo profile and eight user-only commands. Pick which checks to enforce with `/checkride:config`.
 
 | Practice checked | What the gate looks at | Off switch |
 |---|---|---|
@@ -76,8 +76,8 @@ Checks, every turn, whether the best practices the Claude Code docs recommend we
 
 To get past one false positive, write `check allow <item>` on its own line in your next prompt; it lets one action through and is gone.
 
-Start with `/check:setup-checks`. Ask `/check:status` when something blocks you.
+Start with `/checkride:setup-checks`. Ask `/checkride:status` when something blocks you.
 
 The eight command files are written in Korean, so their one-line descriptions read as Korean in the command list. They still reply in whatever language you write in, and the sentences they quote from the official docs are kept in the original English.
 
-Messages follow your locale; `NGG_LANG=ko|en` overrides. Full docs, the source for every rule, and the measurement log: **https://github.com/IsthisLee/did-you-check**
+Messages follow your locale; `NGG_LANG=ko|en` overrides. Full docs, the source for every rule, and the measurement log: **https://github.com/IsthisLee/checkride**

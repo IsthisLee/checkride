@@ -1,4 +1,4 @@
-# did-you-check
+# checkride
 
 **이 파일이 이 저장소 지침의 정본이다.** 코딩 에이전트가 공유하는 `AGENTS.md` 규약을 따른다. `CLAUDE.md` 는 이 파일을 `@` 로 불러오는 포인터일 뿐이므로, 규칙을 고칠 때는 그쪽이 아니라 이 파일을 고친다. Claude Code 전용 규칙이 생기면 `CLAUDE.md` 의 import 아래에 적는다.
 
@@ -36,7 +36,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - **`main` 의 이력에 남는 것은 PR 의 제목과 본문이다.** 브랜치의 커밋 메시지는 작업용이고 남지 않는다. 그러므로 **PR 제목을 `type(scope): 요약` 형식으로 쓰고, 본문을 이력에 그대로 남을 글로 쓴다.** 브랜치 안에서 커밋을 어떻게 나누든 자유다. 이것은 저장소 설정에 달려 있으므로 의심스러우면 실제로 확인한다.
 
   ```
-  $ gh api repos/IsthisLee/did-you-check --jq '{merge:.allow_merge_commit, rebase:.allow_rebase_merge, squash:.allow_squash_merge, title:.squash_merge_commit_title, message:.squash_merge_commit_message}'
+  $ gh api repos/IsthisLee/checkride --jq '{merge:.allow_merge_commit, rebase:.allow_rebase_merge, squash:.allow_squash_merge, title:.squash_merge_commit_title, message:.squash_merge_commit_message}'
   {"merge":false,"message":"PR_BODY","rebase":false,"squash":true,"title":"PR_TITLE"}
   ```
 
