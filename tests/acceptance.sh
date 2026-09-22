@@ -55,7 +55,7 @@ else grep -qE '\?|물|질문|확인' "$T/out.spec"; check 0 $? "spec: SPEC.md �
 
 run handoff 'Read,Glob,Grep,Bash,Write' "/checkride:handoff"
 if [ -f "$P/HANDOFF.md" ]; then check 0 0 "handoff: HANDOFF.md 를 쓰거나 이어받을 것이 없다고 밝힌다"
-else grep -qE '진행.*없|인수인계.*없|작업이 없|nothing to hand|no work' "$T/out.handoff"
+else grep -qE '진행.*없|인수인계.*없|이어받을.*없|작업이 없|nothing to hand|no work' "$T/out.handoff"
      check 0 $? "handoff: HANDOFF.md 를 쓰거나 이어받을 것이 없다고 밝힌다"; fi
 echo "── 일부러 돌리지 않은 것 ──"
 echo "   finish: 커밋·푸시·PR 을 만든다. 인수 테스트가 남의 저장소에 쓰면 안 된다."
