@@ -11,7 +11,7 @@ $ARGUMENTS 를 처음부터 끝까지 진행한다.
 
 **내가 쓰는 언어로 답한다.**
 
-공식 best practices 의 네 단계를 따른다. 탐색 → 계획 → 구현 → 커밋이다. **단계를 새로 만들지 말고 이미 있는 것을 부른다.**
+공식 best practices 의 네 단계를 따른다. 탐색 → 계획 → 구현 → 커밋이다. **검토에서 결함이 나오면 구현으로 돌아간다(최대 두 번).** 단계를 새로 만들지 말고 이미 있는 것을 부른다.
 
 ## 0. 크기를 먼저 잰다
 
@@ -37,7 +37,23 @@ diff 를 한 문장으로 설명할 수 있으면 계획을 건너뛴다. 공식
 
 **내장 `/code-review`** 를 부른다. 새 서브에이전트가 diff 를 판정하므로 작성자가 자기 작업을 스스로 채점하지 않게 된다.
 
-공식 문서의 주의도 함께 지킨다. "Tell the reviewer to flag only gaps that affect correctness or the stated requirements, and treat the rest as optional." (번역: 정확성이나 명시된 요구사항에 영향을 주는 결함만 지적하고 나머지는 선택 사항으로 다루라고 리뷰어에게 일러라.) 모든 지적을 쫓아다니면 과잉 설계로 끝난다.
+지적을 받으면 **정확성이나 명시된 요구사항에 영향을 주는 것만** 고른다. 공식 문서의 주의가 그것이다.
+
+> "Tell the reviewer to flag only gaps that affect correctness or the stated requirements, and treat the rest as optional."
+>
+> 번역: 정확성이나 명시된 요구사항에 영향을 주는 결함만 지적하고 나머지는 선택 사항으로 다루라고 리뷰어에게 일러라.
+
+**고를 것이 있으면 3단계로 돌아간다.** 고치고 다시 `/code-review` 를 부른다. 선택 사항으로 분류한 지적으로는 돌아가지 않는다. 모든 지적을 쫓아다니면 과잉 설계로 끝난다.
+
+**돌아가는 것은 두 번까지다.** 두 번 돌고도 같은 지적이 남으면 멈추고, 무엇을 시도했고 무엇이 안 됐는지 보고한다. 공식 best practices 가 같은 숫자를 든다.
+
+> "After two failed corrections, `/clear` and write a better initial prompt incorporating what you learned."
+>
+> 번역: 두 번 고쳐서 실패하면 `/clear` 하고, 배운 것을 반영한 더 나은 첫 프롬프트를 써라.
+
+실패한 접근이 쌓이면 그다음 판단까지 흐려진다.
+
+**지적을 직접 확인하고 나서 고친다.** 리뷰어도 틀린다. 지적받은 자리를 열어 읽고, 사실이면 고치고, 사실이 아니면 왜 아닌지 한 줄로 적는다.
 
 화면이 바뀌었으면 **내장 `/verify`** 를 돌려 직접 보라고 알린다. 이 커맨드가 대신 눌러 볼 수는 없다.
 

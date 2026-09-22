@@ -8,6 +8,7 @@
 
 - **커밋 가드를 켜는 `setup.sh`.** `.githooks/pre-commit` 은 커밋돼 있지만 `core.hooksPath` 가 `.git/config` 에 있어 클론과 함께 오지 않는다. 그래서 새로 클론한 곳과 워크트리에서는 가드가 조용히 꺼져 있었다. `setup.sh` 가 그 설정을 걸고, 실행 비트를 채우고, 되읽어 확인한 뒤 어떤 패턴 출처가 잡히는지 알린다. 개인 패턴은 저장소별 `.private/guard-patterns` 외에 저장소 밖의 공용 목록(`$GIT_GUARD_PATTERNS`, 없으면 `~/.config/git-guard/patterns`)에서도 읽으므로, 저장소가 늘어도 목록은 하나다. `bash` 와 `git` 만 있으면 된다.
 - **저장소 프로필이 커밋 가드가 꺼진 저장소를 세션 머리에서 알린다.** 훅 폴더(`.githooks` 또는 `.husky`)가 있는데 `core.hooksPath` 가 없으면 꺼졌다고 알리고 켜는 명령을 함께 준다. 설정돼 있으면 그 값을 보인다. 훅 폴더가 없는 저장소에는 줄을 넣지 않는다. 가드를 쓰지 않는 곳까지 권유를 실으면 이 모듈의 원칙(사실만 싣고 행동 지시는 넣지 않는다)에서 벗어나기 때문이다.
+- **`full-cycle` 이 검토 지적을 반영하고 다시 검토받는다.** 지금까지는 `/code-review` 를 부르기만 하고 결과를 어떻게 하라는 지시가 없어, 지적을 읽고 그대로 커밋해도 절차상 아무 문제가 없었다. 이제 정확성에 영향을 주는 지적이 있으면 구현으로 돌아가 고치고 다시 검토받는다. **두 번까지만 돌아간다.** 이 상한의 근거는 공식 best practices 의 "After two failed corrections, `/clear` and write a better initial prompt incorporating what you learned" 다(2026-09-22 확인).
 
 ### 수정
 
