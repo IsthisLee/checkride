@@ -1,50 +1,50 @@
 ---
 name: auto
-description: Explore to ship in one run. Calls the built-ins in order and lets the gates hold each step honest.
+description: 탐색부터 배포까지 한 번에 진행한다. 내장 기능을 순서대로 부르고, 게이트가 단계마다 정직함을 지키게 한다.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Task, AskUserQuestion
 ---
 
-# End to end
+# 처음부터 끝까지
 
-Take $ARGUMENTS from start to finish.
+$ARGUMENTS 를 처음부터 끝까지 진행한다.
 
-**Reply in whatever language I am writing to you in.**
+**내가 쓰는 언어로 답한다.**
 
-Follow the four stages from the official best practices: Explore → Plan → Implement → Commit. **Do not reinvent a stage — call what already exists.**
+공식 best practices 의 네 단계를 따른다. 탐색 → 계획 → 구현 → 커밋이다. **단계를 새로 만들지 말고 이미 있는 것을 부른다.**
 
-## 0. Size it first
+## 0. 크기를 먼저 잰다
 
-If you can describe the diff in one sentence, skip planning. The official docs: "If you could describe the diff in one sentence, skip the plan." Wrap ceremony around small work and people stop using the command.
+diff 를 한 문장으로 설명할 수 있으면 계획을 건너뛴다. 공식 문서의 문장이다. "If you could describe the diff in one sentence, skip the plan." (번역: diff 를 한 문장으로 설명할 수 있다면 계획을 건너뛰라.) 작은 일에 절차를 두르면 사람들이 이 커맨드를 쓰지 않게 된다.
 
-For anything bigger, walk the steps below.
+그보다 큰 일이면 아래 단계를 밟는다.
 
-## 1. Explore
+## 1. 탐색
 
-Hand it to the **built-in Explore subagent**. It runs in its own context and returns only the conclusion, so this conversation does not fill up with file contents. The official docs: "Use subagents to keep research out of it."
+**내장 Explore 서브에이전트**에 넘긴다. 자기 컨텍스트에서 돌고 결론만 돌려주므로 이 대화가 파일 내용으로 차지 않는다. 공식 문서의 문장이다. "Use subagents to keep research out of it." (번역: 조사 내용이 컨텍스트에 들어오지 않도록 서브에이전트를 써라.)
 
-## 2. Plan
+## 2. 계획
 
-Enter **plan mode** (`Shift+Tab`) and write the plan. No code changes before approval. If the plan turns out to be a large feature, suggest settling a spec first with `/check:spec`.
+**plan mode** (`Shift+Tab`) 로 들어가 계획을 쓴다. 승인 전에는 코드를 바꾸지 않는다. 계획해 보니 큰 기능이라면 `/check:spec` 으로 스펙부터 확정하자고 제안한다.
 
-## 3. Implement
+## 3. 구현
 
-Follow the `/check:tdd` loop: failing test first, confirm RED, minimum implementation, confirm GREEN.
+`/check:tdd` 의 순환을 따른다. 실패 테스트 먼저, RED 확인, 최소 구현, GREEN 확인이다.
 
-All four gates are live through this stage. Assert without evidence and the evidence gate stops you; try to finish without running the checks and the completion gate does; try to neuter a test and the integrity gate does; try to rewrite history and the project guard does. **If a gate blocks you, assume the gate is right and go measure.**
+이 단계 내내 게이트 넷이 모두 살아 있다. 근거 없이 단정하면 근거 게이트가 막고, 검사를 돌리지 않고 끝내려 하면 완료 게이트가 막고, 테스트를 무력화하려 하면 무결성 게이트가 막고, 이력을 다시 쓰려 하면 프로젝트 가드가 막는다. **게이트가 막으면 게이트가 옳다고 전제하고 가서 실측한다.**
 
-## 4. Review
+## 4. 검토
 
-Call the **built-in `/code-review`**. A fresh subagent judges the diff, so the author is not grading their own work.
+**내장 `/code-review`** 를 부른다. 새 서브에이전트가 diff 를 판정하므로 작성자가 자기 작업을 스스로 채점하지 않게 된다.
 
-Keep the official caution in mind too. "Tell the reviewer to flag only gaps that affect correctness or the stated requirements, and treat the rest as optional." Chase every remark and you end up over-engineering.
+공식 문서의 주의도 함께 지킨다. "Tell the reviewer to flag only gaps that affect correctness or the stated requirements, and treat the rest as optional." (번역: 정확성이나 명시된 요구사항에 영향을 주는 결함만 지적하고 나머지는 선택 사항으로 다루라고 리뷰어에게 일러라.) 모든 지적을 쫓아다니면 과잉 설계로 끝난다.
 
-If the screen changed, tell me to run the **built-in `/verify`** and look at it. This command cannot click through it for you.
+화면이 바뀌었으면 **내장 `/verify`** 를 돌려 직접 보라고 알린다. 이 커맨드가 대신 눌러 볼 수는 없다.
 
-## 5. Finish
+## 5. 마무리
 
-Use `/check:ship` for checks, commit, and PR. If the session ends here, run `/check:handoff` as well.
+검사와 커밋과 PR 은 `/check:ship` 으로 한다. 세션이 여기서 끝난다면 `/check:handoff` 도 돌린다.
 
-## Throughout
+## 단계마다
 
-After each stage, report in one line **what you did and what is left**. Where a judgment call could go either way, do not decide alone — ask with `AskUserQuestion`.
+각 단계를 마치면 **무엇을 했고 무엇이 남았는지**를 한 줄로 보고한다. 어느 쪽으로도 갈 수 있는 판단은 혼자 정하지 말고 `AskUserQuestion` 으로 묻는다.

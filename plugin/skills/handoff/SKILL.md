@@ -1,32 +1,32 @@
 ---
 name: handoff
-description: Write the handoff note the next session will read. Facts and next steps only, with the commands that produced them.
+description: 다음 세션이 읽을 인수인계 노트를 쓴다. 사실과 다음 할 일만 적고, 그 사실을 만들어 낸 명령을 함께 남긴다.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Write
 ---
 
-# Handoff
+# 인수인계
 
-Write down what has happened so far so the next session can pick it up.
+지금까지 무슨 일이 있었는지 적어서 다음 세션이 이어받게 한다.
 
-**Reply in whatever language I am writing to you in,** and write the note in that language.
+**내가 쓰는 언어로 답하고,** 노트도 그 언어로 쓴다.
 
-Context does not survive a session boundary. That is why the official docs tell you to execute in a fresh session, and it is why this note has to exist.
+컨텍스트는 세션 경계를 넘지 못한다. 공식 문서가 새 세션에서 실행하라고 말하는 이유가 그것이고, 이 노트가 존재해야 하는 이유도 그것이다.
 
-## What to write
+## 무엇을 쓰는가
 
-1. **What we were trying to do.** One paragraph.
-2. **Where it stands.** Give the commit hash and branch. Actually run `git log --oneline -5` and `git status` and base this on that output.
-3. **What has been verified, and the output.** Which command you ran and what it showed. Say plainly what has *not* been verified.
-4. **What comes next.** In order, one line each on why it is needed.
-5. **What is blocked.** Open questions, decisions being waited on, approaches that were tried and failed, and why.
+1. **무엇을 하려고 했는가.** 한 문단이다.
+2. **어디까지 왔는가.** 커밋 해시와 브랜치를 적는다. `git log --oneline -5` 와 `git status` 를 실제로 돌리고 그 출력에 근거해 쓴다.
+3. **무엇이 검증됐고 출력은 무엇이었는가.** 어떤 명령을 돌렸고 무엇이 나왔는지 적는다. **검증되지 않은 것은 검증되지 않았다고 분명히 적는다.**
+4. **다음에 할 일.** 순서대로, 한 줄씩 왜 필요한지를 적는다.
+5. **막힌 것.** 열린 질문, 기다리고 있는 결정, 시도했다가 실패한 접근과 그 이유를 적는다.
 
-## What not to write
+## 무엇을 쓰지 않는가
 
-- Guesses. Do not state an unverified condition as fact.
-- Anything a reader could learn by opening the codebase. File listings and structure tours are waste.
-- Rules. `CLAUDE.md` is the single source for those. Leave a pointer, not a copy.
+- 추측. 확인하지 않은 상태를 사실처럼 쓰지 않는다.
+- 코드베이스를 열어 보면 알 수 있는 것. 파일 목록과 구조 안내는 낭비다.
+- 규칙. 규칙의 정본은 `CLAUDE.md` 다. 복사본이 아니라 포인터만 남긴다.
 
-## One caution
+## 한 가지 주의
 
-A handoff note is **a snapshot of the moment it was written.** Put a line at the very top telling the next session to re-check the facts in it before relying on them.
+인수인계 노트는 **쓰인 그 순간의 스냅샷**이다. 맨 위에 한 줄을 넣어서, 다음 세션이 이 노트의 사실에 기대기 전에 먼저 다시 확인하라고 알린다.
