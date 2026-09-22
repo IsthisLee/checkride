@@ -13,14 +13,14 @@
 
 **Raises the reliability of Claude Code's work.**
 
-Eight commands turn verified best practices into a procedure, and four gates keep a turn from ending on an answer that skipped it. The grounding is in the Claude Code official docs and other verified sources, and each rule can be switched off on its own.
+Verified best practices: eight commands lay them out as a procedure, and four gates check every turn against them, keeping a turn from ending on an answer that skipped them. The grounding is in the Claude Code official docs and other verified sources, and each rule can be switched off on its own.
 
 The examiner never takes the controls. They call out the procedure, and stop you the moment you drift outside the standard.
 
 |  | What it does | When it runs |
 |---|---|---|
 | **[Eight commands](#eight-commands)** | Tells you what to do, and in what order | Only when you type it |
-| **[Four gates](#what-gets-blocked)** | Keeps a turn that skipped that procedure from ending | Runs on its own |
+| **[Four gates](#what-gets-blocked)** | Keeps a turn from ending on an answer that skipped a best practice | Runs on its own |
 
 Pick items with `/checkride:config`, which shows where each one comes from; the choice is written to `.check.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
 
