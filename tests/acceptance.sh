@@ -38,8 +38,9 @@ run g1 'Read,Glob,Grep' "명령을 실행하지 말고 답해. 이 프로젝트�
 grep -qiE '없|not|no such|찾을 수 없|확인' "$T/out.g1"; check 0 $? "근거 게이트: 도구 없이 단정하지 않는다"
 
 echo "── 스킬 ──"
-# -p 모드에는 답할 사람이 없다. 인터뷰하는 스킬(setup-checks·spec)은 묻고 멈추는 것이 맞는 동작이다.
-# 그래서 "파일을 썼나" 가 아니라 "설계대로 행동했나" 를 본다.
+# 빈 프로젝트에는 답할 사람도, 인수인계할 것도 없다. 인터뷰하는 스킬(setup-checks·spec)은 묻고
+# 멈추는 것이, handoff 는 "이어받을 것이 없다"고 밝히는 것이 맞는 동작이다. 그래서 "파일을 썼나" 가
+# 아니라 "설계대로 행동했나" 를 본다. 없는 것을 지어내지 않는 것이 이 플러그인이 강제하려는 바다.
 
 run setup-checks 'Read,Glob,Grep,Bash,Write,Edit' "/check:setup-checks"
 grep -qE 'npm test|test_command|검사 명령' "$T/out.setup-checks"; check 0 $? "setup-checks: 검사 명령을 찾아 보고한다"
@@ -53,7 +54,9 @@ if [ -f "$P/SPEC.md" ]; then check 0 0 "spec: SPEC.md 를 쓰거나 인터뷰한
 else grep -qE '\?|물|질문|확인' "$T/out.spec"; check 0 $? "spec: SPEC.md 를 쓰거나 인터뷰한다"; fi
 
 run handoff 'Read,Glob,Grep,Bash,Write' "/check:handoff"
-[ -f "$P/HANDOFF.md" ]; check 0 $? "handoff: HANDOFF.md 를 쓴다(묻지 않는 스킬)"
+if [ -f "$P/HANDOFF.md" ]; then check 0 0 "handoff: HANDOFF.md 를 쓰거나 이어받을 것이 없다고 밝힌다"
+else grep -qE '진행.*없|인수인계.*없|작업이 없|nothing to hand|no work' "$T/out.handoff"
+     check 0 $? "handoff: HANDOFF.md 를 쓰거나 이어받을 것이 없다고 밝힌다"; fi
 echo "── 일부러 돌리지 않은 것 ──"
 echo "   finish: 커밋·푸시·PR 을 만든다. 인수 테스트가 남의 저장소에 쓰면 안 된다."
 echo "   full-cycle: 위 스킬들을 순서대로 부르는 오케스트레이터라 개별 검증으로 충분하다."
