@@ -179,7 +179,7 @@ Claude Code가 최신 모델에게 읽기 요구를 푼 이유는 공식 문서�
 > 번역: 스킬 디렉터리 아래에 `.claude-plugin/plugin.json` 매니페스트를 포함한 폴더는 다음 세션에서 `<name>@skills-dir` 라는 이름의 플러그인으로 로드되며, 마켓플레이스도 설치 단계도 필요하지 않습니다.
 
 개발 기계 한 대에서 실측하니 같은 플러그인의 상태 디렉터리가 다섯 벌 남아 있었습니다(`check-skills-dir`,
-`check-checkride`, `check-inline`, `grounded-claude-grounded`, `grounded-inline`, 2026-09-22). 이름을
+`check-did-you-check`, `check-inline`, `grounded-claude-grounded`, `grounded-inline`, 2026-09-22). 이름을
 `grounded` 에서 `check` 로 바꾸고 설치 경로를 옮기는 동안 갈라진 것입니다. **그래서 `/checkride:status` 가 보고하는
 "최근에 무엇이 막혔나"는 지금 쓰는 경로의 기록만 셉니다.** 이전 경로의 기록은 남아 있어도 집계에 들어오지
 않습니다. 개발자에게만 생기는 문제이고 설치해서 쓰기만 하는 사람에게는 경로가 하나뿐이라 드러나지 않지만,

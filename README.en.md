@@ -266,7 +266,7 @@ Hit a false positive? [Open an issue](../../issues/new?template=false-positive.m
 
 Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `.check.toml`, or for every repo with `NGG_LANG` in the `env` block of `~/.claude/settings.json`. `/checkride:config` lets you pick either. Precedence: `NGG_LANG` env > `.check.toml` `lang` > locale, so the global value beats a repo's `lang`.
 
-State lives in `~/.claude/plugins/data/check-checkride/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
+State lives in `~/.claude/plugins/data/checkride-checkride/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
 
 ## Read more
 

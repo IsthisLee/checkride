@@ -274,7 +274,7 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 
 메시지 언어는 로케일을 따릅니다. `LC_ALL`·`LC_MESSAGES`·`LANG`이 한국어면 한국어로, 그 밖의 경우에는 영어로 나옵니다. 저장소마다 `.check.toml`에 `lang = "ko"`로 고정할 수 있고, 모든 저장소에 한 번에 적용하려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 넣습니다. `/checkride:config`에서 둘 중 어디에 쓸지 고를 수 있습니다. 우선순위는 `NGG_LANG` 환경변수 &gt; `.check.toml`의 `lang` &gt; 로케일 순이라, 전역 값이 저장소의 `lang`보다 앞섭니다.
 
-플러그인 상태는 `~/.claude/plugins/data/check-checkride/`에 있고, 지워도 됩니다. 상태를 남기려면 제거할 때 `--keep-data`를 붙입니다.
+플러그인 상태는 `~/.claude/plugins/data/checkride-checkride/`에 있고, 지워도 됩니다. 상태를 남기려면 제거할 때 `--keep-data`를 붙입니다.
 
 ## 더 읽기
 

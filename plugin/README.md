@@ -49,7 +49,7 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 claude plugin disable checkride@checkride --scope project
 ```
 
-상태는 `~/.claude/plugins/data/check-checkride/`에 있고 지워도 된다.
+상태는 `~/.claude/plugins/data/checkride-checkride/`에 있고 지워도 된다.
 
 ## 더 읽기
 
