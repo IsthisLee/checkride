@@ -4233,3 +4233,67 @@ tests/no-guess-gate/selftest.sh:6:# --setting-sources "" 로 사용자 설정·C
 펼쳐지는지는 이 세션에서 잴 수 없다. 공식 문서가 안내하는 대로 **다음 세션에서 `/context` 를 실행해
 `CLAUDE.md` 가 Memory files 에 뜨고 `AGENTS.md` 의 내용이 함께 들어왔는지 확인해야 한다.** 확인 전까지는
 동작한다고 적지 않는다.
+
+## V58 README 가 설치 다음에 할 일을 알려 주지 않았다
+
+사용자가 물었다. "플러그인 설치하면 알아서 hook 이 전부 다 돌게 된다고? 그러면 `.check.toml` 은 뭐하는
+애야?" **문서를 다 읽은 사람이 이 질문을 한다면 문서가 답을 안 하고 있는 것이다.**
+
+### 게이트별로 설정이 필요한지 실측했다
+
+```
+$ grep -n -A4 'append_only' plugin/hooks/project-guard/pre.sh
+15: # 설정이 없으면 아무것도 막지 않는다. 끄기: NGG_GUARD=0
+29: paths=$(sed -n 's/^...append_only...//p' "$conf" | head -1)
+30: [ -n "$paths" ] || exit 0
+
+$ grep -nE 'scripts\.test|Makefile|pyproject|exit 0' plugin/hooks/done-gate/stop.sh
+70: if [ -z "$cmd" ] && [ -f "$root/package.json" ]; then
+75: if [ -z "$cmd" ] && [ -f "$root/Makefile" ] && grep -qE '^test:' "$root/Makefile"; then
+78: if [ -z "$cmd" ] && [ -f "$root/pyproject.toml" ]; then ...
+81:   exit 0
+
+$ grep -ho 'disabled_rules\|test_command\|append_only' plugin/hooks/test-integrity/*.sh | sort -u
+(빈 출력)
+```
+
+정리하면 이렇다. 근거 게이트는 `disabled_rules` 만, 테스트 무결성은 아무것도 읽지 않으므로 설정 없이
+그대로 막는다. 완료 게이트는 `.check.toml` 이 없으면 `package.json` → `Makefile` → `pyproject.toml` 로
+폴백하고 그것도 실패하면 `exit 0` 으로 통과한다. **프로젝트 가드는 `append_only` 가 없으면 `exit 0` 이라
+아무것도 막지 않는다.** 이 사실은 `repo-profile` 이 세션마다 이미 출력하고 있었다(`rp.noconf`,
+"설정 없어 막는 것 없음").
+
+### README 에는 그 말이 없었다
+
+```
+$ grep -n "check.toml" README.md
+27, 181, 231, 237   ← 네 곳 모두 "끄는 방법" 이야기
+```
+
+`test_command` 와 `append_only` 가 무엇인지, 안 적으면 어떻게 되는지는 한 줄도 없었다. 「설치」 절은
+설치 명령 두 줄로 끝나고 `/check:init` 을 돌리라는 말이 없었다. **상세 문서(`docs/gates.md:91`·`277`)에는
+제대로 적혀 있었다.** 설치하는 사람이 먼저 읽는 자리에서만 빠져 있었던 것이다.
+
+두 곳을 넣었다. 게이트 표 아래에 「넷 중 둘은 설정이 있어야 일합니다」를, 「설치」 절 뒤에 「설치 다음에
+할 일」을 두고 서로 링크했다.
+
+### 영어판에 적은 출력을 기억으로 쓸 뻔했다
+
+프로필의 영어 출력을 손으로 적었다가 실제로 돌려 보니 달랐다.
+
+```
+$ NGG_LANG=en bash -c '. plugin/hooks/lib/common.sh; printf "%s\n" "$(tn rp.gates "$(t rp.on)" "$(t rp.noconf)")"'
+Gates: evidence (always) · completion (on) · test integrity (always) · project guard (unconfigured, blocks nothing)
+```
+
+적어 둔 것은 `gates:` 소문자에 괄호 앞 공백이 없는 형태였다. **화면에 나오는 문자열을 문서에 옮길 때는
+실제로 출력시켜 복사한다.** 한국어판은 `msg.sh:72` 와 일치했다.
+
+링크 앵커도 기계로 대조했다. 두 판 각각 내부 링크 11개, 깨진 것 0개. 전체 검사 448건 종료 코드 0.
+
+### 판단
+
+- **"문서에 있다"와 "읽는 사람이 만난다"는 다르다.** 이 사실은 `docs/gates.md` 에 두 번이나 적혀 있었지만
+  README 에 없어서 아무도 보지 못했다. 상세 문서는 이미 아는 사람이 확인하러 가는 곳이다.
+- **게이트가 조용히 노는 것이 가장 나쁜 실패다.** 막혔으면 사람이 알아차리는데, 막을 대상을 모르는 게이트는
+  아무 신호도 내지 않는다. 설치한 사람은 넷 다 일하는 줄 안다.

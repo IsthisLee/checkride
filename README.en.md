@@ -89,6 +89,34 @@ The wiring is in `plugin/hooks/hooks.json`: 12 hooks in all. Five of them block;
 
 The repo profile is not a gate: it loads about twenty lines of fact when a session opens and blocks nothing. What each of the twelve hooks does is in [the detail doc](docs/gates.en.md#what-each-of-the-twelve-hooks-does).
 
+### Two of the four need configuration before they do anything
+
+Installing wires up every hook. But to block something, a gate sometimes has to know **a fact about your repository**.
+
+| Gate | With no configuration |
+| --- | --- |
+| **Evidence** | Blocks as normal. The rule is the same in every repository, so there is nothing to tell it |
+| **Test integrity** | Blocks as normal, for the same reason |
+| **Completion** | Looks for a check command on its own, and **passes silently** when it finds none |
+| **Project guard** | **Blocks nothing.** It has no way to know which folder to protect |
+
+Each of those two needs exactly one fact: the completion gate needs **what "the check" is in this repository**, and the project guard needs **which folder's history must not be rewritten**. Both go in `.check.toml` at the repo root.
+
+```toml
+test_command = "npm test"           # what "the check" means here
+append_only  = "db/migrations"      # existing files here cannot be edited
+```
+
+Without `.check.toml` the completion gate falls back to `scripts.test` in `package.json`, a `test` target in `Makefile`, then `pyproject.toml`. For a conventional project that guess is right. But **`append_only` cannot be guessed, so until you write it the project guard is running and blocking nothing.**
+
+Which gates are working and which are idle is printed at the top of every session.
+
+```
+Gates: evidence (always) · completion (on) · test integrity (always) · project guard (unconfigured, blocks nothing)
+```
+
+"always" means it needs no configuration; "unconfigured, blocks nothing" means it is on but has nothing to block. `/check:init` writes `.check.toml` with you.
+
 **The evidence gate does not run in a session nobody is watching.** An answer from a `claude -p` session never reaches a person, so there is nobody to ask back. Set `NGG_HEADLESS=1` to check those sessions in CI.
 
 R0–R5 are not all checked every turn; each fires only under its condition. R0, R1, and R2a fire only when zero tools ran this turn. See [the detail doc](docs/gates.en.md#when-each-runs) for the full wiring and conditions.
@@ -109,6 +137,18 @@ You receive 25 files under `plugin/`, and release tags are signed. [SECURITY.en.
 It adds about 256ms per turn. Per-hook numbers are in [the detail doc](docs/gates.en.md#what-it-costs).
 
 Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on every CI run.** The fuzz pass, which throws broken input at every hook, runs on Linux and macOS every time and on Windows when changes land on main. Windows needs Git Bash.
+
+### What to do after installing
+
+```
+/check:init
+```
+
+**Run this and all four gates go to work.** Installing alone gets you the evidence gate and test integrity; the completion gate and the project guard sit idle because they [do not yet know what to block](#two-of-the-four-need-configuration-before-they-do-anything).
+
+`/check:init` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
+
+To pick what gets enforced item by item, use `/check:config`. To see what is working and what is idle right now, use `/check:status`.
 
 ## When it blocks
 
