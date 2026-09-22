@@ -119,7 +119,7 @@ append_only  = "db/migrations"      # 이 폴더의 기존 파일은 고치지 �
 게이트: 근거(항상) · 완료(켜짐) · 테스트 무결성(항상) · 프로젝트 가드(설정 없어 막는 것 없음)
 ```
 
-「항상」은 설정이 필요 없다는 뜻이고, 「설정 없어 막는 것 없음」은 **켜져 있지만 막을 대상을 모른다**는 뜻입니다. `.check.toml`은 `/check:init`이 함께 만들어 줍니다.
+「항상」은 설정이 필요 없다는 뜻이고, 「설정 없어 막는 것 없음」은 **켜져 있지만 막을 대상을 모른다**는 뜻입니다. `.check.toml`은 `/check:setup-checks`가 함께 만들어 줍니다.
 
 **사람이 보고 있지 않은 세션에서는 근거 게이트가 돌지 않습니다.** `claude -p`로 띄운 세션의 답은 사람에게 보이지 않아 되물을 상대가 없기 때문입니다. CI에서 그 세션까지 검사하려면 `NGG_HEADLESS=1`을 설정합니다.
 
@@ -145,12 +145,12 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 ### 설치 다음에 할 일
 
 ```
-/check:init
+/check:setup-checks
 ```
 
 **이것을 돌려야 게이트 넷이 다 일합니다.** 설치만 하면 근거 게이트와 테스트 무결성은 바로 막지만, 완료 게이트와 프로젝트 가드는 [무엇을 막아야 할지 몰라](#넷-중-둘은-설정이-있어야-일합니다) 놀고 있습니다.
 
-`/check:init`은 이 저장소의 검사 명령을 **실제로 돌려 보고** 확정하고, 이력을 지켜야 할 폴더가 있으면 제안한 뒤, 그 둘을 `.check.toml`에 적습니다. 파일을 쓰기 전에 무엇을 적을지 보여 주고 물어봅니다.
+`/check:setup-checks`는 이 저장소의 검사 명령을 **실제로 돌려 보고** 확정하고, 이력을 지켜야 할 폴더가 있으면 제안한 뒤, 그 둘을 `.check.toml`에 적습니다. 파일을 쓰기 전에 무엇을 적을지 보여 주고 물어봅니다.
 
 무엇을 강제할지 항목마다 고르려면 `/check:config`를, 지금 무엇이 일하고 무엇이 놀고 있는지 보려면 `/check:status`를 씁니다.
 
@@ -302,7 +302,7 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 | 마이그레이션 수정                                                               | [Best practices](https://code.claude.com/docs/en/best-practices)                                                                                                                   | "Write a hook that blocks writes to the migrations folder." (마이그레이션 폴더에 쓰는 것을 막는 훅을 작성하라.)                                                                                                                                                  |
 | 이미 커밋한 마이그레이션 수정(삭제는 막지 않음)                                 | [Rails 마이그레이션 가이드](https://guides.rubyonrails.org/active_record_migrations.html)                                                                                          | "In general, editing existing migrations that have been already committed to source control is not a good idea." (이미 소스 관리에 커밋한 마이그레이션을 고치는 것은 대체로 좋은 생각이 아니다.)                                                                 |
 
-출처 문서가 뒷받침하지 않아 뺀 규칙(R4, `pg.noverify`, `rb.write`)과 범위를 좁힌 규칙(R2a·R2b·`done.pr`)은 [설계 결정](docs/decisions.md#6-근거가-없는-규칙은-뺐습니다)에 있습니다. Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:init`·`/check:tdd`·`/check:ship`)의 근거로 씁니다.
+출처 문서가 뒷받침하지 않아 뺀 규칙(R4, `pg.noverify`, `rb.write`)과 범위를 좁힌 규칙(R2a·R2b·`done.pr`)은 [설계 결정](docs/decisions.md#6-근거가-없는-규칙은-뺐습니다)에 있습니다. Simon Willison의 [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/)는 게이트 규칙이 아니라 커맨드(`/check:setup-checks`·`/check:tdd`·`/check:finish`)의 근거로 씁니다.
 
 ## 비슷한 도구
 

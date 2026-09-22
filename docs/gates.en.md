@@ -294,12 +294,12 @@ The gates run on their own. What needs your judgment about *when* and *what it c
 | Command | What it does |
 |---|---|
 | `/check:spec` | Interviews you with `AskUserQuestion` before a large feature and writes `SPEC.md` |
-| `/check:init` | Actually runs the candidate check command, then pins it in `.check.toml`; proposes a baseline, append-only paths, and secret-file denies |
+| `/check:setup-checks` | Actually runs the candidate check command, then pins it in `.check.toml`; proposes a baseline, append-only paths, and secret-file denies |
 | `/check:tdd` | Failing test first, confirm RED, minimum implementation |
-| `/check:ship` | Runs the checks and puts their output into the PR body as evidence |
+| `/check:finish` | Runs the checks and lints, then commits, pushes, and opens a PR with the command output as evidence in its body |
 | `/check:handoff` | Writes a handoff for the next session |
 | `/check:status` | Measures and reports what every gate is actually doing |
-| `/check:auto` | Explore → plan → implement → review → ship, in order |
+| `/check:full-cycle` | Explore → plan → implement → review → PR, in order |
 | `/check:config` | Shows every gate item with what it blocks and where it comes from, then writes your picks to `disabled_rules`. Also pins the gate's language, per repo (`lang` in `.check.toml`) or globally (`env.NGG_LANG` in `~/.claude/settings.json`) |
 
 **The commands are written in Korean and answer in whatever language you write in.** `SKILL.md` cannot branch on locale. The gate's own sentences are split by language in `msg.sh`, but a command file cannot be, so the audience is set to Korean readers and both the body and the `description` are written in Korean. What a person actually reads is the `description` in the command list, so that is the part that has to be readable. An instruction in the body keeps the reply in the caller's language, so writing to a command in English still gets an English answer, and quoted source sentences stay in their original English. From 2026-09-11 (`71147c3`) until 2026-09-22 these files were written in English instead; that decision and why it was reversed are recorded as V31 and V57 in the [verification log](VERIFICATION.md).
@@ -320,7 +320,7 @@ Every rule cites where it came from. The bar: **what the rule blocks must be in 
 | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | `ti.skip`, `ti.rm`: *"cheating, for example by disabling or deleting tests."* `done.commit`: *"Only commit when: 1. ALL tests are passing"* |
 | Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654) (v2, 2026-05-17), "Modified Testing Procedure" | `ti.assert`, `ti.exclude`: *"The agent modifies the test cases or the code that runs the testing procedure. Such modifications could change the accepted answers to test cases, or simply delete or ignore test cases."* |
 
-Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules. Allow-once is not a blocking rule but a release valve, taken from Probity.
+Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:setup-checks`, `/check:tdd`, `/check:finish`), not the gate rules. Allow-once is not a blocking rule but a release valve, taken from Probity.
 
 The reason for using hooks at all is in the docs too:
 
