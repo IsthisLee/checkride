@@ -17,6 +17,7 @@
 | [막는 대상이 출처 문서에 없는 규칙은 뺐습니다(R4, `pg.noverify`, `rb.write`)](#6-근거가-없는-규칙은-뺐습니다) | 문서가 권하는 대처(근거 없는 주장 철회)를 막거나, 막으라는 문서가 아예 없었습니다 | [[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), [[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) |
 | [모델에게 "확인하라"고 지시하지 않고, 나온 답을 밖에서 대조합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | Opus 5는 스스로 검증하므로, 검증 지시를 넣으면 과잉 검증으로 토큰만 늘고 품질은 그대로라고 공식 가이드가 안내합니다. 밖에서 대조하면 규칙에 걸린 턴에만 비용이 듭니다 | [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) |
 | [기여자용 커밋 가드에 husky 를 쓰지 않습니다](#7-커밋-가드에-husky-를-쓰지-않습니다) | husky 도 같은 `core.hooksPath` 를 같은 `.git/config` 에 써서 전달되지 않는 성질은 그대로인데, 이 저장소에는 `package.json` 이 없어 Node 런타임 요구만 새로 생깁니다 | 실측, [[15]](https://typicode.github.io/husky/get-started.html) |
+| [설정을 `userConfig` 가 아니라 저장소 루트 파일로 받습니다](#8-설정을-userconfig-가-아니라-저장소-루트-파일로-받습니다) | 공식 수단인 `userConfig` 의 값은 사용자 전역 설정에만 저장되어 저장소마다 다를 수 없고 풀 리퀘스트에도 드러나지 않습니다. 검사 명령과 끈 규칙은 팀이 공유해야 하는 값입니다 | [[16]](https://code.claude.com/docs/en/plugins-reference) |
 
 ## 1. 부탁하지 않고 훅으로 강제합니다
 
@@ -169,6 +170,21 @@ Claude Code가 최신 모델에게 읽기 요구를 푼 이유는 공식 문서�
 
 두 원인을 고친 뒤에 효과를 다시 잴 계획입니다.
 
+**설치 경로를 바꾸면 게이트의 상태가 갈라집니다.** 허용 목록과 `events.log` 는 `${CLAUDE_PLUGIN_DATA}` 아래에
+있는데, 이 경로는 플러그인을 어디서 불러왔는지에 따라 달라집니다. 마켓플레이스로 설치하면 `check-did-you-check`
+이고, 스킬 디렉터리에 두면 `check-skills-dir` 입니다. 후자는 공식 문서가 정의한 동작입니다[[16]](https://code.claude.com/docs/en/plugins-reference).
+
+> "Any folder under a skills directory that contains a `.claude-plugin/plugin.json` manifest is loaded as a plugin named `<name>@skills-dir` on the next session, with no marketplace and no install step."
+>
+> 번역: 스킬 디렉터리 아래에 `.claude-plugin/plugin.json` 매니페스트를 포함한 폴더는 다음 세션에서 `<name>@skills-dir` 라는 이름의 플러그인으로 로드되며, 마켓플레이스도 설치 단계도 필요하지 않습니다.
+
+개발 기계 한 대에서 실측하니 같은 플러그인의 상태 디렉터리가 다섯 벌 남아 있었습니다(`check-skills-dir`,
+`check-did-you-check`, `check-inline`, `grounded-claude-grounded`, `grounded-inline`, 2026-09-22). 이름을
+`grounded` 에서 `check` 로 바꾸고 설치 경로를 옮기는 동안 갈라진 것입니다. **그래서 `/check:status` 가 보고하는
+"최근에 무엇이 막혔나"는 지금 쓰는 경로의 기록만 셉니다.** 이전 경로의 기록은 남아 있어도 집계에 들어오지
+않습니다. 개발자에게만 생기는 문제이고 설치해서 쓰기만 하는 사람에게는 경로가 하나뿐이라 드러나지 않지만,
+측정값을 인용할 때는 어느 디렉터리를 셌는지 밝혀야 합니다.
+
 **5 계열에서의 효과는 아직 재지 않았습니다.** [3절](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다)의 연구 자료는 2026년 4월까지의 것이고, Opus 5는 스스로 검증한다고 안내됩니다[[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5). `tests/no-guess-gate/ab.sh`로 다시 재야 합니다.
 
 ## 5. ECC와 함께 쓸 때
@@ -233,6 +249,47 @@ file:.git/config	.husky/_
 관리자가 이미 잡고 있는데 덮으면 그쪽 훅이 조용히 죽습니다. `setup.sh` 는 그 상황을 감지하면 멈추고 공존하는
 방법을 알립니다. 근거는 [검증 기록](VERIFICATION.md)의 V53·V55에 있습니다.
 
+## 8. 설정을 `userConfig` 가 아니라 저장소 루트 파일로 받습니다
+
+플러그인이 받아야 하는 설정은 넷입니다. 검사 명령(`test_command`·`fast_test_command`), append-only 경로,
+끌 규칙(`disabled_rules`), 게이트 언어(`lang`)입니다. 앞의 셋은 **저장소마다 다르고 팀이 공유해야 하는 값**입니다.
+어느 명령이 이 저장소의 검사인지, 어느 폴더의 이력을 지켜야 하는지, 무엇을 껐는지는 저장소의 성질이지
+그 저장소를 여는 사람의 성질이 아닙니다.
+
+공식 문서에는 플러그인이 설정을 받는 수단이 있습니다. 매니페스트의 `userConfig` 필드입니다[[16]](https://code.claude.com/docs/en/plugins-reference).
+
+> "The `userConfig` field declares values that Claude Code prompts the user for when the plugin is enabled. Use this instead of requiring users to hand-edit `settings.json`."
+>
+> 번역: `userConfig` 필드는 플러그인이 활성화될 때 Claude Code 가 사용자에게 입력을 요청할 값을 선언합니다. 사용자가 `settings.json` 을 손으로 고치게 하는 대신 이것을 쓰십시오.
+
+**이 수단은 저장소별 설정을 담지 못합니다.** 같은 문서가 값을 읽는 출처를 셋으로 한정합니다.
+
+> "Claude Code reads all `pluginConfigs` values from only three settings sources: **User settings**: `~/.claude/settings.json`, the file the enable-time prompt writes to · **`--settings`**: the CLI flag or SDK inline settings · **Managed settings**: organization-controlled policy"
+>
+> 번역: Claude Code 는 모든 `pluginConfigs` 값을 오직 세 설정 출처에서만 읽습니다. 사용자 설정(`~/.claude/settings.json`, 활성화 시점의 입력창이 쓰는 파일), `--settings`(CLI 플래그 또는 SDK 인라인 설정), 관리형 설정(조직이 통제하는 정책)입니다.
+
+**프로젝트의 `.claude/settings.json` 이 그 목록에 없습니다.** 그래서 `userConfig` 에 검사 명령을 넣으면 값이
+`~/.claude/settings.json` 한 곳에 저장되어, 한 기계의 모든 저장소가 같은 검사 명령을 공유하게 됩니다. 저장소를
+옮길 때마다 사람이 전역 설정을 고쳐야 하고, 그 값은 어떤 풀 리퀘스트에도 드러나지 않으며, 동료가 클론해도
+따라오지 않습니다. **무엇을 껐는지가 팀에 보여야 한다는 이 플러그인의 목적과 정면으로 어긋납니다.**
+
+부수적인 제약도 있습니다. 같은 문서가 셸로 실행되는 훅 명령에서는 `${user_config.*}` 치환을 거부한다고 적습니다.
+치환된 값을 셸이 그대로 실행하게 되기 때문입니다. `hooks.json` 의 훅 12개는 전부 `command` 가 문자열인 shell-form
+이므로(실측 2026-09-22, `args` 를 쓰는 exec-form 은 0개), 값을 쓰려면 `CLAUDE_PLUGIN_OPTION_<KEY>` 환경변수로
+읽어야 합니다. 이 경로 자체는 막히지 않지만, 위의 저장 위치 문제를 해결해 주지는 않습니다.
+
+**그래서 저장소 루트의 `.check.toml` 을 씁니다.** 파일이 저장소에 커밋되므로 클론과 함께 전달되고, 값을 바꾸면
+diff 에 남아 풀 리퀘스트에서 보이며, 하위 폴더에서 세션을 열어도 `common.sh` 의 `find_root` 가 위로 올라가
+찾습니다.
+
+**대가는 파서입니다.** 온전한 TOML 파서를 쓰지 않고 한 줄에 키 하나만 읽습니다. macOS 의 기본 파이썬이 3.9.6
+이고 `tomllib` 이 3.11 부터 들어와서, `import tomllib` 이 `ModuleNotFoundError` 로 죽기 때문입니다(실측
+2026-09-22). 의존성을 더하면 `bash` 와 `python3` 만 요구한다는 설치 조건이 깨지므로, 파서를 줄이는 쪽을
+택했습니다. 중첩 테이블과 여러 줄 값은 지원하지 않습니다.
+
+**언어만은 예외로 두 경로를 둡니다.** 게이트 메시지 언어는 저장소가 아니라 읽는 사람의 성질이라, 저장소의 `lang`
+과 전역 `NGG_LANG` 을 모두 두고 환경변수가 이기게 했습니다. `/check:config` 가 둘 중 어디에 쓸지 묻습니다.
+
 ## 출처
 
 1. Claude Code, [Best practices](https://code.claude.com/docs/en/best-practices).
@@ -250,3 +307,4 @@ file:.git/config	.husky/_
 13. Kent Beck, [Augmented Coding: Beyond the Vibes](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes). 2026-09-15 확인.
 14. Gabor 외, [EvilGenie: A Reward Hacking Benchmark](https://arxiv.org/abs/2511.21654): arXiv 2511.21654 v2(2026-05-17), "Modified Testing Procedure" 절. 2026-09-15 확인.
 15. husky, [Get started](https://typicode.github.io/husky/get-started.html). 2026-09-16 확인. `core.hooksPath` 언급이 없어 빈 저장소에 직접 설치해 확인했습니다.
+16. Claude Code, [Plugins reference](https://code.claude.com/docs/en/plugins-reference): `userConfig` 필드, `pluginConfigs` 저장 위치와 읽는 출처 셋, 스킬 디렉터리 플러그인(`<name>@skills-dir`), 경로 변수 셋. 2026-09-22 확인.

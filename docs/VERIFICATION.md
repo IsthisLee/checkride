@@ -4009,3 +4009,227 @@ tests/invariants.sh:115,121,127,128   (훅 인용 대조 검사)
   같은 사실을 두 곳에 두면 한쪽만 정정되고 틀린 쪽이 남는다는 것을 이 저장소가 스스로 겪었다.
 - **VERIFICATION 의 과거 기록은 고치지 않는다.** 검증 기록은 그 시점에 무엇을 재고 무엇을 판단했는지의
   기록이라, 나중에 뒤집힌 결정까지 지우면 왜 뒤집혔는지를 알 수 없게 된다.
+
+## V57 커맨드 여덟을 한국어로 되돌리고, `.check.toml` 을 고른 근거를 문서에 적는다
+
+배경: V31 에서 커맨드 일곱을 한국어에서 영어로 바꿨다. 영어권
+사용자가 README 까지만 영어로 읽고 그 뒤에 만지는 것은 전부 한국어였기 때문이다. 2026-09-22 에 배포 대상을
+한국어 사용자로 좁히기로 결정해 그것을 되돌린다. **사람이 실제로 읽는 것은 커맨드 목록에 뜨는
+`description` 한 줄이고, 본문은 모델이 읽는다.** 한국어 사용자에게는 그 한 줄이 영어라는 것이 매일 겪는
+비용이었다.
+
+### 테스트를 먼저 고쳐 RED 를 봤다
+
+기준선부터 쟀다. 전체 검사 448건 전부 통과, 실패 0건.
+
+`tests/skills-unit.sh` 의 불변식을 뒤집었다. "한글 0자" 를 "본문 한글 200자 이상" 으로, `description` 도
+한국어여야 한다는 단언을 더하고, `language I am writing to you in` 을 `내가 쓰는 언어로 답` 으로 바꿨다.
+
+```
+$ tests/skills-unit.sh
+AssertionError: auto: 본문 한글 0자. 설치본 스킬은 한국어로 쓴다
+❌ 스킬 여덟: 한국어로 쓰고 내가 쓰는 언어로 답하라고 지시한다 (기대=0 실측=1)
+실패 1건
+```
+
+번역한 뒤 통과했다.
+
+```
+$ tests/skills-unit.sh
+✅ 스킬 여덟: 한국어로 쓰고 내가 쓰는 언어로 답하라고 지시한다
+실패 0건
+```
+
+**첫 시도에서 한 번 더 걸렸다.** 종결형까지 정규식에 넣어서 `내가 쓰는 언어로 답하고,` 로 쓴 `config` 가
+떨어졌다. 원문 검사가 `Reply in whatever language I am writing to you in,` 의 쉼표 변형을 견디려고 어미를 뺀
+불변 부분만 봤던 것과 같은 이유다. 같은 방식으로 `내가 쓰는 언어로 답` 까지만 본다.
+
+### 단언 셋이 각각 구분력이 있는지 깨뜨려 확인했다
+
+`status` 하나를 세 방향으로 망가뜨리고 매번 복원했다.
+
+```
+--- 1) 본문을 영어로 되돌리면 ---
+AssertionError: status: 본문 한글 0자. 설치본 스킬은 한국어로 쓴다
+--- 2) description 을 영어로 바꾸면 ---
+AssertionError: status: description 이 한국어가 아니다
+--- 3) 답하는 언어 지시 줄을 지우면 ---
+AssertionError: status: 내가 쓰는 언어로 답하라는 줄이 없다
+--- 되돌린 뒤 ---
+실패 0건
+원본 복원 확인됨
+```
+
+전체 검사도 다시 돌렸다. 종료 코드까지 정확히 쟀다. 처음에는 파이프 안에서 `PIPESTATUS` 가 깨져 빈 값이
+나왔고, 그것을 종료 코드 0 으로 읽을 뻔했다.
+
+```
+$ out=$(bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)" 2>&1); rc=$?
+$ echo "$out" | grep -cE '^❌'
+0
+$ echo "전체 검사 종료코드=$rc"
+전체 검사 종료코드=0
+```
+
+`shellcheck -x -s bash tests/skills-unit.sh` 도 통과했다.
+
+### 인용 원문은 영어로 두고 번역을 붙였다
+
+`tests/skills-unit.sh` 의 기존 검사 하나가 `spec`·`tdd`·`ship`·`auto` 에 25자 이상의 영어 원문 인용을
+요구한다(`'"[A-Z][^"]{25,}"'`). 한국어로 번역하면서도 이 검사가 통과한다. 공식 문서의 문장은 원문 그대로 두고
+바로 아래에 번역을 붙였기 때문이다. 근거 문서의 문장을 번역본으로 바꾸면 무엇이 출처인지 대조할 수 없게 된다.
+
+### `.check.toml` 을 고른 근거가 문서에 없었다
+
+`docs/decisions.md` 에서 `.check.toml` 을 grep 하면 0건이었다. 규칙마다 출처를 대는 저장소인데 설정 형식을
+고른 이유는 코드 주석 한 줄(`no-guess-gate/stop.sh:86`)에만 있었다. 공식 문서를 열어 확인하고 8절로 적었다.
+
+공식 수단은 매니페스트의 `userConfig` 다. 저장 위치도 문서에 있다.
+
+> "Claude Code reads all `pluginConfigs` values from only three settings sources: **User settings**: `~/.claude/settings.json` … **`--settings`** … **Managed settings**"
+>
+> 번역: Claude Code 는 모든 `pluginConfigs` 값을 오직 세 설정 출처에서만 읽는다. 사용자 설정
+> (`~/.claude/settings.json`), `--settings`, 관리형 설정이다.
+
+**프로젝트의 `.claude/settings.json` 이 목록에 없다.** 검사 명령과 `disabled_rules` 는 저장소마다 달라야 하고
+팀이 공유해야 하는데 `userConfig` 로는 그럴 수 없다. `.check.toml` 은 차선이 아니라 이 목적에 유일하게 맞는
+수단이다. 출처는 [Plugins reference](https://code.claude.com/docs/en/plugins-reference), 2026-09-22 확인.
+
+부수 제약 둘도 실측했다.
+
+```
+$ /usr/bin/python3 --version
+Python 3.9.6
+$ /usr/bin/python3 -c "import tomllib"
+ModuleNotFoundError: No module named 'tomllib'
+
+$ python3 -c "...hooks.json 을 세는 스크립트..."
+훅 12개 중 command 가 문자열(shell-form): 12, args(exec-form) 사용: 0
+```
+
+앞의 것이 온전한 TOML 파서를 쓰지 않는 이유이고, 뒤의 것은 같은 문서가 셸로 도는 훅 명령에서
+`${user_config.*}` 치환을 거부하므로 값을 쓰려면 `CLAUDE_PLUGIN_OPTION_<KEY>` 환경변수를 읽어야 한다는 뜻이다.
+
+### 설치 경로에 따라 상태 디렉터리가 갈라진다
+
+이 기계에서 게이트가 도는데 `~/.claude/settings.json` 의 `hooks` 에는 배선이 0건이고 `enabledPlugins` 에도
+`check@did-you-check` 가 없었다. 어디서 도는지 실측했다.
+
+```
+$ ls -ladT ~/.claude/plugins/data/*/state/events.log
+Sep 22 07:43  check-skills-dir        ← 지금 쓰는 것
+Sep 19 08:40  check-did-you-check
+Sep 15 08:44  check-inline
+Sep 15 05:04  grounded-claude-grounded
+Sep 11 18:06  grounded-inline
+```
+
+`check-skills-dir` 의 접미사가 공식 문서의 동작과 맞는다. `.claude-plugin/plugin.json` 이 있는 폴더를 스킬
+디렉터리에 두면 `<name>@skills-dir` 플러그인으로 로드된다. 즉 지금 이 저장소의 플러그인은 마켓플레이스 설치가
+아니라 `~/.claude/skills/check/` 의 사본으로 돌고 있다. `diff -rq` 로 `plugin/hooks/` 와 같음을 확인했다.
+
+**같은 플러그인의 상태가 다섯 벌로 갈라져 있다.** 허용 목록과 `events.log` 가 `${CLAUDE_PLUGIN_DATA}` 아래
+있어서, 이름을 바꾸거나 설치 경로를 옮기면 이전 기록이 집계에서 빠진다. `docs/decisions.md` 4절에 한계로
+적었다. **README 가 인용하는 차단 횟수를 다시 잴 때는 어느 디렉터리를 셌는지 밝혀야 한다.**
+
+### 판단
+
+- **`~/.claude/hooks/` 를 자동으로 읽는 규약은 공식 문서에 없다.** 그 폴더는 `settings.json` 이 경로로
+  가리켰을 때만 도는 보관소다. 이 기계에는 그 폴더가 아예 없는데도 게이트는 정상으로 돌았다.
+- **서브에이전트의 보고를 그대로 옮기지 않은 것이 옳았다.** 서브에이전트는 `userConfig` 의 저장 위치가 공식
+  문서에 명시되지 않았다고 보고했는데, 원문을 직접 열어 보니 `pluginConfigs` 로 명시돼 있었다. 그 문장이 이번
+  결정의 핵심 근거였다. **위임한 조사의 결론을 문서에 적기 전에 원문을 직접 확인한다.**
+- **V31 의 결정을 지우지 않고 남겼다.** 이 문서의 기존 원칙대로다. 뒤집힌 이유를 알려면 뒤집힌 것이 무엇이었는지
+  남아 있어야 한다.
+
+### `/code-review` 가 여섯 건을 잡았고 다섯 건이 사실이었다
+
+번역과 문서를 마친 뒤 `/code-review` 를 돌렸다. 지적을 그대로 받지 않고 한 건씩 직접 확인했다.
+
+| 지적 | 확인 결과 | 조치 |
+|---|---|---|
+| CHANGELOG 의 새 `### 문서` 가 기존 `### 변경` 항목 넷을 삼켰다 | 사실. 25~28줄의 기존 항목이 문서 절로 밀려났다 | `### 문서` 를 기존 항목 뒤로 옮겼다 |
+| `gates.en.md` 가 시간 순서를 거꾸로 적었다 | 사실. "Until 2026-09-16 … were written in English" 는 그날 영어가 끝났다는 뜻이 된다 | "From … until …" 로 고쳤다 |
+| 영어로 바꾼 날짜가 틀렸다 | 사실. `71147c3` 은 **2026-09-11** 이고 2026-09-16 은 1.8.0 배포일이다 | 두 판 모두 고치고 커밋 해시를 적었다 |
+| `description` 단언에 구분력이 거의 없다 | 사실. `re.search(r"[가-힣]", d)` 는 한 글자만 있어도 통과한다 | 아래 참조 |
+| `config` 의 `description` 이 기능 하나를 잃었다 | 사실. 원문의 "or the language to global settings" 가 빠졌는데 5 단계는 여전히 `env.NGG_LANG` 을 쓴다 | 문구를 되살렸다 |
+| 미추적 `AGENTS.md` 가 없는 명령을 안내한다 | 사실이나 이번 변경과 무관하다 | 커밋하지 않고 사용자에게 보고했다 |
+
+**`description` 문턱은 비율이 아니라 절대값으로 잡았다.** 리뷰는 한글 30% 이상을 제안했는데, 실측하니
+`spec` 이 29.8%(84자 중 25자)라 그 문턱에 바로 걸린다. 영어 고유명사와 인용이 많은 줄은 비율이 낮게 나오므로
+문턱으로 쓰기에 불안정하다. 최솟값 25자를 기준으로 **15자**를 잡았다(여유 10자). 리뷰가 든 회귀 사례로
+확인했다.
+
+```
+$ sed -i '' 's/^description: .*/description: Pick which checks this repo enforces (게이트) and show what blocked lately./' plugin/skills/status/SKILL.md
+$ tests/skills-unit.sh
+AssertionError: status: description 한글 3자. 커맨드 목록에 뜨는 줄은 한국어로 쓴다
+❌ 스킬 여덟: 한국어로 쓰고 내가 쓰는 언어로 답하라고 지시한다 (기대=0 실측=1)
+```
+
+고친 뒤 전체 검사를 다시 돌려 종료 코드 0 과 실패 0 건을 확인했다.
+
+**첫 번째 구분력 확인이 이 결함을 놓친 이유를 적어 둔다.** `description` 을 완전한 영어 문장으로만 바꿔 봤고,
+한국어가 조금 섞인 중간 상태를 시험하지 않았다. **불변식을 깨뜨려 볼 때는 정반대만이 아니라 경계에 있는
+값을 넣어야 한다.** 정반대는 웬만한 단언이 다 잡는다.
+
+### `AGENTS.md` 를 지침의 정본으로 세운다
+
+미추적으로 남아 있던 `AGENTS.md` 는 `CLAUDE.md` 를 복사해 `Claude` 를 `Codex` 로 치환한 것이었다. 치환이
+기계적으로 일어나 두 줄이 깨져 있었다.
+
+```
+$ diff CLAUDE.md AGENTS.md
+3c3
+< Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 강제**하는 플러그인이다.
+---
+> Codex 공식 best practices와 검증된 문서의 권고를 **훅으로 강제**하는 플러그인이다.
+23c23
+< - `claude plugin validate .` · `claude --plugin-dir .`
+---
+> - `Codex plugin validate .` · `Codex --plugin-dir .`
+```
+
+`Codex plugin validate .` 는 **존재하지 않는 명령**이고, 3 줄은 이 저장소 규칙의 출처를 통째로 잘못 돌린다.
+게이트 규칙은 전부 Anthropic 문서와 검증된 제3자 자료를 근거로 대는데, 출처 문장이 규칙을 뒷받침해야 한다는
+이 저장소의 기준을 지침 파일 스스로 어기고 있었다.
+
+**두 파일이 같은 내용을 담고 있던 것이 더 큰 문제였다.** 한쪽만 정정되면 틀린 쪽이 계속 주입된다. 공식 문서가
+이 상황을 정확히 다룬다.
+
+| 저장소에 있는 것 | Claude 가 읽는 것 |
+|---|---|
+| `AGENTS.md` 만 있음 | `AGENTS.md` |
+| `AGENTS.md` 와 `CLAUDE.md` 둘 다 | **`CLAUDE.md` 만** |
+| `CLAUDE.md` 가 `AGENTS.md` 를 import | `CLAUDE.md` 와 import 된 `AGENTS.md` |
+
+**이 저장소는 두 번째였다.** 그래서 `AGENTS.md` 의 오기가 세션에 주입되지는 않았지만, 다른 도구로 열면
+주입된다. 세 번째로 옮겼다. `AGENTS.md` 에 내용을 두고 `CLAUDE.md` 첫 줄을 `@AGENTS.md` 로 바꿨다.
+
+**심링크를 쓰지 않은 이유는 Windows 다.** 공식 문서가 그 경우를 적는다.
+
+> "**Windows**: if you or anyone who clones the repository works on Windows, use the `@AGENTS.md` import instead. Creating a symlink there needs Administrator privileges or Developer Mode, and Git checks a committed symlink out as a plain text file unless `core.symlinks` is enabled, which leaves that clone with a one-line `CLAUDE.md` in place of your instructions"
+>
+> 번역: 당신이나 저장소를 클론하는 누군가가 Windows 에서 작업한다면 `@AGENTS.md` import 를 쓰십시오. 거기서
+> 심링크를 만들려면 관리자 권한이나 개발자 모드가 필요하고, `core.symlinks` 가 켜져 있지 않으면 Git 이 커밋된
+> 심링크를 평범한 텍스트 파일로 체크아웃해서 그 클론에는 지침 대신 한 줄짜리 `CLAUDE.md` 가 남습니다.
+
+이 저장소는 Windows 를 CI 매트릭스에 두므로 정확히 그 경우다. 출처는
+[How Claude remembers your project](https://code.claude.com/docs/en/memory), 2026-09-22 확인.
+
+깨질 것이 없는지 전수로 확인했다. 테스트·CI·문서가 이 저장소의 `CLAUDE.md` 파일을 참조하는 곳은 0 곳이다.
+문서에 나오는 `CLAUDE.md` 언급은 전부 일반 개념(공식 문서 인용과 사용자의 `CLAUDE.md`)이다.
+
+```
+$ grep -rn "CLAUDE\.md" tests/ .github/ CONTRIBUTING*.md setup.sh .githooks/
+tests/done-gate/unit.sh:101:#     공식 CLAUDE.md 예시: "Prefer running single tests, …"
+tests/no-guess-gate/selftest.sh:6:# --setting-sources "" 로 사용자 설정·CLAUDE.md·플러그인·standalone 훅을 …
+```
+
+둘 다 주석이고 파일 참조가 아니다. 고친 뒤 전체 검사 448 건이 종료 코드 0 으로 통과했고 `.githooks/pre-commit`
+도 통과했다.
+
+**아직 확인하지 못한 것이 하나 있다.** 지침 파일은 세션이 시작될 때 로드되므로, `@AGENTS.md` import 가 실제로
+펼쳐지는지는 이 세션에서 잴 수 없다. 공식 문서가 안내하는 대로 **다음 세션에서 `/context` 를 실행해
+`CLAUDE.md` 가 Memory files 에 뜨고 `AGENTS.md` 의 내용이 함께 들어왔는지 확인해야 한다.** 확인 전까지는
+동작한다고 적지 않는다.
