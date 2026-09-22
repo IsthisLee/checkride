@@ -32,7 +32,13 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - 커밋에 개인 정보를 넣지 않는다. 홈 경로, 이메일, 사적인 저장소 이름이 들어가면 `.githooks/pre-commit`이 막는다. `git config core.hooksPath .githooks`로 켠다.
 - `.private/`는 별도 저장소다. 검토 초안과 스펙이 있고 공개 저장소에는 올리지 않는다.
 - 커밋 메시지는 `type(scope): 요약` 형식이고 본문에 무엇을 왜 바꿨는지 적는다.
-- **병합은 squash 로 한다.** PR 하나가 `main` 의 커밋 하나가 되므로 **되돌릴 단위는 커밋이 아니라 PR 이다.** 그래서 **PR 을 기능 단위로 쪼개서 올린다.** 관련 없는 변경을 한 PR 에 묶으면 그중 하나만 되돌릴 수 없다. 브랜치 안에서는 커밋을 자유롭게 나눠도 되지만, 그것이 `main` 에 남지 않는다는 것을 전제로 나눈다. **squash 커밋의 제목과 본문은 PR 의 제목과 본문에서 온다.** 그러므로 PR 제목을 `type(scope): 요약` 형식으로 쓰고, 본문은 `main` 의 이력에 그대로 남을 글로 쓴다.
+- **병합은 squash 로 한다.** PR 하나가 `main` 의 커밋 하나가 되므로 **되돌릴 단위는 커밋이 아니라 PR 이다.** 그래서 **PR 을 기능 단위로 쪼개서 올린다.** 관련 없는 변경을 한 PR 에 묶으면 그중 하나만 되돌릴 수 없다. 저장소 설정이 `squash` 만 허용하므로 `--rebase` 와 `--merge` 는 거부된다.
+- **`main` 의 이력에 남는 것은 PR 의 제목과 본문이다.** 브랜치의 커밋 메시지는 작업용이고 남지 않는다. 그러므로 **PR 제목을 `type(scope): 요약` 형식으로 쓰고, 본문을 이력에 그대로 남을 글로 쓴다.** 브랜치 안에서 커밋을 어떻게 나누든 자유다. 이것은 저장소 설정에 달려 있으므로 의심스러우면 실제로 확인한다.
+
+  ```
+  $ gh api repos/IsthisLee/did-you-check --jq '{merge:.allow_merge_commit, rebase:.allow_rebase_merge, squash:.allow_squash_merge, title:.squash_merge_commit_title, message:.squash_merge_commit_message}'
+  {"merge":false,"message":"PR_BODY","rebase":false,"squash":true,"title":"PR_TITLE"}
+  ```
 
 ## 구조
 
