@@ -4297,3 +4297,88 @@ Gates: evidence (always) · completion (on) · test integrity (always) · projec
   README 에 없어서 아무도 보지 못했다. 상세 문서는 이미 아는 사람이 확인하러 가는 곳이다.
 - **게이트가 조용히 노는 것이 가장 나쁜 실패다.** 막혔으면 사람이 알아차리는데, 막을 대상을 모르는 게이트는
   아무 신호도 내지 않는다. 설치한 사람은 넷 다 일하는 줄 안다.
+
+## V59 커맨드 셋의 이름을 하는 일이 드러나게 바꾼다
+
+`init`·`ship`·`auto` 가 하는 일을 이름으로 알려 주지 못했다. `init` 은 내장 `/init`(CLAUDE.md 생성)과
+겹쳐 "이걸 돌려야 훅이 켜진다"로 오해되고, `ship` 은 실제로 `gh pr create` 에서 끝나는데 배포로 읽히며,
+`auto` 는 무엇이 자동인지 이름에 없다. 각각 `setup-checks`·`finish`·`full-cycle` 로 바꿨다.
+
+**커맨드 접두 `/check:` 는 이번에 바꾸지 않았다.** 저장소 이름을 `checkride` 로 바꾸는 작업에서 한 번에
+치환한다. 앞서 바꾸면 같은 문서를 두 번 고쳐야 한다.
+
+### 결과
+
+```
+$ ls plugin/skills
+config finish full-cycle handoff setup-checks spec status tdd
+
+$ grep -rn "check:init\|check:ship\|check:auto" \
+    --exclude-dir=.git --exclude-dir=.private --exclude-dir=.superpowers \
+    --exclude=VERIFICATION.md --exclude=CHANGELOG.md .
+(출력 없음)
+
+$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"
+실패 줄: 0
+종료코드=0
+```
+
+커밋 둘로 나눴다. `f19d5ac` 가 스킬 폴더와 정의를, `435a82e` 가 테스트 하네스와 문서를 고친다.
+
+### 완료 게이트가 커밋을 막았고, 그것이 옳았다
+
+`f19d5ac` 를 만들려던 첫 시도가 **완료 게이트에 막혔다.** 원인은 이 작업과 무관했다. 워킹 트리에서
+`CODE_OF_CONDUCT.md`·`CONTRIBUTING.md`·`CONTRIBUTING.en.md` 셋이 사라져 있었고(삭제는 커밋되지 않았다),
+`tests/invariants.sh:119` 가 `CONTRIBUTING` 두 판의 존재를 검사해 2건이 실패했기 때문이다.
+
+**게이트는 정의대로 동작했다.** 검사가 깨진 상태의 커밋을 막는 것이 `done.commit` 이다. 그리고 막힌
+쪽이 우회를 시도하지 않은 것이 더 중요하다. `--no-verify` 도, `.check.toml` 수정도, 범위 밖 파일
+복구도 하지 않고 멈춰서 보고했다. **이 저장소가 막으려는 세 가지 우회를 모두 피했다.**
+
+복구로 판정한 근거는 셋이다. (1) 삭제가 커밋되지 않았으므로 저장소의 정상 상태는 파일이 있는 것이다.
+(2) `tests/invariants.sh` 가 그 존재를 검사하므로 저장소가 스스로 "있어야 한다"고 선언한다.
+(3) 의도적으로 지웠다면 커밋했을 것이다.
+
+```
+$ git restore CODE_OF_CONDUCT.md CONTRIBUTING.md CONTRIBUTING.en.md
+$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"
+실패 줄 없음
+종료코드=0
+```
+
+**삭제의 원인은 끝내 밝히지 못했다.** 세션 시작 시점에는 없던 삭제이고, 그 구간에 돌린 명령 중 파일을
+지우는 것이 없었다. 확인하지 못했다고 적어 둔다.
+
+### 과거 기록의 옛 이름은 고치지 않는다
+
+`CHANGELOG.md:77` 의 `[2.0.0]` 항목에 `/check:init` 이 남았다. 고치지 않았다. 같은 파일이 그렇게 정한다.
+
+```
+CHANGELOG.md:81
+이력인 CHANGELOG 와 docs/VERIFICATION.md 의 옛 이름은 그대로 둔다.
+그때 그 이름으로 잰 기록이라 고치면 기록이 아니게 된다.
+```
+
+`[2.0.0]` 은 2026-09-13 에 `grounded` 에서 `did-you-check` 로 이름을 바꾼 기록이다. **같은 종류의 변경을
+이미 한 번 했고 그때 이 규칙을 세웠다.** 이번에도 따른다.
+
+**계획의 확인 명령이 그 규칙을 반영하지 못했다.** `--exclude=VERIFICATION.md` 만 있고 `CHANGELOG.md` 가
+빠져 있어, 규칙대로 남겨 둔 줄을 "미완료"로 셌다. 위 명령처럼 고쳤다. `.superpowers`(작업 산출물)도 함께
+뺐다. 브리프와 리포트에 옛 이름이 잔뜩 들어 있어 검사가 오작동하기 때문이다.
+
+### 함정 둘을 미리 막았다
+
+**`tests/acceptance.sh` 의 `run` 은 첫 인자로 출력 파일명을 만든다**(`:33` 의 `> "$T/out.$1"`).
+`run` 인자와 뒤따르는 `out.<이름>` 중 하나만 바꾸면 테스트가 빈 파일을 읽어 조용히 지나간다. 짝을 맞췄다.
+
+**`tests/acceptance.sh:27` 의 `git init -q` 는 임시 저장소 초기화이지 커맨드 이름이 아니다.**
+일괄 치환에 휩쓸리면 인수 테스트가 통째로 깨진다. 그대로 두었다.
+
+### 판단
+
+- **브리프가 "없으면 넘어가라"고 적은 곳에 실제로 있었다.** `plugin/skills/config/SKILL.md:30` 에
+  `/check:init` 이 있었고 구현자가 함께 고쳤다. **확인하라고 적은 단계는 결과를 보고 판단해야지,
+  결과를 미리 단정해 적으면 안 된다.**
+- **막힌 쪽이 우회하지 않고 멈춘 것이 이 작업에서 가장 값진 결과였다.** 게이트가 있어도 우회가 쉬우면
+  의미가 없다. 여기서는 우회 경로 셋이 모두 열려 있었는데(`--no-verify`, 설정 수정, 파일 복구) 하나도
+  쓰지 않았다.
