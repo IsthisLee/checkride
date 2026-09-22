@@ -1,6 +1,6 @@
 # 설계 결정: 어떤 근거로 게이트를 이렇게 만들었나
 
-이 문서는 did-you-check를 만들면서 내린 핵심 결정과, 각 결정이 기댄 근거를 설명합니다. 게이트가 무엇을 어떻게 막는지는 [게이트와 커맨드 상세](gates.md)에, 실행한 명령과 출력 원문은 [검증 기록](VERIFICATION.md)에 있습니다. 이 문서는 **왜 그렇게 만들었는지**만 다룹니다.
+이 문서는 checkride를 만들면서 내린 핵심 결정과, 각 결정이 기댄 근거를 설명합니다. 게이트가 무엇을 어떻게 막는지는 [게이트와 커맨드 상세](gates.md)에, 실행한 명령과 출력 원문은 [검증 기록](VERIFICATION.md)에 있습니다. 이 문서는 **왜 그렇게 만들었는지**만 다룹니다.
 
 읽기 전에 두 가지를 밝혀 둡니다.
 
@@ -171,8 +171,8 @@ Claude Code가 최신 모델에게 읽기 요구를 푼 이유는 공식 문서�
 두 원인을 고친 뒤에 효과를 다시 잴 계획입니다.
 
 **설치 경로를 바꾸면 게이트의 상태가 갈라집니다.** 허용 목록과 `events.log` 는 `${CLAUDE_PLUGIN_DATA}` 아래에
-있는데, 이 경로는 플러그인을 어디서 불러왔는지에 따라 달라집니다. 마켓플레이스로 설치하면 `check-did-you-check`
-이고, 스킬 디렉터리에 두면 `check-skills-dir` 입니다. 후자는 공식 문서가 정의한 동작입니다[[16]](https://code.claude.com/docs/en/plugins-reference).
+있는데, 이 경로는 플러그인을 어디서 불러왔는지에 따라 달라집니다. 마켓플레이스로 설치하면 `checkride-checkride`
+이고, 스킬 디렉터리에 두면 `checkride-skills-dir` 입니다. 후자는 공식 문서가 정의한 동작입니다[[16]](https://code.claude.com/docs/en/plugins-reference).
 
 > "Any folder under a skills directory that contains a `.claude-plugin/plugin.json` manifest is loaded as a plugin named `<name>@skills-dir` on the next session, with no marketplace and no install step."
 >
@@ -180,7 +180,7 @@ Claude Code가 최신 모델에게 읽기 요구를 푼 이유는 공식 문서�
 
 개발 기계 한 대에서 실측하니 같은 플러그인의 상태 디렉터리가 다섯 벌 남아 있었습니다(`check-skills-dir`,
 `check-did-you-check`, `check-inline`, `grounded-claude-grounded`, `grounded-inline`, 2026-09-22). 이름을
-`grounded` 에서 `check` 로 바꾸고 설치 경로를 옮기는 동안 갈라진 것입니다. **그래서 `/check:status` 가 보고하는
+`grounded` 에서 `check` 로 바꾸고 설치 경로를 옮기는 동안 갈라진 것입니다. **그래서 `/checkride:status` 가 보고하는
 "최근에 무엇이 막혔나"는 지금 쓰는 경로의 기록만 셉니다.** 이전 경로의 기록은 남아 있어도 집계에 들어오지
 않습니다. 개발자에게만 생기는 문제이고 설치해서 쓰기만 하는 사람에게는 경로가 하나뿐이라 드러나지 않지만,
 측정값을 인용할 때는 어느 디렉터리를 셌는지 밝혀야 합니다.
@@ -216,7 +216,7 @@ ECC의 GateGuard 게이트는 이 플러그인과 목적이 일부 겹칩니다.
 | 규칙 | 조치 | 이유 |
 |---|---|---|
 | R4: 막힌 뒤 도구 없이 다시 끝내면 막음 | **뺐습니다** | 출처로 적어 둔 환각 줄이기 문서는 뒷받침을 찾지 못한 주장을 철회하라고 합니다[[12]](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations). R4는 도구 없이 철회한 답까지 막아, 문서가 권하는 대처와 반대로 갔습니다. 다시 쓴 답도 나머지 규칙으로는 그대로 판정하므로, 확인 없이 같은 주장을 되풀이하면 여전히 막힙니다 |
-| `pg.noverify`: `git commit --no-verify` 막음 | **뺐습니다** | 막으라고 권하는 문서를 찾지 못했습니다. Claude Code 문서 색인과 권한 모드 문서에 `--no-verify` 언급이 없었고, `/check:config` 의 출처 칸에도 이미 "No external source"라고 적혀 있었습니다 |
+| `pg.noverify`: `git commit --no-verify` 막음 | **뺐습니다** | 막으라고 권하는 문서를 찾지 못했습니다. Claude Code 문서 색인과 권한 모드 문서에 `--no-verify` 언급이 없었고, `/checkride:config` 의 출처 칸에도 이미 "No external source"라고 적혀 있었습니다 |
 | R2a: 확인을 미루는 답 | **코드베이스 맥락으로 좁혔습니다** | 근거 문장이 "BEFORE answering questions about the codebase"로 범위를 한정합니다[[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices). 그 밖의 질문에 붙은 유보를 막을 근거는 없습니다 |
 | R0·R1·R2a·R2b | 출처를 고쳤습니다 | 이전에 인용한 "retract the claim"은 뒷받침 없는 주장을 철회하라는 문장이고, 도구 사용이나 유보 표현을 다루지 않습니다. 이 규칙들이 막는 대상과 맞는 문장은 프롬프트 가이드의 `investigate_before_answering` 예시입니다[[9]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) |
 | R5 | 출처를 고쳤습니다 | 이전에 적은 훅 문서의 `PostToolUseFailure` 는 구현 수단입니다. 막는 이유는 "Have Claude show evidence rather than asserting success"입니다[[1]](https://code.claude.com/docs/en/best-practices) |
@@ -298,7 +298,7 @@ diff 에 남아 풀 리퀘스트에서 보이며, 하위 폴더에서 세션을 
 택했습니다. 중첩 테이블과 여러 줄 값은 지원하지 않습니다.
 
 **언어만은 예외로 두 경로를 둡니다.** 게이트 메시지 언어는 저장소가 아니라 읽는 사람의 성질이라, 저장소의 `lang`
-과 전역 `NGG_LANG` 을 모두 두고 환경변수가 이기게 했습니다. `/check:config` 가 둘 중 어디에 쓸지 묻습니다.
+과 전역 `NGG_LANG` 을 모두 두고 환경변수가 이기게 했습니다. `/checkride:config` 가 둘 중 어디에 쓸지 묻습니다.
 
 ## 출처
 

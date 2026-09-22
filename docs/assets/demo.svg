@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="452" viewBox="0 0 760 452" role="img" aria-label="근거 없는 답이 막히고, 모델이 실측한 뒤 다시 답하는 화면" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
-  <title>did-you-check: 근거 없는 답은 나가지 못한다</title>
+  <title>checkride: 근거 없는 답은 나가지 못한다</title>
 
   <rect width="760" height="452" rx="10" fill="#0d1117"/>
   <rect width="760" height="30" rx="10" fill="#161b22"/>
@@ -7,7 +7,7 @@
   <circle cx="18" cy="15" r="5" fill="#ff5f56"/>
   <circle cx="36" cy="15" r="5" fill="#ffbd2e"/>
   <circle cx="54" cy="15" r="5" fill="#27c93f"/>
-  <text x="380" y="19" font-size="11" fill="#8b949e" text-anchor="middle">claude — did-you-check</text>
+  <text x="380" y="19" font-size="11" fill="#8b949e" text-anchor="middle">claude — checkride</text>
 
   <text x="20" y="58" fill="#79c0ff">&gt; 이 폴더에 package.json 있어? 아무것도 실행하지 마.</text>
 

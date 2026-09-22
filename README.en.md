@@ -1,7 +1,7 @@
-# did-you-check
+# checkride
 
-[![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml)
-[![version](https://img.shields.io/github/v/release/IsthisLee/did-you-check?label=version&color=informational)](https://github.com/IsthisLee/did-you-check/releases)
+[![test](https://github.com/IsthisLee/checkride/actions/workflows/test.yml/badge.svg)](https://github.com/IsthisLee/checkride/actions/workflows/test.yml)
+[![version](https://img.shields.io/github/v/release/IsthisLee/checkride?label=version&color=informational)](https://github.com/IsthisLee/checkride/releases)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)](#install)
 
@@ -15,12 +15,14 @@
 
 Eight commands turn verified best practices into a procedure, and four gates keep a turn from ending on an answer that skipped it. The grounding is in the Claude Code official docs and other verified sources, and each rule can be switched off on its own.
 
+The examiner never takes the controls. They call out the procedure, and stop you the moment you drift outside the standard.
+
 |  | What it does | When it runs |
 |---|---|---|
 | **[Eight commands](#eight-commands)** | Tells you what to do, and in what order | Only when you type it |
 | **[Four gates](#what-gets-blocked)** | Keeps a turn that skipped that procedure from ending | Runs on its own |
 
-Pick items with `/check:config`, which shows where each one comes from; the choice is written to `.check.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
+Pick items with `/checkride:config`, which shows where each one comes from; the choice is written to `.check.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
 
 You never asked for any of it, and it is checked every time. **The hooks do the asking; you focus on judging the results.**
 
@@ -41,8 +43,8 @@ Across projects in real use, the gate checked 898 answers and blocked 69 of them
 Two lines inside a Claude Code session.
 
 ```
-/plugin marketplace add IsthisLee/did-you-check
-/plugin install check@did-you-check
+/plugin marketplace add IsthisLee/checkride
+/plugin install checkride@checkride
 ```
 
 You receive 25 files under `plugin/`, and release tags are signed. [SECURITY.en.md](SECURITY.en.md#checking-for-yourself-what-you-are-installing) shows how to check.
@@ -56,14 +58,14 @@ Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on 
 ### What to do after installing
 
 ```
-/check:setup-checks
+/checkride:setup-checks
 ```
 
 **Run this and all four gates go to work.** Installing alone gets you the evidence gate and test integrity; the completion gate and the project guard sit idle because they [do not yet know what to block](#two-of-the-four-need-configuration-before-they-do-anything).
 
-`/check:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
+`/checkride:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
 
-To pick what gets enforced item by item, use `/check:config`. To see what is working and what is idle right now, use `/check:status`.
+To pick what gets enforced item by item, use `/checkride:config`. To see what is working and what is idle right now, use `/checkride:status`.
 
 ## Eight commands
 
@@ -71,14 +73,14 @@ All eight work only when **you type them**. Claude never calls one on its own �
 
 | Command | What it does | When to use |
 |---|---|---|
-| `/check:setup-checks` | Actually runs the check command to pin it down, picks a folder to protect, and writes both to `.check.toml` | Once, right after installing |
-| `/check:config` | Shows what each gate item blocks and where the rule comes from, then lets you pick what to turn off | When a false positive keeps recurring |
-| `/check:status` | Measures and reports which gates are working and which are idle, right now | When you want to know what's blocking |
-| `/check:spec` | Interviews you before you write code and produces `SPEC.md` | Starting a large feature |
-| `/check:tdd` | Writes a failing test first, confirms RED, then does the minimum implementation | While implementing |
-| `/check:finish` | Runs the checks and lints, then commits, pushes, and opens a PR | Wrapping up a task |
-| `/check:handoff` | Writes a handoff for the next session to read | Closing out a session |
-| `/check:full-cycle` | Explore → plan → implement → review → PR, in order. If review turns up a defect, it goes back to implementation (twice at most) | Handing off one task start to finish |
+| `/checkride:setup-checks` | Actually runs the check command to pin it down, picks a folder to protect, and writes both to `.check.toml` | Once, right after installing |
+| `/checkride:config` | Shows what each gate item blocks and where the rule comes from, then lets you pick what to turn off | When a false positive keeps recurring |
+| `/checkride:status` | Measures and reports which gates are working and which are idle, right now | When you want to know what's blocking |
+| `/checkride:spec` | Interviews you before you write code and produces `SPEC.md` | Starting a large feature |
+| `/checkride:tdd` | Writes a failing test first, confirms RED, then does the minimum implementation | While implementing |
+| `/checkride:finish` | Runs the checks and lints, then commits, pushes, and opens a PR | Wrapping up a task |
+| `/checkride:handoff` | Writes a handoff for the next session to read | Closing out a session |
+| `/checkride:full-cycle` | Explore → plan → implement → review → PR, in order. If review turns up a defect, it goes back to implementation (twice at most) | Handing off one task start to finish |
 
 **More commands are absent than present.** Planning is the built-in plan mode, exploration is the built-in Explore, review is `/code-review`, and confirming something runs is `/verify`. A full survey narrowed 23 candidates down to eight. Nothing here duplicates something that already exists.
 
@@ -166,7 +168,7 @@ Which gates are working and which are idle is printed at the top of every sessio
 Gates: evidence (always) · completion (on) · test integrity (always) · project guard (unconfigured, blocks nothing)
 ```
 
-"always" means it needs no configuration; "unconfigured, blocks nothing" means it is on but has nothing to block. `/check:setup-checks` writes `.check.toml` with you.
+"always" means it needs no configuration; "unconfigured, blocks nothing" means it is on but has nothing to block. `/checkride:setup-checks` writes `.check.toml` with you.
 
 **The evidence gate does not run in a session nobody is watching.** An answer from a `claude -p` session never reaches a person, so there is nobody to ask back. Set `NGG_HEADLESS=1` to check those sessions in CI.
 
@@ -193,11 +195,11 @@ Claude then reads the file or runs the command in the same turn and answers agai
 
 The models keep getting better, and this failure does not go away. Opus 4.7 and 4.8, Sonnet 5, and Opus 5 landed one after another over a year, yet "all passed" without running the check stayed. It is a matter of habit, not capability, so a person has to ask "did you check?" every time. People eventually forget, and the day they forget is the day something breaks.
 
-Writing the rule into CLAUDE.md is not enough, and the official docs say why: **"Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."** did-you-check turns that sentence into a mechanism.
+Writing the rule into CLAUDE.md is not enough, and the official docs say why: **"Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."** checkride turns that sentence into a mechanism.
 
 Claude Code itself still has no feature that blocks an ungrounded answer **at the moment the turn ends**. Auto mode blocks dangerous commands before they run, and `/code-review` finds bugs when you call it, but the spot right before an answer leaves is empty. This plugin fills it.
 
-Subagents run in the background by default, and the deeper the chain grows, the less a person sees of each turn. An automatic "did you check?" is worth more the less you watch, so did-you-check runs the same check when a subagent finishes as well (`SubagentStop`).
+Subagents run in the background by default, and the deeper the chain grows, the less a person sees of each turn. An automatic "did you check?" is worth more the less you watch, so checkride runs the same check when a subagent finishes as well (`SubagentStop`).
 
 ### ❓ Doesn't blocking at the end of the turn burn a lot of tokens? Why not just instruct the model before it acts?
 
@@ -252,19 +254,19 @@ Hit a false positive? [Open an issue](../../issues/new?template=false-positive.m
 
 | Goal | Command |
 |---|---|
-| Off in this repo | `claude plugin disable check@did-you-check --scope project` |
+| Off in this repo | `claude plugin disable checkride@checkride --scope project` |
 | Off for me only | Same, with `--scope local` |
 | Semantic judge only | `NGG_JUDGE=0` |
-| Pick checks from a table with their sources | `/check:config` |
+| Pick checks from a table with their sources | `/checkride:config` |
 | One rule or check only | `disabled_rules = "R2b, done.pr"` in `.check.toml` |
 | Get past one false positive | `check allow ti.skip` on its own line in your next prompt |
 | Every hook, not just this plugin | `"disableAllHooks": true` in settings |
 | Raise the 8-block cap | `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` |
-| Remove entirely | `claude plugin uninstall check@did-you-check` |
+| Remove entirely | `claude plugin uninstall checkride@checkride` |
 
-Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `.check.toml`, or for every repo with `NGG_LANG` in the `env` block of `~/.claude/settings.json`. `/check:config` lets you pick either. Precedence: `NGG_LANG` env > `.check.toml` `lang` > locale, so the global value beats a repo's `lang`.
+Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `.check.toml`, or for every repo with `NGG_LANG` in the `env` block of `~/.claude/settings.json`. `/checkride:config` lets you pick either. Precedence: `NGG_LANG` env > `.check.toml` `lang` > locale, so the global value beats a repo's `lang`.
 
-State lives in `~/.claude/plugins/data/check-did-you-check/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
+State lives in `~/.claude/plugins/data/checkride-checkride/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
 
 ## Read more
 
@@ -291,7 +293,7 @@ This space has several tools, and most of them block a **tool call** (`PreToolUs
 | [Probity](https://github.com/nizos/probity) · [TDD Guard](https://github.com/nizos/tdd-guard) | TDD violations and forbidden patterns | Before the call |
 | [failproofai](https://github.com/FailproofAI/failproofai) | Records every run and enforces rules | Around the call |
 | [Stop That Shit](https://github.com/lennney/stop-that-shit) | Unrequested hashes, checksums, scope creep (Codex/GPT) | Before the call |
-| **did-you-check** | **Ungrounded conclusions, false "done", PRs without evidence, disabled tests** | **When the turn tries to end, and before the call** |
+| **checkride** | **Ungrounded conclusions, false "done", PRs without evidence, disabled tests** | **When the turn tries to end, and before the call** |
 
 Each description is taken from that project's own words.
 

@@ -1,4 +1,4 @@
-# did-you-check
+# checkride
 
 **이 파일이 이 저장소 지침의 정본이다.** 코딩 에이전트가 공유하는 `AGENTS.md` 규약을 따른다. `CLAUDE.md` 는 이 파일을 `@` 로 불러오는 포인터일 뿐이므로, 규칙을 고칠 때는 그쪽이 아니라 이 파일을 고친다. Claude Code 전용 규칙이 생기면 `CLAUDE.md` 의 import 아래에 적는다.
 
@@ -15,7 +15,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `tests/setup/unit.sh` — 활성화 스크립트 14건. 남이 잡은 `core.hooksPath` 를 덮지 않는지 본다.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 9건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선 20건.  **합계 448건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선, 옛 이름 잔존 21건.  **합계 449건.**
 - `tests/fuzz.sh` — 망가진 입력을 열 훅에 던져 조용히 통과하지 않는지 본다. 모델을 부르지 않는다.
 - `tests/no-guess-gate/selftest.sh` — 실제 프롬프트 회귀 12케이스. Haiku를 부르고 몇 분 걸린다.
 - `tests/no-guess-gate/ab.sh` — 게이트 켠 채와 끈 채를 비교해 효과를 잰다. `SET=hard`가 압박 프롬프트.
@@ -36,7 +36,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - **`main` 의 이력에 남는 것은 PR 의 제목과 본문이다.** 브랜치의 커밋 메시지는 작업용이고 남지 않는다. 그러므로 **PR 제목을 `type(scope): 요약` 형식으로 쓰고, 본문을 이력에 그대로 남을 글로 쓴다.** 브랜치 안에서 커밋을 어떻게 나누든 자유다. 이것은 저장소 설정에 달려 있으므로 의심스러우면 실제로 확인한다.
 
   ```
-  $ gh api repos/IsthisLee/did-you-check --jq '{merge:.allow_merge_commit, rebase:.allow_rebase_merge, squash:.allow_squash_merge, title:.squash_merge_commit_title, message:.squash_merge_commit_message}'
+  $ gh api repos/IsthisLee/checkride --jq '{merge:.allow_merge_commit, rebase:.allow_rebase_merge, squash:.allow_squash_merge, title:.squash_merge_commit_title, message:.squash_merge_commit_message}'
   {"merge":false,"message":"PR_BODY","rebase":false,"squash":true,"title":"PR_TITLE"}
   ```
 

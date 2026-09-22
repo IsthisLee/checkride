@@ -122,6 +122,18 @@ for c in "$R/CONTRIBUTING.md" "$R/CONTRIBUTING.en.md"; do
   else bad "${n} 가 setup.sh 를 안내하지 않는다"; fi
 done
 
+# 이름을 바꾼 뒤 옛 이름이 남으면 설치 명령과 커맨드가 갈린다. VERIFICATION 은 과거 기록이라 뺀다.
+# CHANGELOG 와 VERIFICATION 은 이력이라 옛 이름을 그대로 둔다(CHANGELOG.md:81 이 그렇게 정한다).
+# 이 스크립트 자신은 검색 패턴 문자열 안에 옛 이름을 그대로 담고 있어 자기 자신과 항상 걸린다. 빼지 않으면
+# old 가 0 이 될 수 없다.
+# decisions.md 182행도 이력이다. 2026-09-22 에 개발 기계에서 실측한 상태 폴더 목록을 그대로 적은
+# 문장이라 `check-did-you-check` 를 남긴다. 고치면 실측 기록이 아니게 된다.
+old=$(grep -rln "did-you-check\|/check:" \
+        --exclude-dir=.git --exclude-dir=.private --exclude-dir=.superpowers \
+        --exclude=VERIFICATION.md --exclude=CHANGELOG.md --exclude=invariants.sh --exclude=decisions.md \
+        "$R" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$old" = 0 ]; then ok "옛 이름이 남아 있지 않다"; else bad "옛 이름이 ${old}개 파일에 남았다"; fi
+
 echo
 if [ "$fail" -eq 0 ]; then echo "전부 통과"; else echo "실패 ${fail}건"; fi
 exit "$fail"

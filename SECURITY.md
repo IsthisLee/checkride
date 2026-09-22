@@ -15,7 +15,7 @@
 
 **네트워크로 나가는 것은 판정기 하나뿐이고, 그것도 당신의 Claude Code를 거친다.** 외부 서비스로 보내는 것은 없다. 판정기를 끄려면 `NGG_JUDGE=0`이다.
 
-`events.log`가 남기는 것은 프롬프트 일부와 답의 처음 80자다. 민감한 내용을 다루는 저장소라면 `${CLAUDE_PLUGIN_DATA}/state/`를 주기적으로 지우거나 게이트를 그 저장소에서 끄면 된다(`claude plugin disable check@did-you-check --scope project`).
+`events.log`가 남기는 것은 프롬프트 일부와 답의 처음 80자다. 민감한 내용을 다루는 저장소라면 `${CLAUDE_PLUGIN_DATA}/state/`를 주기적으로 지우거나 게이트를 그 저장소에서 끄면 된다(`claude plugin disable checkride@checkride --scope project`).
 
 ## 설치할 것을 직접 확인하는 법
 
@@ -24,8 +24,8 @@
 **릴리스 태그는 서명돼 있다.** 받아서 검증할 수 있다.
 
 ```bash
-git clone https://github.com/IsthisLee/did-you-check
-cd did-you-check
+git clone https://github.com/IsthisLee/checkride
+cd checkride
 git tag -v v1.4.1        # Good "git" signature 가 나와야 한다
 ```
 
@@ -42,8 +42,8 @@ cat plugin/hooks/hooks.json          # 어느 이벤트에 무엇이 걸리는�
 
 ## 우리가 이미 막은 것
 
-[![CodeQL](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/did-you-check/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/did-you-check/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/did-you-check)
+[![CodeQL](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/checkride/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/checkride)
 
 
 **판정기 프롬프트 주입.** 판정기는 Claude의 답을 모델에게 넘긴다. 답 안에 판정 JSON을 심어 두면 판정으로 읽혀 게이트가 풀릴 수 있었다. 답 텍스트를 데이터 블록으로 감싸고, 중괄호와 판정 키워드를 중화하고, 응답의 마지막 JSON만 읽도록 고쳤다. 회귀 테스트가 `unit.sh` 12군에 있다. 기록은 `docs/VERIFICATION.md` V4f.

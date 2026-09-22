@@ -1,7 +1,7 @@
-# did-you-check
+# checkride
 
-![test](https://github.com/IsthisLee/did-you-check/actions/workflows/test.yml/badge.svg)
-![version](https://img.shields.io/github/v/release/IsthisLee/did-you-check?label=version&color=informational)
+![test](https://github.com/IsthisLee/checkride/actions/workflows/test.yml/badge.svg)
+![version](https://img.shields.io/github/v/release/IsthisLee/checkride?label=version&color=informational)
 ![license](https://img.shields.io/badge/license-MIT-blue.svg)
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)
 
@@ -15,12 +15,14 @@
 
 커맨드 여덟 개가 검증된 모범 사례를 절차로 주고, 게이트 네 개가 그 절차를 지키지 않은 답을 막습니다. 근거는 Claude Code 공식 문서를 비롯한 검증된 자료에 있고, 규칙은 항목마다 끌 수 있습니다.
 
+심사관은 대신 조종하지 않습니다. 절차를 짚어 주고, 기준을 벗어나면 그 자리에서 멈춥니다.
+
 |                                        | 무엇을 하나                                             | 언제 도나         |
 | -------------------------------------- | -------------------------------------------------------- | ------------------ |
 | **[커맨드 여덟 개](#커맨드-여덟-개)** | 무엇을 어떤 순서로 할지 알려 줍니다                       | 직접 쳐야 돕니다   |
 | **[게이트 네 개](#무엇이-막히나)**   | 그 절차를 지키지 않은 답으로는 턴이 끝나지 않게 합니다    | 저절로 돕니다      |
 
-`/check:config`로 항목의 출처를 보고 고르면 그 선택이 `.check.toml`에 적히고 커밋에 남으므로, 무엇을 껐는지 팀이 함께 봅니다. 테스트 무결성·완료 게이트에서 오탐 한 건만 넘기려면 다음 프롬프트에 `check allow <항목>`을 한 줄로 쓰면 됩니다. 자세한 방법은 [끄기와 제거](#끄기와-제거)에 있습니다.
+`/checkride:config`로 항목의 출처를 보고 고르면 그 선택이 `.check.toml`에 적히고 커밋에 남으므로, 무엇을 껐는지 팀이 함께 봅니다. 테스트 무결성·완료 게이트에서 오탐 한 건만 넘기려면 다음 프롬프트에 `check allow <항목>`을 한 줄로 쓰면 됩니다. 자세한 방법은 [끄기와 제거](#끄기와-제거)에 있습니다.
 
 사용자가 한 번도 부탁하지 않아도 매번 검사합니다. **되묻는 일은 훅이 맡고, 사용자는 결과를 판단하는 데 집중하면 됩니다.**
 
@@ -45,8 +47,8 @@
 Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 
 ```
-/plugin marketplace add IsthisLee/did-you-check
-/plugin install check@did-you-check
+/plugin marketplace add IsthisLee/checkride
+/plugin install checkride@checkride
 ```
 
 내려받는 것은 `plugin/` 아래 25개 파일뿐이고, 릴리스 태그에는 서명이 붙어 있습니다. 서명을 직접 확인하는 법은 [SECURITY.md](SECURITY.md#설치할-것을-직접-확인하는-법)에 있습니다.
@@ -60,14 +62,14 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 ### 설치 다음에 할 일
 
 ```
-/check:setup-checks
+/checkride:setup-checks
 ```
 
 **이것을 돌려야 게이트 네 개가 다 일합니다.** 설치만 하면 근거 게이트와 테스트 무결성은 바로 막지만, 완료 게이트와 프로젝트 가드는 [무엇을 막아야 할지 몰라](#넷-중-둘은-설정이-있어야-일합니다) 놀고 있습니다.
 
-`/check:setup-checks`는 이 저장소의 검사 명령을 **실제로 돌려 보고** 확정하고, 이력을 지켜야 할 폴더가 있으면 제안한 뒤, 그 둘을 `.check.toml`에 적습니다. 파일을 쓰기 전에 무엇을 적을지 보여 주고 물어봅니다.
+`/checkride:setup-checks`는 이 저장소의 검사 명령을 **실제로 돌려 보고** 확정하고, 이력을 지켜야 할 폴더가 있으면 제안한 뒤, 그 둘을 `.check.toml`에 적습니다. 파일을 쓰기 전에 무엇을 적을지 보여 주고 물어봅니다.
 
-무엇을 강제할지 항목마다 고르려면 `/check:config`를, 지금 무엇이 일하고 무엇이 놀고 있는지 보려면 `/check:status`를 씁니다.
+무엇을 강제할지 항목마다 고르려면 `/checkride:config`를, 지금 무엇이 일하고 무엇이 놀고 있는지 보려면 `/checkride:status`를 씁니다.
 
 ## 커맨드 여덟 개
 
@@ -75,14 +77,14 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 
 | 커맨드 | 하는 일 | 언제 쓰나 |
 |---|---|---|
-| `/check:setup-checks` | 검사 명령을 실제로 돌려 확정하고 지킬 폴더를 정해 `.check.toml`에 씁니다 | 설치 직후 한 번 |
-| `/check:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 고릅니다 | 오탐이 반복될 때 |
-| `/check:status` | 지금 어느 게이트가 일하고 어느 게이트가 노는지 전부 실측해 보고합니다 | 무엇이 막혔는지 궁금할 때 |
-| `/check:spec` | 코드를 쓰기 전에 인터뷰해서 `SPEC.md`를 씁니다 | 큰 기능에 착수할 때 |
-| `/check:tdd` | 실패 테스트를 먼저 쓰고 RED를 확인한 뒤 최소 구현을 합니다 | 구현하는 동안 |
-| `/check:finish` | 검사와 린트를 돌리고 커밋하고 푸시하고 PR을 엽니다 | 작업을 마칠 때 |
-| `/check:handoff` | 다음 세션이 읽을 인수인계를 씁니다 | 세션을 접을 때 |
-| `/check:full-cycle` | 탐색 → 계획 → 구현 → 검토 → PR을 순서대로 돕니다. 검토에서 결함이 나오면 구현으로 돌아갑니다(최대 두 번) | 하나를 끝까지 맡길 때 |
+| `/checkride:setup-checks` | 검사 명령을 실제로 돌려 확정하고 지킬 폴더를 정해 `.check.toml`에 씁니다 | 설치 직후 한 번 |
+| `/checkride:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 고릅니다 | 오탐이 반복될 때 |
+| `/checkride:status` | 지금 어느 게이트가 일하고 어느 게이트가 노는지 전부 실측해 보고합니다 | 무엇이 막혔는지 궁금할 때 |
+| `/checkride:spec` | 코드를 쓰기 전에 인터뷰해서 `SPEC.md`를 씁니다 | 큰 기능에 착수할 때 |
+| `/checkride:tdd` | 실패 테스트를 먼저 쓰고 RED를 확인한 뒤 최소 구현을 합니다 | 구현하는 동안 |
+| `/checkride:finish` | 검사와 린트를 돌리고 커밋하고 푸시하고 PR을 엽니다 | 작업을 마칠 때 |
+| `/checkride:handoff` | 다음 세션이 읽을 인수인계를 씁니다 | 세션을 접을 때 |
+| `/checkride:full-cycle` | 탐색 → 계획 → 구현 → 검토 → PR을 순서대로 돕니다. 검토에서 결함이 나오면 구현으로 돌아갑니다(최대 두 번) | 하나를 끝까지 맡길 때 |
 
 **없는 커맨드가 더 많습니다.** 계획은 내장 plan mode가, 탐색은 내장 Explore가, 리뷰는 `/code-review`가, 실행 확인은 `/verify`가 이미 맡습니다. 전수 조사에서 후보 23개를 여덟으로 줄였습니다. 같은 일을 하는 것을 새로 만들지 않습니다.
 
@@ -170,7 +172,7 @@ append_only  = "db/migrations"      # 이 폴더의 기존 파일은 고치지 �
 게이트: 근거(항상) · 완료(켜짐) · 테스트 무결성(항상) · 프로젝트 가드(설정 없어 막는 것 없음)
 ```
 
-「항상」은 설정이 필요 없다는 뜻이고, 「설정 없어 막는 것 없음」은 **켜져 있지만 막을 대상을 모른다**는 뜻입니다. `.check.toml`은 `/check:setup-checks`가 함께 만들어 줍니다.
+「항상」은 설정이 필요 없다는 뜻이고, 「설정 없어 막는 것 없음」은 **켜져 있지만 막을 대상을 모른다**는 뜻입니다. `.check.toml`은 `/checkride:setup-checks`가 함께 만들어 줍니다.
 
 **사람이 보고 있지 않은 세션에서는 근거 게이트가 돌지 않습니다.** `claude -p`로 띄운 세션의 답은 사람에게 보이지 않아 되물을 상대가 없기 때문입니다. CI에서 그 세션까지 검사하려면 `NGG_HEADLESS=1`을 설정합니다.
 
@@ -195,11 +197,11 @@ Claude는 이런 메시지를 받습니다.
 
 모델은 갈수록 좋아지는데도 이 실패만은 사라지지 않습니다. Opus 4.7·4.8, Sonnet 5, Opus 5가 한 해 동안 차례로 나왔지만, 검사를 돌리지도 않고 "다 통과했습니다"라고 답하는 일은 그대로 남았습니다. 이 실패가 능력의 문제가 아니라 습관의 문제이기 때문입니다. 그래서 사람이 매번 "확인했어?"라고 되물어야 하는데, 사람은 언젠가 그것을 잊어버리고, 잊은 날에 사고가 납니다.
 
-CLAUDE.md에 규칙을 적어 두는 것만으로는 부족합니다. 공식 문서가 그 이유를 이렇게 밝힙니다. **"권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다."** did-you-check는 이 문장을 실제 장치로 옮겨 놓은 것입니다.
+CLAUDE.md에 규칙을 적어 두는 것만으로는 부족합니다. 공식 문서가 그 이유를 이렇게 밝힙니다. **"권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다."** checkride는 이 문장을 실제 장치로 옮겨 놓은 것입니다.
 
 Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순간에** 막아 주는 기능이 아직 없습니다. auto 모드는 위험한 명령을 실행하기 전에 막고, `/code-review`는 사용자가 불렀을 때 버그를 찾습니다. 그러나 답이 사용자에게 나가기 직전을 지키는 자리는 비어 있습니다. 이 플러그인이 그 자리를 채웁니다.
 
-서브에이전트는 기본적으로 백그라운드에서 돌고, 그 호출 체인이 깊어질수록 사람이 매 턴을 눈으로 확인하기 어려워집니다. 자동으로 되묻는 장치는 사람이 덜 볼수록 오히려 쓸모가 커집니다. did-you-check는 서브에이전트가 끝나는 순간에도 같은 검사를 돌립니다(`SubagentStop`).
+서브에이전트는 기본적으로 백그라운드에서 돌고, 그 호출 체인이 깊어질수록 사람이 매 턴을 눈으로 확인하기 어려워집니다. 자동으로 되묻는 장치는 사람이 덜 볼수록 오히려 쓸모가 커집니다. checkride는 서브에이전트가 끝나는 순간에도 같은 검사를 돌립니다(`SubagentStop`).
 
 ### ❓ 턴이 끝나는 순간에 막으면 토큰이 너무 늘지 않나요? 행동 전에 지시해 두면 되지 않나요?
 
@@ -260,19 +262,19 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 
 | 원하는 것                            | 방법                                                        |
 | ------------------------------------ | ----------------------------------------------------------- |
-| 이 저장소에서만 끄기                 | `claude plugin disable check@did-you-check --scope project` |
+| 이 저장소에서만 끄기                 | `claude plugin disable checkride@checkride --scope project` |
 | 나만 끄기                            | 같은 명령에 `--scope local`                                 |
 | 의미 판정만 끄기                     | `NGG_JUDGE=0`                                               |
-| 검사 항목을 표로 보고 고르기         | `/check:config`. 항목마다 출처를 보여 주고 고른 것만 끕니다 |
+| 검사 항목을 표로 보고 고르기         | `/checkride:config`. 항목마다 출처를 보여 주고 고른 것만 끕니다 |
 | 규칙·검사 하나만 끄기                | `.check.toml`에 `disabled_rules = "R2b, done.pr"`           |
 | 오탐 한 건만 넘기기                  | 다음 프롬프트에 한 줄로 `check allow ti.skip`               |
 | 훅 전부 끄기(이 플러그인만이 아니라) | 설정에 `"disableAllHooks": true`                            |
 | 8회 상한을 올리기                    | 환경변수 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`                  |
-| 완전히 지우기                        | `claude plugin uninstall check@did-you-check`               |
+| 완전히 지우기                        | `claude plugin uninstall checkride@checkride`               |
 
-메시지 언어는 로케일을 따릅니다. `LC_ALL`·`LC_MESSAGES`·`LANG`이 한국어면 한국어로, 그 밖의 경우에는 영어로 나옵니다. 저장소마다 `.check.toml`에 `lang = "ko"`로 고정할 수 있고, 모든 저장소에 한 번에 적용하려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 넣습니다. `/check:config`에서 둘 중 어디에 쓸지 고를 수 있습니다. 우선순위는 `NGG_LANG` 환경변수 &gt; `.check.toml`의 `lang` &gt; 로케일 순이라, 전역 값이 저장소의 `lang`보다 앞섭니다.
+메시지 언어는 로케일을 따릅니다. `LC_ALL`·`LC_MESSAGES`·`LANG`이 한국어면 한국어로, 그 밖의 경우에는 영어로 나옵니다. 저장소마다 `.check.toml`에 `lang = "ko"`로 고정할 수 있고, 모든 저장소에 한 번에 적용하려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 넣습니다. `/checkride:config`에서 둘 중 어디에 쓸지 고를 수 있습니다. 우선순위는 `NGG_LANG` 환경변수 &gt; `.check.toml`의 `lang` &gt; 로케일 순이라, 전역 값이 저장소의 `lang`보다 앞섭니다.
 
-플러그인 상태는 `~/.claude/plugins/data/check-did-you-check/`에 있고, 지워도 됩니다. 상태를 남기려면 제거할 때 `--keep-data`를 붙입니다.
+플러그인 상태는 `~/.claude/plugins/data/checkride-checkride/`에 있고, 지워도 됩니다. 상태를 남기려면 제거할 때 `--keep-data`를 붙입니다.
 
 ## 더 읽기
 
@@ -292,7 +294,7 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 
 ## 비슷한 도구
 
-이 분야에는 비슷한 도구가 여럿 있고, 대부분은 **도구 호출 자체를 막습니다**(`PreToolUse`). did-you-check도 테스트 무력화, 근거 없는 PR, 커밋 전 검사 실패는 도구 호출 단계에서 막습니다. 그래도 중심은 **근거 없이 끝나는 턴**에 있습니다(`Stop`). 막는 지점이 서로 달라서, 함께 써도 됩니다.
+이 분야에는 비슷한 도구가 여럿 있고, 대부분은 **도구 호출 자체를 막습니다**(`PreToolUse`). checkride도 테스트 무력화, 근거 없는 PR, 커밋 전 검사 실패는 도구 호출 단계에서 막습니다. 그래도 중심은 **근거 없이 끝나는 턴**에 있습니다(`Stop`). 막는 지점이 서로 달라서, 함께 써도 됩니다.
 
 | 도구                                                                                          | 무엇을 막나                                                | 어디서                         |
 | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------ |
@@ -300,7 +302,7 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 | [Probity](https://github.com/nizos/probity) · [TDD Guard](https://github.com/nizos/tdd-guard) | TDD 위반과 금지 패턴                                       | 실행 전                        |
 | [failproofai](https://github.com/FailproofAI/failproofai)                                     | 실행을 기록하고 규칙을 강제                                | 실행 전후                      |
 | [Stop That Shit](https://github.com/lennney/stop-that-shit)                                   | 요청하지 않은 해시·체크섬·범위 확장(Codex·GPT)            | 실행 전                        |
-| **did-you-check**                                                                             | **근거 없는 결론, 거짓 완료, 근거 없는 PR, 테스트 무력화** | **턴이 끝나는 순간과 실행 전** |
+| **checkride**                                                                             | **근거 없는 결론, 거짓 완료, 근거 없는 PR, 테스트 무력화** | **턴이 끝나는 순간과 실행 전** |
 
 위 설명은 각 저장소가 스스로 적은 설명문을 옮긴 것입니다.
 
