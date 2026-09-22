@@ -23,7 +23,7 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 
 전부 **직접 쳐야만** 돈다. Claude가 알아서 부르지 않는다.
 
-`/check:init` · `config` · `spec` · `tdd` · `ship` · `handoff` · `status` · `auto`
+`/check:setup-checks` · `config` · `spec` · `tdd` · `finish` · `handoff` · `status` · `full-cycle`
 
 어떤 검사를 강제할지 고르려면 `/check:config`를 친다. 항목마다 출처를 보여 주고 고른 것만 끈다.
 
@@ -34,7 +34,7 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 ## 처음 할 일
 
 ```
-/check:init
+/check:setup-checks
 ```
 
 검사 명령을 찾아 `.check.toml`에 확정하고 `append_only` 경로를 제안한다. 쓰기 전에 물어본다.
@@ -76,7 +76,7 @@ Checks, every turn, whether the best practices the Claude Code docs recommend we
 
 To get past one false positive, write `check allow <item>` on its own line in your next prompt; it lets one action through and is gone.
 
-Start with `/check:init`. Ask `/check:status` when something blocks you.
+Start with `/check:setup-checks`. Ask `/check:status` when something blocks you.
 
 The eight command files are written in Korean, so their one-line descriptions read as Korean in the command list. They still reply in whatever language you write in, and the sentences they quote from the official docs are kept in the original English.
 

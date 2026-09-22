@@ -115,7 +115,7 @@ Which gates are working and which are idle is printed at the top of every sessio
 Gates: evidence (always) · completion (on) · test integrity (always) · project guard (unconfigured, blocks nothing)
 ```
 
-"always" means it needs no configuration; "unconfigured, blocks nothing" means it is on but has nothing to block. `/check:init` writes `.check.toml` with you.
+"always" means it needs no configuration; "unconfigured, blocks nothing" means it is on but has nothing to block. `/check:setup-checks` writes `.check.toml` with you.
 
 **The evidence gate does not run in a session nobody is watching.** An answer from a `claude -p` session never reaches a person, so there is nobody to ask back. Set `NGG_HEADLESS=1` to check those sessions in CI.
 
@@ -141,12 +141,12 @@ Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on 
 ### What to do after installing
 
 ```
-/check:init
+/check:setup-checks
 ```
 
 **Run this and all four gates go to work.** Installing alone gets you the evidence gate and test integrity; the completion gate and the project guard sit idle because they [do not yet know what to block](#two-of-the-four-need-configuration-before-they-do-anything).
 
-`/check:init` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
+`/check:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
 
 To pick what gets enforced item by item, use `/check:config`. To see what is working and what is idle right now, use `/check:status`.
 
@@ -293,7 +293,7 @@ Every practice this plugin checks names the sentence it came from. **A rule ship
 | Rewritten migrations | [Best practices](https://code.claude.com/docs/en/best-practices) | "Write a hook that blocks writes to the migrations folder." |
 | Editing a committed migration (deleting is not blocked) | [Rails migrations guide](https://guides.rubyonrails.org/active_record_migrations.html) | "In general, editing existing migrations that have been already committed to source control is not a good idea." |
 
-Rules dropped because their sources did not back them (R4, `pg.noverify`, `rb.write`) and rules whose scope was narrowed (R2a, R2b, `done.pr`) are recorded in V49 of the [verification log](docs/VERIFICATION.md). Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:init`, `/check:tdd`, `/check:ship`), not the gate rules.
+Rules dropped because their sources did not back them (R4, `pg.noverify`, `rb.write`) and rules whose scope was narrowed (R2a, R2b, `done.pr`) are recorded in V49 of the [verification log](docs/VERIFICATION.md). Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:setup-checks`, `/check:tdd`, `/check:finish`), not the gate rules.
 
 ## Related
 

@@ -1,6 +1,6 @@
 ---
-name: auto
-description: 탐색부터 배포까지 한 번에 진행한다. 내장 기능을 순서대로 부르고, 게이트가 단계마다 정직함을 지키게 한다.
+name: full-cycle
+description: 탐색부터 PR까지 전 과정을 돈다. 검토에서 결함이 나오면 구현으로 돌아가 고치고 다시 검토받는다.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Task, AskUserQuestion
 ---
@@ -43,7 +43,7 @@ diff 를 한 문장으로 설명할 수 있으면 계획을 건너뛴다. 공식
 
 ## 5. 마무리
 
-검사와 커밋과 PR 은 `/check:ship` 으로 한다. 세션이 여기서 끝난다면 `/check:handoff` 도 돌린다.
+검사와 커밋과 PR 은 `/check:finish` 로 한다. 세션이 여기서 끝난다면 `/check:handoff` 도 돌린다.
 
 ## 단계마다
 

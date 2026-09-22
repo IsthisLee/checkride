@@ -1,6 +1,6 @@
 ---
-name: ship
-description: 검사를 돌리고 커밋하고 푸시하고 PR을 연다. PR 본문에는 돌린 명령과 그 출력을 근거로 넣는다.
+name: finish
+description: 작업을 끝낸다. 검사와 린트를 돌리고 커밋하고 푸시하고 PR을 연다. PR 본문에 돌린 명령과 출력을 근거로 넣는다.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Edit
 ---

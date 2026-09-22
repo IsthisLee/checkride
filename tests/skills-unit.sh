@@ -12,7 +12,7 @@ check() { if [ "$1" = "$2" ]; then echo "✅ $3"; else echo "❌ $3 (기대=$1 �
 python3 - "$G" <<'PY'
 import os, re, sys
 root = sys.argv[1]
-want = {"spec","init","tdd","ship","handoff","status","auto","config"}
+want = {"spec","setup-checks","tdd","finish","handoff","status","full-cycle","config"}
 found = {d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))}
 assert found == want, f"스킬 목록 불일치: {sorted(found)}"
 for name in sorted(want):
@@ -33,7 +33,7 @@ PY
 check 0 $? "스킬 여덟: 폴더명·name 일치, 사용자 전용, description, allowed-tools, 본문"
 
 # 인자를 받는 스킬은 $ARGUMENTS를 실제로 쓴다
-for n in spec tdd ship auto; do
+for n in spec tdd finish full-cycle; do
   # shellcheck disable=SC2016  # $ARGUMENTS는 리터럴로 찾는다
   grep -q '\$ARGUMENTS' "$G/$n/SKILL.md" || { echo "❌ $n: \$ARGUMENTS 미사용"; fail=$((fail+1)); }
 done
@@ -46,7 +46,7 @@ done
 check 0 0 "내장과 겹치는 스킬 없음(plan·explore·review·verify·commit)"
 
 # 근거 인용이 있는지. 근거 없는 절차는 이 저장소가 막으려는 것이다.
-for n in spec tdd ship auto; do
+for n in spec tdd finish full-cycle; do
   grep -qE '"[A-Z][^"]{25,}"' "$G/$n/SKILL.md" || { echo "❌ $n: 원문 인용 없음"; fail=$((fail+1)); }
 done
 check 0 0 "핵심 넷은 공식·검증 문서를 원문으로 인용한다"
