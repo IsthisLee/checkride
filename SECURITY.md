@@ -29,7 +29,7 @@ cd did-you-check
 git tag -v v1.4.1        # Good "git" signature 가 나와야 한다
 ```
 
-**실리는 것은 `plugin/` 뿐이다.** 25개 파일이고 그중 도는 것은 훅 열과 스킬 여덟이다. 테스트·문서·CI는 설치본에 들어가지 않는다.
+**실리는 것은 `plugin/` 뿐이다.** 25개 파일이고 그중 도는 것은 훅 열 개와 스킬 여덟 개다. 테스트·문서·CI는 설치본에 들어가지 않는다.
 
 ```bash
 git ls-files plugin | wc -l          # 25

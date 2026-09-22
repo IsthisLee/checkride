@@ -5,24 +5,20 @@
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-informational)](#install)
 
-[What gets blocked](#what-gets-blocked) · [Install](#install) · [When it blocks](#when-it-blocks) · [Why it's needed](#why-its-needed) · [Who it's for](#who-its-for) · [False positives](#false-positives) · [Turning it off](#turning-it-off) · [Read more](#read-more) · [Sources](#sources) · [Related](#related)
+[Install](#install) · [Eight commands](#eight-commands) · [What gets blocked](#what-gets-blocked) · [When it blocks](#when-it-blocks) · [Why it's needed](#why-its-needed) · [Who it's for](#who-its-for) · [False positives](#false-positives) · [Turning it off](#turning-it-off) · [Read more](#read-more) · [Sources](#sources) · [Related](#related)
 
 **Read in:** English · [한국어](README.md)
 
 ---
 
-**The best practices are written down. This checks whether they were followed.**
+**Raises the reliability of Claude Code's work.**
 
-Every turn is checked against what the Claude Code docs and other development writing recommend. A turn that breaks one does not end, so Claude checks for itself and answers again. Each rule can be switched off on its own.
+Eight commands turn verified best practices into a procedure, and four gates keep a turn from ending on an answer that skipped it. The grounding is in the Claude Code official docs and other verified sources, and each rule can be switched off on its own.
 
-| The practice being checked | The moment it is broken |
-|---|---|
-| **Back every claim with evidence** | "There's no such file" — without opening anything → that answer never leaves |
-| **Show evidence before asserting success** | "All done" — without running the tests → the check runs, and a failure keeps the turn open<br>Opening a PR whose body only says "tests pass" → the PR does not open until the command and its output are in it |
-| **Fix the code, not the test** | Adding `.skip` to make it pass → the edit itself is refused<br>Removing tests via an ignore pattern in the runner config → blocked too |
-| **Append to history, never rewrite it** | Editing a migration that shipped → the edit does not go through |
-
-Every one is **recommended by the official docs or by development writing**, and [Sources](#sources) names the sentence each came from.
+|  | What it does | When it runs |
+|---|---|---|
+| **[Eight commands](#eight-commands)** | Tells you what to do, and in what order | Only when you type it |
+| **[Four gates](#what-gets-blocked)** | Keeps a turn that skipped that procedure from ending | Runs on its own |
 
 Pick items with `/check:config`, which shows where each one comes from; the choice is written to `.check.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
 
@@ -40,7 +36,62 @@ Across projects in real use, the gate checked 898 answers and blocked 69 of them
 
 ---
 
+## Install
+
+Two lines inside a Claude Code session.
+
+```
+/plugin marketplace add IsthisLee/did-you-check
+/plugin install check@did-you-check
+```
+
+You receive 25 files under `plugin/`, and release tags are signed. [SECURITY.en.md](SECURITY.en.md#checking-for-yourself-what-you-are-installing) shows how to check.
+
+**Your `settings.json` and `CLAUDE.md` are not touched.** After installing, everything looks the same. The check only shows up when it fires.
+
+It adds about 256ms per turn. Per-hook numbers are in [the detail doc](docs/gates.en.md#what-it-costs).
+
+Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on every CI run.** The fuzz pass, which throws broken input at every hook, runs on Linux and macOS every time and on Windows when changes land on main. Windows needs Git Bash.
+
+### What to do after installing
+
+```
+/check:setup-checks
+```
+
+**Run this and all four gates go to work.** Installing alone gets you the evidence gate and test integrity; the completion gate and the project guard sit idle because they [do not yet know what to block](#two-of-the-four-need-configuration-before-they-do-anything).
+
+`/check:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
+
+To pick what gets enforced item by item, use `/check:config`. To see what is working and what is idle right now, use `/check:status`.
+
+## Eight commands
+
+All eight work only when **you type them**. Claude never calls one on its own — anything with side effects needs a person to decide the moment.
+
+| Command | What it does | When to use |
+|---|---|---|
+| `/check:setup-checks` | Actually runs the check command to pin it down, picks a folder to protect, and writes both to `.check.toml` | Once, right after installing |
+| `/check:config` | Shows what each gate item blocks and where the rule comes from, then lets you pick what to turn off | When a false positive keeps recurring |
+| `/check:status` | Measures and reports which gates are working and which are idle, right now | When you want to know what's blocking |
+| `/check:spec` | Interviews you before you write code and produces `SPEC.md` | Starting a large feature |
+| `/check:tdd` | Writes a failing test first, confirms RED, then does the minimum implementation | While implementing |
+| `/check:finish` | Runs the checks and lints, then commits, pushes, and opens a PR | Wrapping up a task |
+| `/check:handoff` | Writes a handoff for the next session to read | Closing out a session |
+| `/check:full-cycle` | Explore → plan → implement → review → PR, in order. If review turns up a defect, it goes back to implementation (twice at most) | Handing off one task start to finish |
+
+**More commands are absent than present.** Planning is the built-in plan mode, exploration is the built-in Explore, review is `/code-review`, and confirming something runs is `/verify`. A full survey narrowed 23 candidates down to eight. Nothing here duplicates something that already exists.
+
 ## What gets blocked
+
+| The practice being checked | The moment it is broken |
+|---|---|
+| **Back every claim with evidence** | "There's no such file" — without opening anything → that answer never leaves |
+| **Show evidence before asserting success** | "All done" — without running the tests → the check runs, and a failure keeps the turn open<br>Opening a PR whose body only says "tests pass" → the PR does not open until the command and its output are in it |
+| **Fix the code, not the test** | Adding `.skip` to make it pass → the edit itself is refused<br>Removing tests via an ignore pattern in the runner config → blocked too |
+| **Append to history, never rewrite it** | Editing a migration that shipped → the edit does not go through |
+
+Every one is **recommended by the official docs or by development writing**, and [Sources](#sources) names the sentence each came from.
 
 When Claude tries to finish a turn, a `Stop` hook checks six rules. If any fires, the turn does not end — Claude has to go measure something, or ask.
 
@@ -121,35 +172,6 @@ Gates: evidence (always) · completion (on) · test integrity (always) · projec
 
 R0–R5 are not all checked every turn; each fires only under its condition. R0, R1, and R2a fire only when zero tools ran this turn. See [the detail doc](docs/gates.en.md#when-each-runs) for the full wiring and conditions.
 
-## Install
-
-Two lines inside a Claude Code session.
-
-```
-/plugin marketplace add IsthisLee/did-you-check
-/plugin install check@did-you-check
-```
-
-You receive 25 files under `plugin/`, and release tags are signed. [SECURITY.en.md](SECURITY.en.md#checking-for-yourself-what-you-are-installing) shows how to check.
-
-**Your `settings.json` and `CLAUDE.md` are not touched.** After installing, everything looks the same. The check only shows up when it fires.
-
-It adds about 256ms per turn. Per-hook numbers are in [the detail doc](docs/gates.en.md#what-it-costs).
-
-Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on every CI run.** The fuzz pass, which throws broken input at every hook, runs on Linux and macOS every time and on Windows when changes land on main. Windows needs Git Bash.
-
-### What to do after installing
-
-```
-/check:setup-checks
-```
-
-**Run this and all four gates go to work.** Installing alone gets you the evidence gate and test integrity; the completion gate and the project guard sit idle because they [do not yet know what to block](#two-of-the-four-need-configuration-before-they-do-anything).
-
-`/check:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
-
-To pick what gets enforced item by item, use `/check:config`. To see what is working and what is idle right now, use `/check:status`.
-
 ## When it blocks
 
 Claude receives this:
@@ -218,37 +240,11 @@ A solo developer on a strong model who watches every turn may find the 256ms per
 
 ## False positives
 
-The rules are regex, so they don't read intent. So the blocked turns get re-judged periodically, and the rules get narrowed or the exemptions widened from what that judging finds.
-
-### How false positives are found
-
-1. Every block writes the matched rules and the first part of the answer to `${CLAUDE_PLUGIN_DATA}/state/events.log`.
-2. That line is traced back to the session and turn in the transcripts.
-3. Each turn is read in context and judged. **A model does the judging; no human reviewed it afterwards.** The verdicts are recorded in [docs/false-positives.md](docs/false-positives.md) (Korean) with session, turn, rule, verdict and reason.
-4. When false positives cluster into one shape, the condition that produced them is narrowed. A failing test is written first.
-
-Two full passes have been done this way: 760 early turns (130 blocks) surfaced three shapes, and re-judging 141 R0 blocks across 113 distinct turns in September 2026 surfaced two more ([V48](docs/VERIFICATION.md)). All six below are fixed.
-
-| False positive | Fix |
-|---|---|
-| Design opinions: "putting it here seems better" | Hedges after evaluative adjectives are stripped before judging; the rest goes to the judge |
-| Saying "tools don't work in this session" still got blocked | The impossibility exemption is now shared by R0, R2a, R2b |
-| A/B verdict JSON `{"winner": …}` | A whole-JSON answer is exempt from the prose rules |
-| Auto-summary sessions another plugin spawned with `claude -p` hit R0 (40 turns) | The gate does not run in sessions nobody is watching. CI and the regression tests re-enable it with `NGG_HEADLESS=1` |
-| Honest answers like "I cannot determine that without a tool" were blocked (17 turns) | `cannot determine`, `판단할 수 없` and `알 수 없` were added to the impossibility exemption |
-| A filename quoted from a document read as a claim about that file | Text inside quotes and backticks is now stripped before R1 too. Parentheses are not: that would let `the config file (config.json) is missing` through |
+The rules are regex, so they don't read intent. So the blocked turns get re-judged periodically, and the rules get narrowed or the exemptions widened from what that judging finds. How the judging works, and the six shapes fixed across two full passes so far, are in [the false-positive verdicts](docs/false-positives.md) (Korean).
 
 ### Known misses
 
-What it does not catch, written down. Publishing the false positives and hiding the misses would itself be an ungrounded claim.
-
-| Miss | Why it stays |
-|---|---|
-| One line of "I can't verify this" or "I cannot determine that" clears R0, R2a and R2b | The official docs say to give Claude permission to admit uncertainty. There is no way to know whether tools were actually blocked, so tightening this blocks honest answers. Fixing false positives widened this exemption further |
-| The evidence gate does not run in sessions nobody is watching (`claude -p`) | Those answers never reach a person, so there is nobody to ask back. Set `NGG_HEADLESS=1` to check them in CI |
-| Hardcoding test inputs in the source to make tests pass | Indistinguishable from a legitimate constant. EvilGenie reports a 1.4% false positive rate for the holdout approach |
-| Implementations that only work for small inputs | Not something a regex can judge |
-| R2a's English patterns only match active voice like `should verify`, so `should be verified` slips through | Widening to passive voice raises false positives |
+What it does not catch, written down. Publishing the false positives and hiding the misses would itself be an ungrounded claim. For example, one honest line such as "I can't verify this" clears R0, R2a, and R2b through the impossibility exemption, and hardcoding test inputs in the source, or an implementation that only works for small inputs, cannot be told apart from legitimate code, so neither is caught. The full list is in [known limits in the design decisions](docs/decisions.md#4-알려진-한계와-다음-과제) (Korean).
 
 Hit a false positive? [Open an issue](../../issues/new?template=false-positive.md). The relevant line from `${CLAUDE_PLUGIN_DATA}/state/events.log` is enough.
 
@@ -281,19 +277,9 @@ State lives in `~/.claude/plugins/data/check-did-you-check/` and is safe to dele
 
 ## Sources
 
-Every practice this plugin checks names the sentence it came from. **A rule ships only if what it blocks is in the source.** Every sentence below was checked against the original on 2026-09-15.
+Every practice this plugin checks has a source. Sentences drawn from the official docs, Kent Beck's writing, the EvilGenie paper, and the Rails guide are tied to R0–R5 and to each completion, test-integrity, and project-guard rule. There is one bar. **What a rule blocks must be in the source sentence, and the rule's scope must not reach beyond it.**
 
-| Check | Source | Sentence |
-|---|---|---|
-| Answering, asserting, deferring or guessing without looking (R0, R1, R2a, R2b) | [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices), "Minimizing hallucinations in agentic coding" | "Never speculate about code you have not opened. (…) Make sure to investigate and read relevant files BEFORE answering questions about the codebase." |
-| Releasing an answer that says why it cannot check (impossibility exemption) | [Reduce hallucinations](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations) | "Allow Claude to say "I don't know"" |
-| False "done" (R3), claiming a failed command passed (R5), end-of-turn check, a PR body that claims success | [Best practices](https://code.claude.com/docs/en/best-practices) | "Have Claude show evidence rather than asserting success" |
-| Disabling or deleting tests (`ti.skip`, `ti.rm`), full check before commit (`done.commit`) | Kent Beck, [Augmented Coding](https://newsletter.kentbeck.com/p/augmented-coding-beyond-the-vibes) | "cheating, for example by disabling or deleting tests" · "Only commit when: 1. ALL tests are passing" |
-| Fewer assertions, runner-config exclusions (`ti.assert`, `ti.exclude`) | Gabor et al., [EvilGenie](https://arxiv.org/abs/2511.21654), "Modified Testing Procedure" | "The agent modifies the test cases or the code that runs the testing procedure." |
-| Rewritten migrations | [Best practices](https://code.claude.com/docs/en/best-practices) | "Write a hook that blocks writes to the migrations folder." |
-| Editing a committed migration (deleting is not blocked) | [Rails migrations guide](https://guides.rubyonrails.org/active_record_migrations.html) | "In general, editing existing migrations that have been already committed to source control is not a good idea." |
-
-Rules dropped because their sources did not back them (R4, `pg.noverify`, `rb.write`) and rules whose scope was narrowed (R2a, R2b, `done.pr`) are recorded in V49 of the [verification log](docs/VERIFICATION.md). Simon Willison's [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) grounds the commands (`/check:setup-checks`, `/check:tdd`, `/check:finish`), not the gate rules.
+Which sentence grounds which rule, and which rules were dropped or narrowed for lack of one, are recorded in [the detail doc's Sources section](docs/gates.en.md#sources).
 
 ## Related
 
