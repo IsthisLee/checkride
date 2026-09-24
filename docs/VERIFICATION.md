@@ -4963,3 +4963,22 @@ Project TOML: OK
 $ git diff --check
 (출력 없음)
 ```
+
+## V67 — 프로젝트별 플러그인·스킬 설치 구분
+
+README에 프로젝트 팀 공유 절차를 보강했다. Claude Code에서는 `.claude/settings.json`이 마켓플레이스와 플러그인을 선언해도 외부 플러그인 자체는 협업자마다 설치해야 한다. Codex는 대상 저장소의 마켓플레이스 파일과 `.codex/config.toml`로 프로젝트 활성화를 설정한다. 두 플랫폼 모두 플러그인에 스킬과 훅을 함께 패키징하므로, 플러그인 설치에 `npx skills add`를 추가로 쓸 필요가 없으며 훅만 선택하는 설치 옵션은 없다. `npx skills add`는 별도로 스킬 파일만 복사한다.
+
+공식 문서를 열어 확인한 날짜는 2026-09-24다. Claude Code의 [마켓플레이스·플러그인 설치 및 프로젝트 범위](https://code.claude.com/docs/en/discover-plugins), Codex의 [저장소 마켓플레이스·프로젝트 플러그인 활성화](https://developers.openai.com/plugins/build/plugins), Skills CLI의 [에이전트 대상·전역 옵션](https://github.com/vercel-labs/skills)을 근거로 설명했다.
+
+```
+$ npx --yes prettier --write README.md --range-start 3239 --range-end 6263
+README.md 52ms (unchanged)
+
+$ npx --yes prettier --write README.en.md --range-start 4812 --range-end 8930
+README.en.md 61ms (unchanged)
+
+$ git diff --check
+(출력 없음)
+```
+
+문서 변경이므로 단위 테스트는 실행하지 않았다.
