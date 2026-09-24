@@ -8,7 +8,7 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 
 | 검사하는 모범 사례 | 게이트가 보는 것 | 끄기 |
 |---|---|---|
-| 근거 없이 주장하지 않는다 | 도구를 안 쓰고 상태를 단정하거나, 확인을 미루거나, 실패한 명령을 통과라고 주장하는 턴(R0~R5) | `.check.toml`의 `disabled_rules`로 규칙별(`R0`~`R5`), `NGG_JUDGE=0`은 의미 판정만 |
+| 근거 없이 주장하지 않는다 | 도구를 안 쓰고 상태를 단정하거나, 확인을 미루거나, 실패한 명령을 통과라고 주장하는 턴(R0~R5) | `checkride.toml`의 `disabled_rules`로 규칙별(`R0`~`R5`), `NGG_JUDGE=0`은 의미 판정만 |
 | 성공을 주장하지 말고 근거를 보여 준다 | 코드를 고친 턴이 저장소 검사를 통과하지 않은 채 끝나는 것, 돌린 명령과 출력 없이 성공을 주장하는 PR | `disabled_rules`에 `done.turn`·`done.commit`·`done.pr`, 전체는 `NGG_DONE=0` |
 | 테스트를 비활성화하거나 지우지 않는다 | `.skip` 추가, 단언 감소, 테스트 파일 삭제, 러너 설정에 제외 추가 | `disabled_rules`에 `ti.skip`·`ti.assert`·`ti.rm`·`ti.exclude`, 전체는 `NGG_TESTGUARD=0` |
 | 쌓인 기록은 고치지 않는다 | `append_only` 경로의 기존 파일 수정 | 설정에서 `append_only`를 빼거나 `NGG_GUARD=0` |
@@ -37,11 +37,11 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 /checkride:setup-checks
 ```
 
-검사 명령을 찾아 `.check.toml`에 확정하고 `append_only` 경로를 제안한다. 쓰기 전에 물어본다.
+검사 명령을 찾아 `checkride.toml`에 확정하고 `append_only` 경로를 제안한다. 쓰기 전에 물어본다.
 
 ## 메시지 언어
 
-`NGG_LANG=ko` 또는 `en`. 주지 않으면 `.check.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 보고 `ko` 계열일 때만 한국어다. 저장소마다 정하려면 `.check.toml`에 `lang`을, 모든 저장소에 걸려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 둔다. `/checkride:config`로 둘 다 고를 수 있다.
+`NGG_LANG=ko` 또는 `en`. 주지 않으면 `checkride.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 보고 `ko` 계열일 때만 한국어다. 저장소마다 정하려면 `checkride.toml`에 `lang`을, 모든 저장소에 걸려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 둔다. `/checkride:config`로 둘 다 고를 수 있다.
 
 ## 끄기
 

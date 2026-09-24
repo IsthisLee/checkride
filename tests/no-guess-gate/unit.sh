@@ -410,11 +410,11 @@ printf '%s' '{"session_id":"t23","hook_event_name":"Stop","stop_hook_active":fal
   | NGG_JUDGE=0 NGG_STATE="$K23" "$W/stop.sh" 2>/dev/null; check 0 $? "R5: 답 전체가 JSON 이면 면제"
 
 # 24. 저장소별 규칙 끄기. 오탐을 만나면 환경변수로 통째로 끄거나 플러그인을 끄는 수밖에 없었다.
-#     환경변수는 한 사람 셸에만 있어 팀이 모른다. .check.toml 에 적으면 PR 에 보이고 리뷰 대상이 된다.
+#     환경변수는 한 사람 셸에만 있어 팀이 모른다. checkride.toml 에 적으면 PR 에 보이고 리뷰 대상이 된다.
 #     끄기를 쉽게 만드는 변경이 아니라 끄는 행위를 보이게 만드는 변경이다.
 P24="$T/p24"; mkdir -p "$P24"; K24="$T/k24"
 mk24() { printf '{"session_id":"t24","hook_event_name":"Stop","stop_hook_active":false,"cwd":"%s","last_assistant_message":"%s"}' "$P24" "$1"; }
-conf24() { if [ -n "$1" ]; then printf 'disabled_rules = "%s"\n' "$1" > "$P24/.check.toml"; else rm -f "$P24/.check.toml"; fi; }
+conf24() { if [ -n "$1" ]; then printf 'disabled_rules = "%s"\n' "$1" > "$P24/checkride.toml"; else rm -f "$P24/checkride.toml"; fi; }
 NOFILE="이 디렉터리에는 package.json 파일이 없다."
 # R0 는 사용자가 이 디렉터리 상태를 물었을 때만 걸린다. 프롬프트를 남겨 두 규칙이 다 걸리게 한다.
 printf '{"session_id":"t24","hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"이 디렉터리에 package.json 있어?"}' "$P24" \

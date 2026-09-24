@@ -22,7 +22,7 @@ edit() { python3 -c 'import json,sys; print(json.dumps({"session_id":"pg","hook_
 bash_() { python3 -c 'import json,sys; print(json.dumps({"session_id":"pg","hook_event_name":"PreToolUse","cwd":sys.argv[1],"tool_name":"Bash","tool_input":{"command":sys.argv[2]}},ensure_ascii=False))' "$1" "$2"; }
 P="$T/proj"; mkdir -p "$P/supabase/migrations" "$P/src"
 printf 'create table a();\n' > "$P/supabase/migrations/0001_init.sql"
-printf 'append_only = "supabase/migrations, db/migrate"\n' > "$P/.check.toml"
+printf 'append_only = "supabase/migrations, db/migrate"\n' > "$P/checkride.toml"
 
 # 1. 설정이 없으면 아무것도 막지 않는다
 P0="$T/noconf"; mkdir -p "$P0/supabase/migrations"; printf 'x\n' > "$P0/supabase/migrations/0001.sql"
@@ -66,7 +66,7 @@ grep -q '프로젝트 가드' "$T/pl-ko"; check 0 $? "ko: 한국어 머리글"
 grep -q 'Project guard' "$T/pl-en"; check 0 $? "en: 영어 머리글"
 nohangul "$(cat "$T/pl-en")"; check 0 $? "en: 한글이 섞이지 않는다"
 
-# 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 .check.toml 을 쓴다.
+# 저장소 루트는 cwd 가 아니다. 하위 폴더에 들어가 있어도 루트의 checkride.toml 을 쓴다.
 edit "$P/src" Edit "$P/supabase/migrations/0001_init.sql" | "$W/pre.sh" 2>/dev/null; check 2 $? "루트: 하위 폴더에서도 append-only 수정을 막는다"
 
 # 빠른 경로. 배선이 Edit|Write 로 바뀌어도, Bash 입력이 들어오면 파이썬 없이 바로 끝나야 한다.

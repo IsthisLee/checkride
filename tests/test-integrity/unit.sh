@@ -134,7 +134,7 @@ bash_ "$P" 'rm -rf build && git rm src/a.test.ts' | "$W/pre.sh" 2>/dev/null; che
 
 # 항목 하나만 끄기. NGG_TESTGUARD=0 은 넷을 한꺼번에 끄고 팀에 보이지 않는다.
 Q="$T/off"; mkdir -p "$Q/src" "$Q/tests"
-offc() { printf 'disabled_rules = "%s"\n' "$1" > "$Q/.check.toml"; }
+offc() { printf 'disabled_rules = "%s"\n' "$1" > "$Q/checkride.toml"; }
 # 무력화 표기가 든 픽스처는 실행할 때 만든다. 소스에 그 글자를 적으면 이 파일을 고칠 때
 # 설치된 테스트 무결성 게이트가 픽스처를 무력화로 읽고 편집을 막는다. 실제로 막혔다.
 SKIP_OLD="it('w', () => { expect(x).toBe(1) })"; SKIP_NEW=$(printf '%s' "$SKIP_OLD" | sed 's/^it/&.skip/')
@@ -155,7 +155,7 @@ edit "$Q" "$Q/src/a.test.ts" "$SKIP_OLD" "$SKIP_NEW" | NGG_STATE="$T/tis" "$W/pr
 grep -q 'ti.skp' "$T/eoff"; check 0 $? "끄기: 없는 이름을 막을 때 알린다"
 
 # 한 번만 허용하기. 허용 목록은 prompt.sh 가 사람의 프롬프트에서만 적는다. 여기서는 그 결과를 둔다.
-rm -f "$Q/.check.toml"; AL="$T/allow"; mkdir -p "$AL/state/ti"
+rm -f "$Q/checkride.toml"; AL="$T/allow"; mkdir -p "$AL/state/ti"
 printf 'ti.skip\n' > "$AL/state/ti/allow"
 edit "$Q" "$Q/src/a.test.ts" "$SKIP_OLD" "$SKIP_NEW" | NGG_STATE="$AL" "$W/pre.sh" 2>/dev/null; check 0 $? "허용: 허용한 항목은 한 번 통과한다"
 grep -q 'allowed=\[ti.skip\]' "$AL/state/events.log"; check 0 $? "허용: 통과시킨 사실이 events.log 에 남는다"
@@ -168,7 +168,7 @@ edit "$Q" "$Q/src/a.test.ts" "$SKIP_OLD" "$SKIP_NEW" | NGG_STATE="$AL" "$W/pre.s
 offc ti.skip; mkdir -p "$Q/src/deep"
 edit "$Q/src/deep" "$Q/src/a.test.ts" "$SKIP_OLD" "$SKIP_NEW" | NGG_STATE="$T/tis" "$W/pre.sh" 2>/dev/null; check 0 $? "루트: 하위 폴더에서도 루트의 disabled_rules 를 읽는다"
 # 빠른 경로가 Edit 을 Bash 로 잘못 읽으면 안 된다. 본문에 Bash 라는 글자가 있어도 Edit 검사는 그대로다.
-rm -f "$Q/.check.toml"
+rm -f "$Q/checkride.toml"
 edit "$Q" "$Q/src/a.test.ts" "run('Bash')" "$SKIP_NEW run('Bash')" | "$W/pre.sh" 2>/dev/null; check 2 $? "빠른 경로: 본문에 Bash 가 있어도 Edit 은 끝까지 검사한다"
 
 # 빠른 경로. 이 훅은 Bash 호출마다 돈다. Bash 에서 보는 것은 테스트 파일 삭제뿐이라, 삭제 글자가 없으면

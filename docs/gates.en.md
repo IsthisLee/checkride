@@ -61,9 +61,9 @@ The wiring is in `plugin/hooks/hooks.json`: 12 hooks in all. Each one either **b
 | | `Stop`·`SubagentStop` | `no-guess-gate/stop.sh` | **Blocks**: checks the answer as Claude tries to finish and keeps the turn open in these cases. The same runs when a subagent finishes.<br>· R0: you asked about the repo or a file and Claude answered without using any tool<br>· R1: Claude said a file exists or doesn't without checking<br>· R2a·R2b: with no tool calls, Claude put it off ("this needs checking") or guessed ("it's probably …")<br>· R3: Claude said "tests pass" without running a single command<br>· R5: the last command failed, yet Claude said it passed<br>An answer that says why it can't check, or asks you back, is not blocked |
 | **Completion** | `PreToolUse` (Bash) | `done-gate/pre.sh` | **Blocks**: right before `gh pr create`, reads the PR body. If it claims success ("tests pass") but has no command output (a code block) or screenshot, the PR does not open (`done.pr`).<br>**Blocks**: right before `git commit`, runs the full check (`test_command`); if it fails, the commit does not go through (`done.commit`). Runs only in repos that split out a quicker per-turn check with `fast_test_command` |
 | | `PostToolUse` (Edit·Write) | `done-gate/post.sh` | **Records** the paths of files changed this turn. Used at turn end to tell whether code files were changed |
-| | `Stop` | `done-gate/stop.sh` | **Blocks**: if code files changed this turn, actually runs the repo's check command and keeps the turn open if it fails (`done.turn`). Docs-only turns run nothing.<br>The check command is looked up in `.check.toml` → `package.json` → `Makefile` → `pyproject.toml`; if none is found or it times out, it only tells you and does not block |
+| | `Stop` | `done-gate/stop.sh` | **Blocks**: if code files changed this turn, actually runs the repo's check command and keeps the turn open if it fails (`done.turn`). Docs-only turns run nothing.<br>The check command is looked up in `checkride.toml` → `package.json` → `Makefile` → `pyproject.toml`; if none is found or it times out, it only tells you and does not block |
 | **Test integrity** | `PreToolUse` (Edit·Write·Bash) | `test-integrity/pre.sh` | **Blocks** edits that make tests pass by changing the tests, before they run.<br>· adding disable markers such as `.skip(`, `.only(`, `xit(`, `@pytest.mark.skip` (`ti.skip`)<br>· removing assertions such as `expect(` or `assert` (`ti.assert`)<br>· deleting test files with `rm` or `git rm` (`ti.rm`)<br>· adding test exclusions to jest, vitest or pytest config (`ti.exclude`)<br>Changing an expected value or adding assertions is not blocked |
-| **Project guard** | `PreToolUse` (Edit·Write) | `project-guard/pre.sh` | **Blocks** editing a file that already exists under a path listed in `append_only` in `.check.toml` (a migrations folder, for example). Adding new files and deleting files are allowed. Without `append_only`, it blocks nothing |
+| **Project guard** | `PreToolUse` (Edit·Write) | `project-guard/pre.sh` | **Blocks** editing a file that already exists under a path listed in `append_only` in `checkride.toml` (a migrations folder, for example). Adding new files and deleting files are allowed. Without `append_only`, it blocks nothing |
 | Repo profile (not a gate) | `SessionStart` | `repo-profile/session.sh` | **Loads** about twenty lines of fact when a session opens: package manager, stack, check command, append-only paths, disabled rules, and each gate's status. Facts only, no instructions, and it never blocks |
 
 Script paths are relative to `plugin/hooks/`. The semantic judge `judge.py` is not a hook; `stop.sh` calls it only when R2a or R2b alone fired.
@@ -106,7 +106,7 @@ If it fails or times out, the block stands. Each verdict is logged to `${CLAUDE_
 
 Regex doesn't read intent, and in some repos one rule fires far more often than it should. Turning the whole gate off to escape it takes every other check in that gate down with it.
 
-Name it in `.check.toml` and only that one drops out.
+Name it in `checkride.toml` and only that one drops out.
 
 ```toml
 # R2b fires on every design discussion here, and PRs get a separate human review
@@ -128,7 +128,7 @@ Comma-separate several; case doesn't matter. These are the names:
 
 The project guard's append-only has no name: without `append_only` it is already off.
 
-**Putting it in a file rather than an env var is the whole point.** An env var like `NGG_DONE=0` switches off every check in that gate at once, and in someone's shell it is invisible to the rest of the team. `.check.toml` is committed, so it shows up in the pull request and the reason lives in the same commit. This does not make switching something off easier; it makes switching it off **visible**. The env vars stay as an emergency switch.
+**Putting it in a file rather than an env var is the whole point.** An env var like `NGG_DONE=0` switches off every check in that gate at once, and in someone's shell it is invisible to the rest of the team. `checkride.toml` is committed, so it shows up in the pull request and the reason lives in the same commit. This does not make switching something off easier; it makes switching it off **visible**. The env vars stay as an emergency switch.
 
 The fact is recorded in three places.
 
@@ -165,13 +165,13 @@ The check command is resolved in this order:
 
 | Order | Source |
 |---|---|
-| 1 | `test_command` in `.check.toml` at the repo root |
+| 1 | `test_command` in `checkride.toml` at the repo root |
 | 2 | `scripts.test` in `package.json` → `npm test` |
 | 3 | a `test` target in `Makefile` → `make test` |
 | 4 | `pyproject.toml` → `python3 -m pytest -q` |
 
 ```toml
-# .check.toml
+# checkride.toml
 fast_test_command = "npm test -- --changed"   # per turn
 test_command      = "npm test"                # before a commit
 ```
@@ -182,7 +182,7 @@ Three principles. **Never block on what it doesn't know** — if no check comman
 
 Disable with `NGG_DONE=0`; the timeout is `DONE_TIMEOUT` (default 180s).
 
-This repo eats its own dog food: its `.check.toml` points at its own test suites, so changing a hook makes the hook check itself.
+This repo eats its own dog food: its `checkride.toml` points at its own test suites, so changing a hook makes the hook check itself.
 
 ### No evidence, no PR
 
@@ -237,7 +237,7 @@ This guard is narrower than both: **new files are allowed; only edits to existin
 **Deleting and moving are not blocked.** Both sources stop at writes and edits, and the Rails guide describes being able to "delete or prune" old migration files once the schema file is the source of truth. `rm` and `git rm` used to be blocked too; that had no source and was dropped (V50). Sources checked on 2026-09-16.
 
 ```toml
-# .check.toml
+# checkride.toml
 append_only = "supabase/migrations, db/migrate"
 ```
 
@@ -294,13 +294,13 @@ The gates run on their own. What needs your judgment about *when* and *what it c
 | Command | What it does |
 |---|---|
 | `/checkride:spec` | Interviews you with `AskUserQuestion` before a large feature and writes `SPEC.md` |
-| `/checkride:setup-checks` | Actually runs the candidate check command, then pins it in `.check.toml`; proposes a baseline, append-only paths, and secret-file denies |
+| `/checkride:setup-checks` | Actually runs the candidate check command, then pins it in `checkride.toml`; proposes a baseline, append-only paths, and secret-file denies |
 | `/checkride:tdd` | Failing test first, confirm RED, minimum implementation |
 | `/checkride:finish` | Runs the checks and lints, then commits, pushes, and opens a PR with the command output as evidence in its body |
 | `/checkride:handoff` | Writes a handoff for the next session |
 | `/checkride:status` | Measures and reports what every gate is actually doing |
 | `/checkride:full-cycle` | Explore → plan → implement → review → PR, in order |
-| `/checkride:config` | Shows every gate item with what it blocks and where it comes from, then writes your picks to `disabled_rules`. Also pins the gate's language, per repo (`lang` in `.check.toml`) or globally (`env.NGG_LANG` in `~/.claude/settings.json`) |
+| `/checkride:config` | Shows every gate item with what it blocks and where it comes from, then writes your picks to `disabled_rules`. Also pins the gate's language, per repo (`lang` in `checkride.toml`) or globally (`env.NGG_LANG` in `~/.claude/settings.json`) |
 
 **The commands are written in Korean and answer in whatever language you write in.** `SKILL.md` cannot branch on locale. The gate's own sentences are split by language in `msg.sh`, but a command file cannot be, so the audience is set to Korean readers and both the body and the `description` are written in Korean. What a person actually reads is the `description` in the command list, so that is the part that has to be readable. An instruction in the body keeps the reply in the caller's language, so writing to a command in English still gets an English answer, and quoted source sentences stay in their original English. From 2026-09-11 (`71147c3`) until 2026-09-22 these files were written in English instead; that decision and why it was reversed are recorded as V31 and V57 in the [verification log](VERIFICATION.md).
 

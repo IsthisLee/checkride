@@ -2897,14 +2897,14 @@ R1 6 건·R2b 24 건·R3 4 건)을 대표하는 예시다. 로그의 `last=` 필
 
 ## V44 `/check:config` 언어 옵션에 전역 범위를 더했다
 
-언어 옵션이 `.check.toml` 의 `lang` 만 쓸 수 있어서, 모든 저장소에 한국어를 걸려면 `NGG_LANG` 을 손으로
+언어 옵션이 `checkride.toml` 의 `lang` 만 쓸 수 있어서, 모든 저장소에 한국어를 걸려면 `NGG_LANG` 을 손으로
 넣어야 했다. 5단계가 언어를 고른 뒤 쓸 곳(이 저장소 / 전역)을 한 번 더 묻게 바꿨다. 전역을 고르면
 `~/.claude/settings.json` 의 `env.NGG_LANG` 키 하나만 바꾼다. 그 파일에는 토큰이 있을 수 있어 통째로
 출력하지 않게 했다.
 
-작업 중에 테스트 격리 결함이 드러났다. 이 저장소의 `.check.toml` 에 `lang = "ko"` 를 넣자
+작업 중에 테스트 격리 결함이 드러났다. 이 저장소의 `checkride.toml` 에 `lang = "ko"` 를 넣자
 `tests/lib/unit.sh` 가 4건 실패했다. 같은 테스트를 HEAD 워크트리에서 돌리면 전부 통과한다.
-`run()` 이 로케일 변수만 지우고 `CWD` 를 정하지 않아, 게이트가 저장소 루트의 `.check.toml` 을 찾아
+`run()` 이 로케일 변수만 지우고 `CWD` 를 정하지 않아, 게이트가 저장소 루트의 `checkride.toml` 을 찾아
 `lang` 을 읽기 때문이다. 전역 `NGG_LANG` 이 같은 일을 하므로 저장소의 `lang` 줄은 지웠다.
 **격리 결함 자체는 고치지 않았다.** 누가 이 저장소에 `lang` 을 넣으면 같은 4건이 다시 깨진다.
 
@@ -2916,7 +2916,7 @@ git worktree add --detach [[ORCA_RICH_MD:d3f7df2cc17b14c9a43f8b0e96dc537d:inline
 ( cd [[ORCA_RICH_MD:d3f7df2cc17b14c9a43f8b0e96dc537d:inline-html:%3Cscratchpad%3E]]/head-wt && tests/lib/unit.sh 2>&1 | tail -1 )
 # lang 줄 제거 뒤
 tests/skills-unit.sh 2>&1 | tail -1
-bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"; echo "rc=$?"
+bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' checkride.toml)"; echo "rc=$?"
 ```
 
 출력:
@@ -2995,11 +2995,11 @@ Stop  | done-gate/stop.sh         70.9    99.2
 편집 기록이 없었다. 새 세션을 열지 않아도 플러그인 훅(ecc)에 닿았다는 뜻이다.
 **did-you-check 훅 프로세스의 환경은 직접 찍어 보지 않았다.**
 
-## V46 메시지 테스트가 둘러싼 저장소의 `.check.toml` 을 읽지 않게 했다
+## V46 메시지 테스트가 둘러싼 저장소의 `checkride.toml` 을 읽지 않게 했다
 
-이 저장소의 `.check.toml` 에 `lang = "ko"` 를 넣으면 `tests/lib/unit.sh` 의 로케일 폴백 검사 네 건이
+이 저장소의 `checkride.toml` 에 `lang = "ko"` 를 넣으면 `tests/lib/unit.sh` 의 로케일 폴백 검사 네 건이
 `기대=on 실측=켜짐` 으로 뒤집혔다. `run()` 이 로케일 변수는 지우지만 `CWD` 를 주지 않아, 게이트의
-`find_root` 가 테스트를 돌리는 폴더에서 위로 올라가 저장소의 `.check.toml` 을 찾고 `lang` 을 읽기 때문이다.
+`find_root` 가 테스트를 돌리는 폴더에서 위로 올라가 저장소의 `checkride.toml` 을 찾고 `lang` 을 읽기 때문이다.
 
 먼저 측정 도구부터 의심했다. HEAD 를 `git worktree` 로 떠서 전 묶음을 돌리자 `no-guess-gate` 뒤로
 "파일 없음" 이 이어졌다. 테스트가 아니라 워크트리를 관리하는 앱이 새 워크트리를 치운 것이었다
@@ -3010,7 +3010,7 @@ Stop  | done-gate/stop.sh         70.9    99.2
 
 ```
 D="$(mktemp -d)/red"; git clone -q --local . "$D"
-printf '\nlang = "ko"\n' >> "$D/.check.toml"; cd "$D"
+printf '\nlang = "ko"\n' >> "$D/checkride.toml"; cd "$D"
 for s in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do bash "tests/$s/unit.sh" 2>&1 | tail -1; done
 for s in skills-unit attack-surface invariants; do bash "tests/$s.sh" 2>&1 | tail -1; done
 ```
@@ -3034,20 +3034,20 @@ invariants      전부 통과
 
 ```
 tests/lib/unit.sh 2>&1 | grep -E '❌|실패'
-❌ CWD 를 안 주면 둘러싼 .check.toml 의 lang 을 읽지 않는다 (기대=on 실측=켜짐)
+❌ CWD 를 안 주면 둘러싼 checkride.toml 의 lang 을 읽지 않는다 (기대=on 실측=켜짐)
 실패 1건
 ```
 
 `run()` 이 `CWD` 를 빈 폴더(`$T/nocwd`)로 주게 고쳤다. 묶음에 `CWD` 가 있으면 `env` 에서 뒤에 오는 그 값이
-이기므로 3b 는 그대로 `.check.toml` 을 가리킨다.
+이기므로 3b 는 그대로 `checkride.toml` 을 가리킨다.
 
 ```
 tests/lib/unit.sh                                   # 이 저장소
-✅ CWD 를 안 주면 둘러싼 .check.toml 의 lang 을 읽지 않는다
+✅ CWD 를 안 주면 둘러싼 checkride.toml 의 lang 을 읽지 않는다
 전부 통과  (검사 26건)
 
 # HEAD 복사본에 고친 unit.sh 를 덮고 lang = "ko" 를 넣은 뒤
-복사본 .check.toml lang 줄: 1
+복사본 checkride.toml lang 줄: 1
 전부 통과
 
 shellcheck -x -s bash tests/lib/unit.sh
@@ -3753,7 +3753,7 @@ AssertionError: 문서의 훅 인용이 .githooks/pre-commit 과 다르다
 
 ### 측정 5: 저장소 전체 검사
 
-실행: `.check.toml` 의 검사 명령 전부
+실행: `checkride.toml` 의 검사 명령 전부
 
 출력:
 
@@ -3822,7 +3822,7 @@ invariants       전부 통과
 
 ```
 [check 프로필] did-you-check  (브랜치 main)
-검사 명령: for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   (출처: .check.toml)
+검사 명령: for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh   (출처: checkride.toml)
 커밋 가드: 켜짐 (core.hooksPath = .githooks)
 게이트: 근거(항상) · 완료(켜짐) · 테스트 무결성(항상) · 프로젝트 가드(설정 없어 막는 것 없음)
 ```
@@ -3930,7 +3930,7 @@ husky 훅 실행됨: 1
 
 ### 측정 5: 저장소 전체 검사와 숫자
 
-`.check.toml` 의 전체 검사에 `setup` 을 넣었다. 종료 코드 0.
+`checkride.toml` 의 전체 검사에 `setup` 을 넣었다. 종료 코드 0.
 합계를 실측해 `CLAUDE.md` 를 맞췄다. 처음에 445 로 적었는데 실측이 449 였다. `invariants` 를 17 로 보고
 계산했으나 V53 에서 4건을 더해 21 이 되어 있었다. **문서의 숫자는 계산하지 말고 세어야 한다.**
 
@@ -4010,7 +4010,7 @@ tests/invariants.sh:115,121,127,128   (훅 인용 대조 검사)
 - **VERIFICATION 의 과거 기록은 고치지 않는다.** 검증 기록은 그 시점에 무엇을 재고 무엇을 판단했는지의
   기록이라, 나중에 뒤집힌 결정까지 지우면 왜 뒤집혔는지를 알 수 없게 된다.
 
-## V57 커맨드 여덟을 한국어로 되돌리고, `.check.toml` 을 고른 근거를 문서에 적는다
+## V57 커맨드 여덟을 한국어로 되돌리고, `checkride.toml` 을 고른 근거를 문서에 적는다
 
 배경: V31 에서 커맨드 일곱을 한국어에서 영어로 바꿨다. 영어권
 사용자가 README 까지만 영어로 읽고 그 뒤에 만지는 것은 전부 한국어였기 때문이다. 2026-09-22 에 배포 대상을
@@ -4064,7 +4064,7 @@ AssertionError: status: 내가 쓰는 언어로 답하라는 줄이 없다
 나왔고, 그것을 종료 코드 0 으로 읽을 뻔했다.
 
 ```
-$ out=$(bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)" 2>&1); rc=$?
+$ out=$(bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' checkride.toml)" 2>&1); rc=$?
 $ echo "$out" | grep -cE '^❌'
 0
 $ echo "전체 검사 종료코드=$rc"
@@ -4079,9 +4079,9 @@ $ echo "전체 검사 종료코드=$rc"
 요구한다(`'"[A-Z][^"]{25,}"'`). 한국어로 번역하면서도 이 검사가 통과한다. 공식 문서의 문장은 원문 그대로 두고
 바로 아래에 번역을 붙였기 때문이다. 근거 문서의 문장을 번역본으로 바꾸면 무엇이 출처인지 대조할 수 없게 된다.
 
-### `.check.toml` 을 고른 근거가 문서에 없었다
+### `checkride.toml` 을 고른 근거가 문서에 없었다
 
-`docs/decisions.md` 에서 `.check.toml` 을 grep 하면 0건이었다. 규칙마다 출처를 대는 저장소인데 설정 형식을
+`docs/decisions.md` 에서 `checkride.toml` 을 grep 하면 0건이었다. 규칙마다 출처를 대는 저장소인데 설정 형식을
 고른 이유는 코드 주석 한 줄(`no-guess-gate/stop.sh:86`)에만 있었다. 공식 문서를 열어 확인하고 8절로 적었다.
 
 공식 수단은 매니페스트의 `userConfig` 다. 저장 위치도 문서에 있다.
@@ -4092,7 +4092,7 @@ $ echo "전체 검사 종료코드=$rc"
 > (`~/.claude/settings.json`), `--settings`, 관리형 설정이다.
 
 **프로젝트의 `.claude/settings.json` 이 목록에 없다.** 검사 명령과 `disabled_rules` 는 저장소마다 달라야 하고
-팀이 공유해야 하는데 `userConfig` 로는 그럴 수 없다. `.check.toml` 은 차선이 아니라 이 목적에 유일하게 맞는
+팀이 공유해야 하는데 `userConfig` 로는 그럴 수 없다. `checkride.toml` 은 차선이 아니라 이 목적에 유일하게 맞는
 수단이다. 출처는 [Plugins reference](https://code.claude.com/docs/en/plugins-reference), 2026-09-22 확인.
 
 부수 제약 둘도 실측했다.
@@ -4236,7 +4236,7 @@ tests/no-guess-gate/selftest.sh:6:# --setting-sources "" 로 사용자 설정·C
 
 ## V58 README 가 설치 다음에 할 일을 알려 주지 않았다
 
-사용자가 물었다. "플러그인 설치하면 알아서 hook 이 전부 다 돌게 된다고? 그러면 `.check.toml` 은 뭐하는
+사용자가 물었다. "플러그인 설치하면 알아서 hook 이 전부 다 돌게 된다고? 그러면 `checkride.toml` 은 뭐하는
 애야?" **문서를 다 읽은 사람이 이 질문을 한다면 문서가 답을 안 하고 있는 것이다.**
 
 ### 게이트별로 설정이 필요한지 실측했다
@@ -4258,7 +4258,7 @@ $ grep -ho 'disabled_rules\|test_command\|append_only' plugin/hooks/test-integri
 ```
 
 정리하면 이렇다. 근거 게이트는 `disabled_rules` 만, 테스트 무결성은 아무것도 읽지 않으므로 설정 없이
-그대로 막는다. 완료 게이트는 `.check.toml` 이 없으면 `package.json` → `Makefile` → `pyproject.toml` 로
+그대로 막는다. 완료 게이트는 `checkride.toml` 이 없으면 `package.json` → `Makefile` → `pyproject.toml` 로
 폴백하고 그것도 실패하면 `exit 0` 으로 통과한다. **프로젝트 가드는 `append_only` 가 없으면 `exit 0` 이라
 아무것도 막지 않는다.** 이 사실은 `repo-profile` 이 세션마다 이미 출력하고 있었다(`rp.noconf`,
 "설정 없어 막는 것 없음").
@@ -4318,7 +4318,7 @@ $ grep -rn "check:init\|check:ship\|check:auto" \
     --exclude=VERIFICATION.md --exclude=CHANGELOG.md .
 (출력 없음)
 
-$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"
+$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' checkride.toml)"
 실패 줄: 0
 종료코드=0
 ```
@@ -4332,7 +4332,7 @@ $ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"
 `tests/invariants.sh:119` 가 `CONTRIBUTING` 두 판의 존재를 검사해 2건이 실패했기 때문이다.
 
 **게이트는 정의대로 동작했다.** 검사가 깨진 상태의 커밋을 막는 것이 `done.commit` 이다. 그리고 막힌
-쪽이 우회를 시도하지 않은 것이 더 중요하다. `--no-verify` 도, `.check.toml` 수정도, 범위 밖 파일
+쪽이 우회를 시도하지 않은 것이 더 중요하다. `--no-verify` 도, `checkride.toml` 수정도, 범위 밖 파일
 복구도 하지 않고 멈춰서 보고했다. **이 저장소가 막으려는 세 가지 우회를 모두 피했다.**
 
 복구로 판정한 근거는 셋이다. (1) 삭제가 커밋되지 않았으므로 저장소의 정상 상태는 파일이 있는 것이다.
@@ -4341,7 +4341,7 @@ $ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"
 
 ```
 $ git restore CODE_OF_CONDUCT.md CONTRIBUTING.md CONTRIBUTING.en.md
-$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"
+$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' checkride.toml)"
 실패 줄 없음
 종료코드=0
 ```
@@ -4860,7 +4860,7 @@ UserPromptSubmit PreToolUse Stop SubagentStop PostToolUse SessionStart PostToolU
 ### 결과
 
 ```
-$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' .check.toml)"
+$ bash -c "$(sed -n 's/^test_command = "\(.*\)"$/\1/p' checkride.toml)"
 실패 줄 없음
 ✅ AGENTS.md 의 검사 건수가 실제와 같다(합계 450건)
 종료코드=0
@@ -4880,3 +4880,34 @@ $ grep -n '그 절차\|that procedure\|skipped it' README.md README.en.md
   전체 복원이 그것을 덮는다. 앞에서 동기로 끝내야 한다.
 - **문장의 주어가 무엇을 가리키는지 실측해야 한다.** 「그 절차」가 가리킬 대상이 배선에 없다는 것은
   `hooks.json` 을 열어 보고서야 확인됐다.
+
+## V65 — Codex 스킬 설치 경로와 설정 파일 이름 변경
+
+`npx skills`가 저장소의 `plugin/skills/`를 Codex가 설치할 수 있는 스킬로 찾는지 확인했다. 격리된 임시 디렉터리에서 사용자가 실행할 그대로의 명령으로 설치해 프로젝트 설치 경로를 확인했다. Claude Code 훅과 Codex 스킬의 적용 범위가 다르므로 README에 자동 게이트가 Codex에서 실행되지 않는다는 경계를 적었다. 설정 파일 이름은 `.check.toml`에서 `checkride.toml`로 바꾸고 코드·테스트·문서 참조를 함께 갱신했다.
+
+```
+$ npx --yes skills add . --list
+◇  Found 8 skills
+└  Use --skill <name> to install specific skills
+
+$ npx skills add IsthisLee/checkride
+◇  Found 8 skills
+●  Installing all 8 skills
+  ./.agents/skills/config        copy → Codex
+  ./.agents/skills/finish        copy → Codex
+  ./.agents/skills/full-cycle    copy → Codex
+  ./.agents/skills/handoff       copy → Codex
+  ./.agents/skills/setup-checks  copy → Codex
+  ./.agents/skills/spec          copy → Codex
+  ./.agents/skills/status        copy → Codex
+  ./.agents/skills/tdd           copy → Codex
+◇  Installation complete
+
+$ rg -n '\.check\.toml' --hidden --glob '!.git/**' --glob '!docs/VERIFICATION.md' .
+(출력 없음)
+
+$ git diff --check
+(출력 없음)
+```
+
+설치 확인은 네트워크가 연결된 로컬 `skills` CLI로 수행했다. 모델을 부르는 검증과 테스트 스위트는 실행하지 않았다.
