@@ -125,7 +125,7 @@ fi
 
 printf '%s' "$COMMAND" | grep -qE 'git[[:space:]]+commit\b' || exit 0
 
-conf="$root/.check.toml"
+conf="$root/checkride.toml"
 [ -f "$conf" ] || exit 0
 fast=$(sed -n 's/^[[:space:]]*fast_test_command[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1)
 [ -n "$fast" ] || exit 0                      # 나누지 않았으면 stop.sh가 이미 전체를 돌렸다

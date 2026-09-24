@@ -35,7 +35,7 @@ ngg_lang
 tn() { [ -n "${NGG_MSG_LOADED:-}" ] || {
     # shellcheck source=plugin/hooks/lib/msg.sh
     . "$NGG_LIB/msg.sh"; NGG_MSG_LOADED=1
-    # 차단해서 메시지를 처음 낼 때만 .check.toml 의 lang 을 본다(env 다음, 로케일보다 셈).
+    # 차단해서 메시지를 처음 낼 때만 checkride.toml 의 lang 을 본다(env 다음, 로케일보다 셈).
     ngg_lang_cfg; }
   # M 은 여기서 비운다. msg 가 없을 때(카탈로그 파일이 사라진 경우) msg 안의 초기화에 기대면
   # 앞 호출의 값이 남아 모든 줄이 같은 키로 나온다.
@@ -49,15 +49,15 @@ t() { tn "$@"; echo; }
 state_root() { printf '%s' "${NGG_STATE:-$1}"; }
 
 # 저장소 루트. 훅 입력의 cwd 는 Claude 가 cd 하면 따라간다(공식 hooks 문서: "follows cd commands").
-# cwd 에서만 .check.toml 을 찾으면 하위 폴더에 들어간 뒤 설정을 놓치고 완료 게이트가 조용히
-# 통과했다(V39). cwd 에서 위로 올라가며 .check.toml 이나 .git 이 있는 첫 폴더를 루트로 쓴다.
+# cwd 에서만 checkride.toml 을 찾으면 하위 폴더에 들어간 뒤 설정을 놓치고 완료 게이트가 조용히
+# 통과했다(V39). cwd 에서 위로 올라가며 checkride.toml 이나 .git 이 있는 첫 폴더를 루트로 쓴다.
 # .git 에서 멈추므로 다른 저장소나 워크트리 바깥의 설정을 빌려 쓰지 않는다. 세션을 연 폴더
 # (CLAUDE_PROJECT_DIR) 위로는 올라가지 않는다. 찾지 못하면 cwd 다. 결과는 NGG_ROOT 에 담는다.
 # 명령 안의 상대 경로는 이 루트가 아니라 cwd 기준으로 풀어야 한다. 파라미터 확장만 쓴다.
 find_root() { local d="${CWD:-$PWD}" p
   NGG_ROOT="$d"
   while :; do
-    if [ -f "$d/.check.toml" ] || [ -e "$d/.git" ]; then NGG_ROOT="$d"; return 0; fi
+    if [ -f "$d/checkride.toml" ] || [ -e "$d/.git" ]; then NGG_ROOT="$d"; return 0; fi
     [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ "$d" = "$CLAUDE_PROJECT_DIR" ] && return 0
     p="${d%/*}"; [ -z "$p" ] && p=/
     [ "$p" = "$d" ] && return 0
@@ -82,19 +82,19 @@ quick_tool() { local r
   r="${r%%\"*}"; case "$r" in ""|*[!A-Za-z0-9_.-]*) return 1;; esac
   QT="$r"; }
 
-# 항목 하나만 끄기. .check.toml 의 disabled_rules 한 줄에 근거 게이트의 규칙(R0~R3·R5)과
+# 항목 하나만 끄기. checkride.toml 의 disabled_rules 한 줄에 근거 게이트의 규칙(R0~R3·R5)과
 # 다른 게이트의 항목이 같이 온다. 환경변수는 한 사람 셸에만 있어 팀이 모르므로 파일에 둔다.
 # 막기 직전에만 부른다. 이 파일은 도구 호출마다 읽히므로 걸린 것이 없으면 설정을 읽지 않는다.
 NGG_ITEMS="done.turn done.commit done.pr ti.skip ti.assert ti.rm ti.exclude"
-off_list() { local conf; [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/.check.toml"; [ -f "$conf" ] || return 0
+off_list() { local conf; [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/checkride.toml"; [ -f "$conf" ] || return 0
   sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$conf" | head -1 | tr ',' ' '; }
 
-# .check.toml 의 lang 으로 NGG_L 을 덮는다. NGG_LANG 이 있으면 건드리지 않는다(env 가 이긴다).
+# checkride.toml 의 lang 으로 NGG_L 을 덮는다. NGG_LANG 이 있으면 건드리지 않는다(env 가 이긴다).
 # 로케일보다 세다. off_list 처럼 막기 직전에만 부른다. 도구 호출마다 읽지 않는다.
 # NGG_L 은 msg.sh 가 읽는다. 파일이 갈려 있어 shellcheck 가 쓰임을 못 본다.
 # shellcheck disable=SC2034
 ngg_lang_cfg() { local conf cl; case "${NGG_LANG:-}" in ko|en) return 0;; esac
-  [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/.check.toml"; [ -f "$conf" ] || return 0
+  [ -n "${NGG_ROOT:-}" ] || find_root; conf="$NGG_ROOT/checkride.toml"; [ -f "$conf" ] || return 0
   cl=$(sed -n 's/^[[:space:]]*lang[[:space:]]*=[[:space:]]*"\{0,1\}\([A-Za-z_.-]*\)"\{0,1\}[[:space:]]*$/\1/p' "$conf" | head -1)
   case "$cl" in ko|ko_*|ko.*) NGG_L=ko;; en|en_*|en.*) NGG_L=en;; esac; }
 lc() { printf '%s' "$1" | LC_ALL=C tr '[:upper:]' '[:lower:]'; }

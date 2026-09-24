@@ -26,7 +26,7 @@ This is how the commands drive it. `/checkride:full-cycle` alone walks the five 
 
 <p align="center"><img src="docs/assets/commands.en.svg" alt="A command driving the workflow from explore to pull request" width="760"></p>
 
-Pick items with `/checkride:config`, which shows where each one comes from; the choice is written to `.check.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
+Pick items with `/checkride:config`, which shows where each one comes from; the choice is written to `checkride.toml` and lands in a commit, so the team sees what was turned off. To get past a single false positive in the test-integrity or completion gate, write `check allow <item>` on its own line in your next prompt. The details are in [Turning it off](#turning-it-off).
 
 You never asked for any of it, and it is checked every time. **The hooks do the asking; you focus on judging the results.**
 
@@ -61,6 +61,18 @@ It adds about 256ms per turn. Per-hook numbers are in [the detail doc](docs/gate
 
 Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on every CI run.** The fuzz pass, which throws broken input at every hook, runs on Linux and macOS every time and on Windows when changes land on main. Windows needs Git Bash.
 
+### Use the skills with Codex or another agent
+
+From the target project's root, install all eight checkride skills into that project's Codex setup:
+
+```sh
+npx skills add IsthisLee/checkride
+```
+
+Run it from the target project's root to install all eight skills in `.agents/skills/`, where Codex can use them. In Codex, select a skill such as `$tdd`, or ask “use checkride's tdd skill.” Commit `.agents/skills/` to share them with the team. The CLI may also configure other supported agents that use the same skill path.
+
+This installs workflow skills only. The four automatic gates and session profile are Claude Code hooks and do not run in Codex; adding `checkride.toml` does not enable automatic enforcement there. The `npx skills` CLI installs repository skills for selected agents. Checked on 2026-09-24: [Skills CLI docs](https://www.skills.sh/docs/cli) and [Codex skill docs](https://developers.openai.com/plugins/build/skills).
+
 ### What to do after installing
 
 ```
@@ -69,7 +81,7 @@ Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on 
 
 **Run this and all four gates go to work.** Installing alone gets you the evidence gate and test integrity; the completion gate and the project guard sit idle because they [do not yet know what to block](#two-of-the-four-need-configuration-before-they-do-anything).
 
-`/checkride:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `.check.toml`. It shows you what it is about to write and asks first.
+`/checkride:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `checkride.toml`. It shows you what it is about to write and asks first.
 
 To pick what gets enforced item by item, use `/checkride:config`. To see what is working and what is idle right now, use `/checkride:status`.
 
@@ -79,7 +91,7 @@ All eight work only when **you type them**. Claude never calls one on its own �
 
 | Command | What it does | When to use |
 |---|---|---|
-| `/checkride:setup-checks` | Actually runs the check command to pin it down, picks a folder to protect, and writes both to `.check.toml` | Once, right after installing |
+| `/checkride:setup-checks` | Actually runs the check command to pin it down, picks a folder to protect, and writes both to `checkride.toml` | Once, right after installing |
 | `/checkride:config` | Shows what each gate item blocks and where the rule comes from, then lets you pick what to turn off | When a false positive keeps recurring |
 | `/checkride:status` | Measures and reports which gates are working and which are idle, right now | When you want to know what's blocking |
 | `/checkride:spec` | Interviews you before you write code and produces `SPEC.md` | Starting a large feature |
@@ -159,14 +171,14 @@ Installing wires up every hook. But to block something, a gate sometimes has to 
 | **Completion** | Looks for a check command on its own, and **passes silently** when it finds none |
 | **Project guard** | **Blocks nothing.** It has no way to know which folder to protect |
 
-Each of those two needs exactly one fact: the completion gate needs **what "the check" is in this repository**, and the project guard needs **which folder's history must not be rewritten**. Both go in `.check.toml` at the repo root.
+Each of those two needs exactly one fact: the completion gate needs **what "the check" is in this repository**, and the project guard needs **which folder's history must not be rewritten**. Both go in `checkride.toml` at the repo root.
 
 ```toml
 test_command = "npm test"           # what "the check" means here
 append_only  = "db/migrations"      # existing files here cannot be edited
 ```
 
-Without `.check.toml` the completion gate falls back to `scripts.test` in `package.json`, a `test` target in `Makefile`, then `pyproject.toml`. For a conventional project that guess is right. But **`append_only` cannot be guessed, so until you write it the project guard is running and blocking nothing.**
+Without `checkride.toml` the completion gate falls back to `scripts.test` in `package.json`, a `test` target in `Makefile`, then `pyproject.toml`. For a conventional project that guess is right. But **`append_only` cannot be guessed, so until you write it the project guard is running and blocking nothing.**
 
 Which gates are working and which are idle is printed at the top of every session.
 
@@ -174,7 +186,7 @@ Which gates are working and which are idle is printed at the top of every sessio
 Gates: evidence (always) · completion (on) · test integrity (always) · project guard (unconfigured, blocks nothing)
 ```
 
-"always" means it needs no configuration; "unconfigured, blocks nothing" means it is on but has nothing to block. `/checkride:setup-checks` writes `.check.toml` with you.
+"always" means it needs no configuration; "unconfigured, blocks nothing" means it is on but has nothing to block. `/checkride:setup-checks` writes `checkride.toml` with you.
 
 **The evidence gate does not run in a session nobody is watching.** An answer from a `claude -p` session never reaches a person, so there is nobody to ask back. Set `NGG_HEADLESS=1` to check those sessions in CI.
 
@@ -240,7 +252,7 @@ It is not free. A false positive wastes that one turn, and R0 still has many fal
 | For whom | Why |
 |---|---|
 | **People and teams running subagents autonomously** | It asks "did you check?" for you, in the place where nobody watches each turn |
-| **Repos many people share** | Leave a rule as a request and each person keeps it differently. A hook applies equally to everyone, and whatever `.check.toml` turns off stays in the commit for the team to see |
+| **Repos many people share** | Leave a rule as a request and each person keeps it differently. A hook applies equally to everyone, and whatever `checkride.toml` turns off stays in the commit for the team to see |
 | **Anyone burned by a false "done"** | If you have lost time to "passed" without running the tests, or "not found" without opening the file, that asking becomes automatic |
 | **People keeping TDD and record integrity** | It blocks adding `.skip` to force a pass, or editing a migration that already landed |
 
@@ -264,13 +276,13 @@ Hit a false positive? [Open an issue](../../issues/new?template=false-positive.m
 | Off for me only | Same, with `--scope local` |
 | Semantic judge only | `NGG_JUDGE=0` |
 | Pick checks from a table with their sources | `/checkride:config` |
-| One rule or check only | `disabled_rules = "R2b, done.pr"` in `.check.toml` |
+| One rule or check only | `disabled_rules = "R2b, done.pr"` in `checkride.toml` |
 | Get past one false positive | `check allow ti.skip` on its own line in your next prompt |
 | Every hook, not just this plugin | `"disableAllHooks": true` in settings |
 | Raise the 8-block cap | `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` |
 | Remove entirely | `claude plugin uninstall checkride@checkride` |
 
-Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `.check.toml`, or for every repo with `NGG_LANG` in the `env` block of `~/.claude/settings.json`. `/checkride:config` lets you pick either. Precedence: `NGG_LANG` env > `.check.toml` `lang` > locale, so the global value beats a repo's `lang`.
+Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `checkride.toml`, or for every repo with `NGG_LANG` in the `env` block of `~/.claude/settings.json`. `/checkride:config` lets you pick either. Precedence: `NGG_LANG` env > `checkride.toml` `lang` > locale, so the global value beats a repo's `lang`.
 
 State lives in `~/.claude/plugins/data/checkride-checkride/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
 

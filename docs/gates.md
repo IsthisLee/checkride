@@ -86,9 +86,9 @@ Stop 훅은 규칙을 따지기 전에 두 가지를 먼저 봅니다. 하나라
 | | `Stop`·`SubagentStop` | `no-guess-gate/stop.sh` | **막음**: Claude가 답을 마치려는 순간 답을 검사해, 아래 경우면 턴을 끝내지 못하게 합니다. 서브에이전트가 끝날 때도 같습니다.<br>· R0: 저장소·파일 상태를 물었는데 도구를 하나도 쓰지 않고 답함<br>· R1: 확인하지 않고 파일이 있다·없다고 단정함<br>· R2a·R2b: 도구 없이 "확인이 필요합니다"로 미루거나 "아마 ~일 겁니다"로 추측함<br>· R3: 명령을 하나도 돌리지 않고 "테스트 통과했습니다"라고 함<br>· R5: 마지막 명령이 실패했는데 통과했다고 함<br>확인할 수 없는 이유를 밝히거나 사용자에게 되물으면 막지 않습니다 |
 | **완료** | `PreToolUse`(Bash) | `done-gate/pre.sh` | **막음**: `gh pr create` 직전에 PR 본문을 봅니다. "통과했습니다"처럼 성공을 주장하는데 실행한 명령과 출력(코드 블록)이나 스크린샷이 없으면 PR을 열지 못합니다(`done.pr`).<br>**막음**: `git commit` 직전에 전체 검사(`test_command`)를 돌려, 실패하면 커밋하지 못합니다(`done.commit`). 턴 끝 검사를 `fast_test_command`로 따로 나눈 저장소에서만 돕니다 |
 | | `PostToolUse`(Edit·Write) | `done-gate/post.sh` | **기록**: 이번 턴에 고친 파일 경로를 남깁니다. 턴 끝에 코드 파일을 고쳤는지 판단할 때 씁니다 |
-| | `Stop` | `done-gate/stop.sh` | **막음**: 이번 턴에 코드 파일을 고쳤다면 저장소의 검사 명령을 실제로 돌리고, 실패하면 턴을 끝내지 못하게 합니다(`done.turn`). 문서만 고친 턴은 돌리지 않습니다.<br>검사 명령은 `.check.toml` → `package.json` → `Makefile` → `pyproject.toml` 순으로 찾고, 못 찾거나 시간을 넘기면 알리기만 하고 막지 않습니다 |
+| | `Stop` | `done-gate/stop.sh` | **막음**: 이번 턴에 코드 파일을 고쳤다면 저장소의 검사 명령을 실제로 돌리고, 실패하면 턴을 끝내지 못하게 합니다(`done.turn`). 문서만 고친 턴은 돌리지 않습니다.<br>검사 명령은 `checkride.toml` → `package.json` → `Makefile` → `pyproject.toml` 순으로 찾고, 못 찾거나 시간을 넘기면 알리기만 하고 막지 않습니다 |
 | **테스트 무결성** | `PreToolUse`(Edit·Write·Bash) | `test-integrity/pre.sh` | **막음**: 테스트를 통과시키려고 테스트 쪽을 손대는 편집을 실행 전에 막습니다.<br>· `.skip(`·`.only(`·`xit(`·`@pytest.mark.skip` 같은 끄기 표기를 늘릴 때(`ti.skip`)<br>· `expect(`·`assert` 같은 단언을 줄일 때(`ti.assert`)<br>· `rm`·`git rm`으로 테스트 파일을 지울 때(`ti.rm`)<br>· jest·vitest·pytest 설정에 테스트 제외 패턴을 늘릴 때(`ti.exclude`)<br>기댓값을 고치거나 단언을 더하는 편집은 막지 않습니다 |
-| **프로젝트 가드** | `PreToolUse`(Edit·Write) | `project-guard/pre.sh` | **막음**: `.check.toml`의 `append_only`에 적은 경로(예: 마이그레이션 폴더)에서 이미 있는 파일을 고치려 하면 막습니다. 새 파일을 추가하거나 파일을 지우는 것은 막지 않습니다. `append_only`를 적지 않으면 아무것도 막지 않습니다 |
+| **프로젝트 가드** | `PreToolUse`(Edit·Write) | `project-guard/pre.sh` | **막음**: `checkride.toml`의 `append_only`에 적은 경로(예: 마이그레이션 폴더)에서 이미 있는 파일을 고치려 하면 막습니다. 새 파일을 추가하거나 파일을 지우는 것은 막지 않습니다. `append_only`를 적지 않으면 아무것도 막지 않습니다 |
 | 저장소 프로필(게이트 아님) | `SessionStart` | `repo-profile/session.sh` | **싣기**: 세션을 열 때 패키지 매니저, 스택, 검사 명령, append-only 경로, 끈 규칙, 게이트별 동작 상태를 스무 줄 안팎으로 Claude에게 알려 줍니다. 사실만 싣고 지시는 넣지 않으며, 막지 않습니다 |
 
 
@@ -113,7 +113,7 @@ Stop 훅은 규칙을 따지기 전에 두 가지를 먼저 봅니다. 하나라
 |---|---|---|
 | `NGG_LANG` | (로케일) | `ko` 또는 `en`입니다. 이 값을 주면 다른 설정을 모두 무시합니다 |
 
-`NGG_LANG`이 없으면 저장소 루트 `.check.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 봅니다. `ko` 계열이면 한국어, 그 밖에는 영어로 냅니다. 문장은 `plugin/hooks/lib/msg.sh` 한 곳에 모여 있습니다.
+`NGG_LANG`이 없으면 저장소 루트 `checkride.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 봅니다. `ko` 계열이면 한국어, 그 밖에는 영어로 냅니다. 문장은 `plugin/hooks/lib/msg.sh` 한 곳에 모여 있습니다.
 
 ### 왜 내장 `type: "prompt"` 훅을 쓰지 않나
 
@@ -132,7 +132,7 @@ Claude Code에는 판단이 필요한 자리에 쓰는 [프롬프트 훅](https:
 
 정규식은 의도를 다 읽지 못합니다. 어떤 저장소에서는 한 규칙이 유난히 자주 오탐을 냅니다. 그렇다고 게이트를 통째로 끄면 같은 게이트의 나머지 검사도 함께 꺼집니다.
 
-`.check.toml`에 이름을 적으면 그 항목만 빠집니다.
+`checkride.toml`에 이름을 적으면 그 항목만 빠집니다.
 
 ```toml
 # 이 저장소에서는 R2b가 설계 논의마다 걸리고, PR은 사람이 따로 검토해서 끈다
@@ -154,7 +154,7 @@ disabled_rules = "R2b, done.pr"
 
 프로젝트 가드의 append-only에는 이름이 없습니다. `append_only`를 적지 않으면 원래 꺼져 있습니다.
 
-**환경변수 대신 파일에 두는 이유가 요점입니다.** `NGG_DONE=0` 같은 환경변수는 그 게이트의 검사를 한꺼번에 끄고, 누가 자기 셸에 넣어 두면 팀은 그 사실을 알 수 없습니다. `.check.toml`은 저장소에 커밋되므로 PR에 보이고, 왜 껐는지가 같은 커밋에 적힙니다. 끄는 것을 쉽게 만드는 장치가 아니라 **끄는 행위를 보이게 만드는 장치**입니다. 환경변수는 급할 때 쓰는 스위치로 남겨 두었습니다.
+**환경변수 대신 파일에 두는 이유가 요점입니다.** `NGG_DONE=0` 같은 환경변수는 그 게이트의 검사를 한꺼번에 끄고, 누가 자기 셸에 넣어 두면 팀은 그 사실을 알 수 없습니다. `checkride.toml`은 저장소에 커밋되므로 PR에 보이고, 왜 껐는지가 같은 커밋에 적힙니다. 끄는 것을 쉽게 만드는 장치가 아니라 **끄는 행위를 보이게 만드는 장치**입니다. 환경변수는 급할 때 쓰는 스위치로 남겨 두었습니다.
 
 껐다는 사실은 세 곳에 남습니다.
 
@@ -192,13 +192,13 @@ Probity의 `enforceTdd`에서 가져온 방식입니다. "reply in the session a
 
 | 순서 | 출처 |
 |---|---|
-| 1 | 저장소 루트의 `.check.toml`에 적은 `test_command` |
+| 1 | 저장소 루트의 `checkride.toml`에 적은 `test_command` |
 | 2 | `package.json`의 `scripts.test` → `npm test` |
 | 3 | `Makefile`의 `test` 타깃 → `make test` |
 | 4 | `pyproject.toml` → `python3 -m pytest -q` |
 
 ```toml
-# .check.toml
+# checkride.toml
 fast_test_command = "npm test -- --changed"   # 턴 끝에는 이것만
 test_command      = "npm test"                # 커밋 직전에 이것
 ```
@@ -209,7 +209,7 @@ test_command      = "npm test"                # 커밋 직전에 이것
 
 끄려면 `NGG_DONE=0`을 쓰고, 제한 시간은 `DONE_TIMEOUT`(기본 180초)입니다.
 
-이 저장소도 스스로에게 이 게이트를 적용합니다. `.check.toml`이 자기 테스트를 가리키고 있어서, 훅을 고치면 훅이 자기를 검사합니다.
+이 저장소도 스스로에게 이 게이트를 적용합니다. `checkride.toml`이 자기 테스트를 가리키고 있어서, 훅을 고치면 훅이 자기를 검사합니다.
 
 ### PR 본문에 근거가 있어야 PR을 엽니다
 
@@ -270,7 +270,7 @@ Rails 가이드도 이미 커밋한 마이그레이션은 고치지 말라고 �
 **삭제와 이동은 막지 않습니다.** 두 출처 모두 쓰기와 수정까지만 말하고, Rails 가이드는 스키마 파일이 기준이 되면 오래된 마이그레이션 파일을 지워도("delete or prune") 된다고 설명합니다. 예전에는 `rm`·`git rm` 삭제도 막았지만 근거가 없어 뺐습니다(V50). 원문은 2026-09-16에 확인했습니다.
 
 ```toml
-# .check.toml
+# checkride.toml
 append_only = "supabase/migrations, db/migrate"
 ```
 
@@ -329,13 +329,13 @@ append-only 경로: supabase/migrations
 | 커맨드 | 하는 일 |
 |---|---|
 | `/checkride:spec` | 큰 기능 전에 `AskUserQuestion`으로 사용자를 인터뷰해 `SPEC.md`를 씁니다 |
-| `/checkride:setup-checks` | 검사 명령을 실제로 돌려 보고 `.check.toml`에 확정합니다. 기준선·append-only·비밀 파일 차단도 제안합니다 |
+| `/checkride:setup-checks` | 검사 명령을 실제로 돌려 보고 `checkride.toml`에 확정합니다. 기준선·append-only·비밀 파일 차단도 제안합니다 |
 | `/checkride:tdd` | 실패 테스트 먼저, RED 확인, 최소 구현 순서로 진행합니다 |
 | `/checkride:finish` | 검사·린트를 돌리고 커밋·푸시·PR 을 만듭니다. PR 본문에 돌린 명령과 출력을 근거로 넣습니다 |
 | `/checkride:handoff` | 다음 세션이 읽을 인수인계를 씁니다 |
 | `/checkride:status` | 게이트 상태를 전부 실측해 보고합니다 |
 | `/checkride:full-cycle` | 탐색 → 계획 → 구현 → 검토 → PR 을 순서대로 진행합니다 |
-| `/checkride:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적습니다. 게이트 언어도 저장소(`.check.toml`의 `lang`)나 전역(`~/.claude/settings.json`의 `env.NGG_LANG`)에 고정합니다 |
+| `/checkride:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 골라 `disabled_rules`에 적습니다. 게이트 언어도 저장소(`checkride.toml`의 `lang`)나 전역(`~/.claude/settings.json`의 `env.NGG_LANG`)에 고정합니다 |
 
 **커맨드는 한국어로 쓰여 있고, 사용자가 쓴 언어로 답합니다.** `SKILL.md`는 로케일로 가를 수 없는 파일입니다. 게이트 문장은 `msg.sh`가 언어별로 가르지만 커맨드는 그럴 수 없어서, 배포 대상을 한국어 사용자로 정하고 본문과 `description`을 한국어로 씁니다. 사람이 읽는 것은 커맨드 목록에 뜨는 `description`이므로, 그것이 한국어여야 무엇을 고르는지 읽을 수 있습니다. 한국어로 쓰여 있어도 영어권 사용자가 부를 수 있도록 본문에 "내가 쓰는 언어로 답한다"는 지시를 남겨 두었습니다. 인용한 공식 문서의 원문은 영어 그대로 두고 번역을 붙입니다. 2026-09-11(`71147c3`)에는 반대로 영어로 썼는데, 그 결정과 2026-09-22에 뒤집은 이유는 [검증 기록](VERIFICATION.md)의 V31·V57에 있습니다.
 

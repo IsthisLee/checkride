@@ -10,7 +10,7 @@
 # 삭제(rm)는 막지 않는다. 출처는 쓰기까지만 말하고, Rails 가이드는 스키마 파일이 기준이 되면 오래된 마이그레이션을
 # "delete or prune" 할 수 있다고 설명한다. 이동을 막을 근거도 없다(V50).
 #
-# 설정: 저장소 루트 .check.toml
+# 설정: 저장소 루트 checkride.toml
 #   append_only = "supabase/migrations, db/migrate"
 # 설정이 없으면 아무것도 막지 않는다. 끄기: NGG_GUARD=0
 d="$(cd "$(dirname "$0")" && pwd)"; . "$d/../lib/common.sh"
@@ -20,7 +20,7 @@ if quick_tool; then case "$QT" in Edit|Write) ;; *) exit 0;; esac; fi
 read_in
 [ "${NGG_GUARD:-1}" = "0" ] && exit 0
 case "$TOOL_NAME" in Edit|Write) ;; *) exit 0;; esac
-find_root; root="$NGG_ROOT"; conf="$root/.check.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
+find_root; root="$NGG_ROOT"; conf="$root/checkride.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
 
 # block <머리> <내용> [항목]. 항목이 있으면 사람에게 한 번만 허용하는 법을 알린다.
 block() { { t pg.prefix "$1"; off_bad; echo "$2"; [ -z "${3:-}" ] || allow_hint "$3"; } >&2; exit 2; }

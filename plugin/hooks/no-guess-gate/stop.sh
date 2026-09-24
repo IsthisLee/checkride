@@ -83,10 +83,10 @@ lastb=$(tail -c 1 "$s/bashseq" 2>/dev/null || true)
 v="${v# }"
 
 # 저장소별로 규칙을 끈다. 지금까지는 환경변수로 통째로 끄는 길뿐이었는데, 그것은 한 사람
-# 셸에만 있어 팀이 모른다. .check.toml 에 적으면 PR 에 보이고 무엇을 껐는지 로그에 남는다.
+# 셸에만 있어 팀이 모른다. checkride.toml 에 적으면 PR 에 보이고 무엇을 껐는지 로그에 남는다.
 # 끄기를 쉽게 만드는 것이 아니라 끄는 행위를 보이게 만드는 것이 목적이다.
 off=""; offbad=""
-find_root; ngg_conf="$NGG_ROOT/.check.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
+find_root; ngg_conf="$NGG_ROOT/checkride.toml"          # cwd 가 아니라 저장소 루트다(common.sh)
 # 걸린 것이 없으면 설정을 읽지 않는다. 이 훅은 턴마다 돌아 상시 비용이 된다.
 if [ -n "$v" ] && [ -f "$ngg_conf" ]; then
   dr=$(sed -n 's/^[[:space:]]*disabled_rules[[:space:]]*=[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p' "$ngg_conf" | head -1)
