@@ -1,0 +1,99 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" session",
+            "timeout": 15,
+            "statusMessage": "Loading repository profile"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" prompt",
+            "timeout": 10,
+            "statusMessage": "Evidence gate"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" pre-bash",
+            "timeout": 660,
+            "statusMessage": "Checkride gates"
+          }
+        ]
+      },
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" pre-patch",
+            "timeout": 10,
+            "statusMessage": "Edit guardrails"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" post-bash",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" post-patch",
+            "timeout": 10,
+            "statusMessage": "Record changed files"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" stop",
+            "timeout": 240,
+            "statusMessage": "Completion and evidence gates"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" subagent-stop",
+            "timeout": 90,
+            "statusMessage": "Evidence gate"
+          }
+        ]
+      }
+    ]
+  }
+}

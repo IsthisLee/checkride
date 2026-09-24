@@ -11,16 +11,16 @@
 
 ---
 
-**Claude Code 작업의 신뢰성을 높입니다.**
+**Claude Code와 Codex 작업의 신뢰성을 높입니다.**
 
-검증된 모범 사례를 커맨드 여덟 개가 절차로 풀어 주고, 게이트 네 개가 지켜졌는지 턴마다 검사해 지키지 않은 답으로는 턴이 끝나지 않게 합니다. 근거는 Claude Code 공식 문서를 비롯한 검증된 자료에 있고, 규칙은 항목마다 끌 수 있습니다.
+검증된 모범 사례를 커맨드와 스킬 여덟 개가 절차로 풀어 주고, 게이트 네 개가 지켜졌는지 턴마다 검사해 지키지 않은 답으로는 턴이 끝나지 않게 합니다. 근거는 Claude Code 공식 문서를 비롯한 검증된 자료에 있고, 규칙은 항목마다 끌 수 있습니다.
 
 심사관은 대신 조종하지 않습니다. 절차를 짚어 주고, 기준을 벗어나면 그 자리에서 멈춥니다.
 
 |                                        | 무엇을 하나                                             | 언제 도나         |
 | -------------------------------------- | -------------------------------------------------------- | ------------------ |
 | **[커맨드 여덟 개](#커맨드-여덟-개)** | 무엇을 어떤 순서로 할지 알려 줍니다                       | 직접 쳐야 돕니다   |
-| **[게이트 네 개](#무엇이-막히나)**   | 모범 사례를 지키지 않은 답으로는 턴이 끝나지 않게 합니다  | 저절로 돕니다      |
+| **[게이트 네 개](#무엇이-막히나)**   | 모범 사례를 지키지 않은 답으로는 턴이 끝나지 않게 합니다  | 훅 신뢰 승인 뒤 자동 실행 |
 
 커맨드는 이렇게 절차를 끌고 갑니다. `/checkride:full-cycle` 하나가 탐색부터 PR까지 다섯 단계를 밟고, 검토에서 결함이 나오면 구현으로 되돌아갑니다.
 
@@ -59,7 +59,7 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 /plugin install checkride@checkride
 ```
 
-내려받는 것은 `plugin/` 아래 25개 파일뿐이고, 릴리스 태그에는 서명이 붙어 있습니다. 서명을 직접 확인하는 법은 [SECURITY.md](SECURITY.md#설치할-것을-직접-확인하는-법)에 있습니다.
+내려받는 것은 `plugin/` 아래 파일뿐이고, 릴리스 태그에는 서명이 붙어 있습니다. 서명을 직접 확인하는 법은 [SECURITY.md](SECURITY.md#설치할-것을-직접-확인하는-법)에 있습니다.
 
 **사용자의 `settings.json`과 `CLAUDE.md`는 한 글자도 바뀌지 않습니다.** 설치해도 평소와 똑같고, 검사는 무언가에 걸릴 때만 나타납니다.
 
@@ -67,17 +67,36 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 
 필요한 것은 `bash`와 `python3` 두 가지입니다. **macOS · Linux · Windows 세 곳 모두 CI에서 매번 단위 테스트를 돌립니다.** 망가진 입력을 던지는 fuzz 테스트는 Linux·macOS에서는 매번 돌고, Windows에서는 main에 올라갈 때 돕니다. Windows에서는 Git Bash가 설치돼 있어야 합니다.
 
-### Codex와 다른 에이전트에서 스킬 사용
+### Claude Code와 Codex에 스킬 설치
 
-프로젝트 루트에서 다음 명령을 실행하면 checkride의 스킬 여덟 개를 그 프로젝트의 Codex에 설치합니다.
+프로젝트 루트에서 아래 명령을 실행하면 스킬 여덟 개를 Claude Code와 Codex 양쪽의 프로젝트 경로에 설치합니다.
 
 ```sh
-npx skills add IsthisLee/checkride
+npx skills add IsthisLee/checkride -a claude-code -a codex
 ```
 
-프로젝트 루트에서 실행하면 8개 스킬이 프로젝트의 `.agents/skills/`에 설치되어 Codex에서 사용할 수 있습니다. Codex에서 `$tdd`처럼 스킬을 선택하거나 “checkride의 tdd 스킬을 사용해”라고 요청하세요. 팀과 공유하려면 `.agents/skills/`를 커밋합니다. 이 명령은 CLI가 지원하는 에이전트 경로도 함께 설정할 수 있습니다.
+이 명령은 스킬 파일만 설치합니다. 프로젝트 범위가 기본값이며, `-a`를 반복해 설치 대상을 지정합니다. Claude Code는 `.claude/skills/`, Codex는 `.agents/skills/`를 사용합니다. Codex에서 `$tdd`처럼 스킬을 선택하거나 “checkride의 tdd 스킬을 사용해”라고 요청하세요. 팀과 공유하려면 두 디렉터리를 커밋합니다. `-g`를 더하면 현재 프로젝트가 아닌 사용자 전역 경로에 설치합니다.
 
-이 설치는 작업 절차 스킬만 제공합니다. 자동으로 턴을 막는 네 게이트와 세션 프로필은 Claude Code 훅이며 Codex에서는 실행되지 않습니다. 따라서 Codex에서 `checkride.toml`을 두어도 게이트가 자동 적용되지는 않습니다. `npx skills`는 저장소의 스킬을 에이전트별로 설치하는 CLI입니다. [Skills CLI 문서](https://www.skills.sh/docs/cli)와 [Codex의 스킬 사용 안내](https://developers.openai.com/plugins/build/skills)를 2026-09-24에 확인했습니다.
+대상 에이전트를 생략한 `npx skills add IsthisLee/checkride`만으로 양쪽 설치를 보장하지는 않습니다. 실행한 환경에서 감지되거나 선택한 에이전트만 대상이 되므로, 둘 다 원하면 위처럼 `-a`를 두 번 지정합니다. `npx skills`는 훅을 등록하지 않습니다.
+
+### Codex에서 자동 게이트와 세션 프로필 사용
+
+Codex는 훅을 포함한 플러그인을 별도로 설치해야 합니다. 프로젝트 루트의 `.agents/plugins/marketplace.json`이 Checkride를 프로젝트 마켓플레이스에 등록합니다. 각 사용자는 Codex CLI에서 마켓플레이스 소스를 한 번 등록합니다.
+
+```sh
+codex plugin marketplace add IsthisLee/checkride
+```
+
+특정 저장소에만 적용하려면 그 저장소의 `.codex/config.toml`에 아래 설정을 커밋합니다. 이 저장소에는 이미 들어 있습니다. 다른 저장소에서는 위 마켓플레이스를 등록한 뒤 해당 설정을 추가합니다.
+
+```toml
+[plugins."checkride@checkride"]
+enabled = true
+```
+
+Codex가 훅 정의를 검토할 때 신뢰를 승인해야 훅이 동작합니다. 설치하면 Codex의 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`에 게이트와 저장소 프로필이 연결됩니다. Codex의 `apply_patch` 편집에도 테스트 무결성과 프로젝트 가드를 적용하고, 턴 종료 때는 `checkride.toml`의 검사 명령을 실행합니다.
+
+프로젝트 `.codex/config.toml`은 Codex가 신뢰하는 저장소에서만 읽힙니다. `npx skills add ... -a claude-code -a codex` 한 줄은 양쪽의 스킬만 설치합니다. Claude Code 플러그인 설치와 Codex 플러그인 설치는 각각의 플러그인 시스템이 관리하므로, 그 명령만으로 양쪽 훅까지 설치할 수는 없습니다. Codex 플러그인·훅 동작은 [Codex 플러그인 문서](https://developers.openai.com/plugins/build/plugins)와 [Codex 훅 문서](https://developers.openai.com/codex/hooks/), `-a`·`-g` 옵션은 [Skills CLI 저장소 문서](https://github.com/vercel-labs/skills)를 2026-09-24에 확인했습니다.
 
 ### 설치 다음에 할 일
 
