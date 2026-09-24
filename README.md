@@ -67,36 +67,88 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 
 필요한 것은 `bash`와 `python3` 두 가지입니다. **macOS · Linux · Windows 세 곳 모두 CI에서 매번 단위 테스트를 돌립니다.** 망가진 입력을 던지는 fuzz 테스트는 Linux·macOS에서는 매번 돌고, Windows에서는 main에 올라갈 때 돕니다. Windows에서는 Git Bash가 설치돼 있어야 합니다.
 
-### Claude Code와 Codex에 스킬 설치
+### 프로젝트에서 Claude Code와 Codex 훅 사용
 
-프로젝트 루트에서 아래 명령을 실행하면 스킬 여덟 개를 Claude Code와 Codex 양쪽의 프로젝트 경로에 설치합니다.
+**프로젝트 훅이 목적이면 `npx skills add`는 필요하지 않습니다.** Checkride 플러그인을 설치하면 해당 도구의 훅과 함께 플러그인에 포함된 스킬도 등록됩니다. 훅만 따로 고르는 설치 옵션은 없습니다. 스킬을 실행하지 않으면 훅만 사용하면 됩니다.
 
-```sh
-npx skills add IsthisLee/checkride -a claude-code -a codex
+#### Claude Code
+
+팀이 프로젝트 설정을 공유하려면 저장소의 `.claude/settings.json`에 마켓플레이스와 플러그인을 선언합니다.
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "checkride": {
+      "source": { "source": "github", "repo": "IsthisLee/checkride" }
+    }
+  },
+  "enabledPlugins": { "checkride@checkride": true }
+}
 ```
 
-이 명령은 스킬 파일만 설치합니다. 프로젝트 범위가 기본값이며, `-a`를 반복해 설치 대상을 지정합니다. Claude Code는 `.claude/skills/`, Codex는 `.agents/skills/`를 사용합니다. Codex에서 `$tdd`처럼 스킬을 선택하거나 “checkride의 tdd 스킬을 사용해”라고 요청하세요. 팀과 공유하려면 두 디렉터리를 커밋합니다. `-g`를 더하면 현재 프로젝트가 아닌 사용자 전역 경로에 설치합니다.
-
-대상 에이전트를 생략한 `npx skills add IsthisLee/checkride`만으로 양쪽 설치를 보장하지는 않습니다. 실행한 환경에서 감지되거나 선택한 에이전트만 대상이 되므로, 둘 다 원하면 위처럼 `-a`를 두 번 지정합니다. `npx skills`는 훅을 등록하지 않습니다.
-
-### Codex에서 자동 게이트와 세션 프로필 사용
-
-Codex는 훅을 포함한 플러그인을 별도로 설치해야 합니다. 프로젝트 루트의 `.agents/plugins/marketplace.json`이 Checkride를 프로젝트 마켓플레이스에 등록합니다. 각 사용자는 Codex CLI에서 마켓플레이스 소스를 한 번 등록합니다.
+그다음 **각 팀원이 자기 환경에서 한 번** 프로젝트 범위로 플러그인을 설치합니다.
 
 ```sh
-codex plugin marketplace add IsthisLee/checkride
+claude plugin install checkride@checkride --scope project
 ```
 
-특정 저장소에만 적용하려면 그 저장소의 `.codex/config.toml`에 아래 설정을 커밋합니다. 이 저장소에는 이미 들어 있습니다. 다른 저장소에서는 위 마켓플레이스를 등록한 뒤 해당 설정을 추가합니다.
+저장소 설정은 팀에 플러그인과 마켓플레이스를 알리고 활성화하지만, 외부 플러그인 파일을 다른 사람의 컴퓨터에 대신 설치하지는 않습니다. 프로젝트 설정을 커밋하면 협업자 전체에 적용되고, `--scope project` 설치는 그 프로젝트에만 적용됩니다.
+
+#### Codex
+
+Codex에서는 대상 저장소에 `.agents/plugins/marketplace.json`과 `.codex/config.toml`을 커밋합니다. 이 저장소의 `.agents/plugins/marketplace.json`에는 Checkride 원격 플러그인 항목이 있고, `.codex/config.toml`은 프로젝트에서 이를 켭니다.
+
+다른 저장소에서는 `.agents/plugins/marketplace.json`에 다음 항목을 추가합니다.
+
+```json
+{
+  "name": "checkride",
+  "plugins": [
+    {
+      "name": "checkride",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/IsthisLee/checkride.git",
+        "path": "./plugin"
+      },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}
+```
+
+`.codex/config.toml`에는 다음을 넣습니다.
 
 ```toml
 [plugins."checkride@checkride"]
 enabled = true
 ```
 
-Codex가 훅 정의를 검토할 때 신뢰를 승인해야 훅이 동작합니다. 설치하면 Codex의 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`에 게이트와 저장소 프로필이 연결됩니다. Codex의 `apply_patch` 편집에도 테스트 무결성과 프로젝트 가드를 적용하고, 턴 종료 때는 `checkride.toml`의 검사 명령을 실행합니다.
+각 Codex 사용자는 마켓플레이스를 한 번 등록합니다.
 
-프로젝트 `.codex/config.toml`은 Codex가 신뢰하는 저장소에서만 읽힙니다. `npx skills add ... -a claude-code -a codex` 한 줄은 양쪽의 스킬만 설치합니다. Claude Code 플러그인 설치와 Codex 플러그인 설치는 각각의 플러그인 시스템이 관리하므로, 그 명령만으로 양쪽 훅까지 설치할 수는 없습니다. Codex 플러그인·훅 동작은 [Codex 플러그인 문서](https://developers.openai.com/plugins/build/plugins)와 [Codex 훅 문서](https://developers.openai.com/codex/hooks/), `-a`·`-g` 옵션은 [Skills CLI 저장소 문서](https://github.com/vercel-labs/skills)를 2026-09-24에 확인했습니다.
+```sh
+codex plugin marketplace add IsthisLee/checkride
+```
+
+Codex가 프로젝트 설정을 읽으려면 해당 저장소를 신뢰해야 하며, 플러그인 훅 정의도 사용자 검토·신뢰 승인을 거쳐야 실행됩니다.
+Codex 훅은 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`에 연결됩니다. `apply_patch` 편집은 테스트 무결성과 프로젝트 가드의 검사 대상입니다.
+
+### 스킬만 별도 설치
+
+플러그인 훅 없이 스킬 파일만 설치하려면 프로젝트 루트에서 다음을 실행합니다.
+
+```sh
+npx skills add IsthisLee/checkride -a claude-code -a codex
+```
+
+이 명령은 스킬 파일만 지정한 도구의 경로에 복사하며 훅을 설치하지 않습니다. 프로젝트 범위가 기본값이고, `-a`를 반복해 대상을 고릅니다. Claude Code는 `.claude/skills/`, Codex는 `.agents/skills/`를 사용합니다. Codex에서 `$tdd`처럼 스킬을 부를 수 있고, 팀과 공유하려면 두 디렉터리를 커밋합니다. `-g`를 더하면 현재 프로젝트 대신 사용자 전역 경로에 설치합니다.
+
+플러그인을 이미 설치했다면 이 명령을 다시 실행하지 마세요. 플러그인에 같은 스킬이 포함되어 있어 중복 설치가 될 수 있습니다.
+
+대상 도구를 생략한 `npx skills add IsthisLee/checkride`만으로 Claude Code와 Codex 양쪽에 설치된다고 보장하지 않습니다. 두 도구에 스킬만 설치하려면 위 명령처럼 `-a`를 두 번 지정합니다.
+
+외부 동작과 설치 범위는 2026-09-24에 확인했습니다. [Claude Code의 프로젝트 marketplace·설치 범위 안내](https://code.claude.com/docs/en/discover-plugins), [Codex의 프로젝트 플러그인 설정 안내](https://developers.openai.com/plugins/build/plugins), [`skills` CLI 문서](https://github.com/vercel-labs/skills).
 
 ### 설치 다음에 할 일
 

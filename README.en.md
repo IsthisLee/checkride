@@ -61,36 +61,88 @@ It adds about 256ms per turn. Per-hook numbers are in [the detail doc](docs/gate
 
 Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on every CI run.** The fuzz pass, which throws broken input at every hook, runs on Linux and macOS every time and on Windows when changes land on main. Windows needs Git Bash.
 
-### Install skills for Claude Code and Codex
+### Use Checkride hooks in a Claude Code and Codex project
 
-From the target project's root, install all eight skills for both Claude Code and Codex:
+**You do not need `npx skills add` to get project hooks.** Installing the Checkride plugin registers that tool's hooks and its bundled skills together. There is no installer option to select hooks alone; you can simply leave the skills unused.
 
-```sh
-npx skills add IsthisLee/checkride -a claude-code -a codex
+#### Claude Code
+
+To share the setup with a team, add the marketplace and plugin to the repository's `.claude/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "checkride": {
+      "source": { "source": "github", "repo": "IsthisLee/checkride" }
+    }
+  },
+  "enabledPlugins": { "checkride@checkride": true }
+}
 ```
 
-This installs skill files only. Project scope is the default; repeat `-a` to select agents. Claude Code uses `.claude/skills/`, and Codex uses `.agents/skills/`. In Codex, select a skill such as `$tdd`, or ask “use checkride's tdd skill.” Commit both directories to share them with the team. Add `-g` to install globally for your user instead of in the current project.
-
-The bare `npx skills add IsthisLee/checkride` command does not guarantee installation to both agents; it targets agents detected or selected in that environment. Use the command above to select both explicitly. `npx skills` does not register hooks.
-
-### Enable automatic gates and the repository profile in Codex
-
-Codex installs plugins separately from skills. The project's `.agents/plugins/marketplace.json` registers Checkride as a marketplace plugin. Each user adds the marketplace source once:
+Then each collaborator installs the plugin in project scope on their own machine:
 
 ```sh
-codex plugin marketplace add IsthisLee/checkride
+claude plugin install checkride@checkride --scope project
 ```
 
-To enable it only for a specific repository, commit this setting in that repository's `.codex/config.toml`. This repository already includes it; add the same setting to another repository to enable Checkride there.
+The shared repository settings declare and enable the marketplace plugin, but do not install external plugin files on other people's machines. Commit the project settings to share the configuration; `--scope project` keeps the installation tied to this repository.
+
+#### Codex
+
+Commit `.agents/plugins/marketplace.json` and `.codex/config.toml` in the target repository. The first declares Checkride's remote plugin source; the second enables it for this project.
+
+In another repository, add this entry to `.agents/plugins/marketplace.json`:
+
+```json
+{
+  "name": "checkride",
+  "plugins": [
+    {
+      "name": "checkride",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/IsthisLee/checkride.git",
+        "path": "./plugin"
+      },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}
+```
+
+Add this to `.codex/config.toml`:
 
 ```toml
 [plugins."checkride@checkride"]
 enabled = true
 ```
 
-Codex must trust the hook definition before it runs. The plugin connects gates and the repository profile to Codex's `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, and `SubagentStop` events. It also applies test integrity and the project guard to Codex `apply_patch` edits, and runs the configured command from `checkride.toml` at turn end.
+Each Codex user registers the marketplace once:
 
-Project `.codex/config.toml` settings load only for trusted repositories. The single `npx skills add ... -a claude-code -a codex` command installs skills for both agents; it cannot install their hooks because Claude Code and Codex use separate plugin systems. Checked on 2026-09-24: [Codex plugin docs](https://developers.openai.com/plugins/build/plugins), [Codex hooks docs](https://developers.openai.com/codex/hooks/), and the [`skills` CLI documentation](https://github.com/vercel-labs/skills) for `-a` and `-g`.
+```sh
+codex plugin marketplace add IsthisLee/checkride
+```
+
+Codex must trust the repository to load project settings, and users must review and trust the plugin hook definition before it runs.
+Codex hooks connect to `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, and `SubagentStop`. Codex `apply_patch` edits are checked by test integrity and the project guard.
+
+### Install skills separately, without plugin hooks
+
+To install only the skill files, from the target project's root run:
+
+```sh
+npx skills add IsthisLee/checkride -a claude-code -a codex
+```
+
+This copies skill files only and does not install hooks. Project scope is the default; repeat `-a` to select agents. Claude Code uses `.claude/skills/`, and Codex uses `.agents/skills/`. In Codex, invoke a skill such as `$tdd`. Commit both directories to share them with the team. Add `-g` to install globally for your user instead of in the current project.
+
+If you already installed the plugin, skip this command to avoid installing duplicate copies of its bundled skills.
+
+The bare `npx skills add IsthisLee/checkride` command does not guarantee that both tools receive the skills. To install skills only for both, repeat `-a` as shown above.
+
+External installation behavior and scope were checked on 2026-09-24: [Claude Code project marketplace and install scopes](https://code.claude.com/docs/en/discover-plugins), [Codex project plugin settings](https://developers.openai.com/plugins/build/plugins), and the [`skills` CLI documentation](https://github.com/vercel-labs/skills).
 
 ### What to do after installing
 
