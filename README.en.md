@@ -11,16 +11,16 @@
 
 ---
 
-**Raises the reliability of Claude Code's work.**
+**Raises the reliability of Claude Code and Codex work.**
 
-Verified best practices: eight commands lay them out as a procedure, and four gates check every turn against them, keeping a turn from ending on an answer that skipped them. The grounding is in the Claude Code official docs and other verified sources, and each rule can be switched off on its own.
+Verified best practices: eight commands and skills lay them out as a procedure, and four gates check every turn against them, keeping a turn from ending on an answer that skipped them. The grounding is in the Claude Code official docs and other verified sources, and each rule can be switched off on its own.
 
 The examiner never takes the controls. They call out the procedure, and stop you the moment you drift outside the standard.
 
 |  | What it does | When it runs |
 |---|---|---|
 | **[Eight commands](#eight-commands)** | Tells you what to do, and in what order | Only when you type it |
-| **[Four gates](#what-gets-blocked)** | Keeps a turn from ending on an answer that skipped a best practice | Runs on its own |
+| **[Four gates](#what-gets-blocked)** | Keeps a turn from ending on an answer that skipped a best practice | Runs after plugin installation |
 
 This is how the commands drive it. `/checkride:full-cycle` alone walks the five steps from explore to pull request, and goes back to implementation whenever review turns up a defect.
 
@@ -53,7 +53,7 @@ Two lines inside a Claude Code session.
 /plugin install checkride@checkride
 ```
 
-You receive 25 files under `plugin/`, and release tags are signed. [SECURITY.en.md](SECURITY.en.md#checking-for-yourself-what-you-are-installing) shows how to check.
+The installation contains only files under `plugin/`, and release tags are signed. [SECURITY.en.md](SECURITY.en.md#checking-for-yourself-what-you-are-installing) shows how to check.
 
 **Your `settings.json` and `CLAUDE.md` are not touched.** After installing, everything looks the same. The check only shows up when it fires.
 
@@ -61,17 +61,36 @@ It adds about 256ms per turn. Per-hook numbers are in [the detail doc](docs/gate
 
 Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on every CI run.** The fuzz pass, which throws broken input at every hook, runs on Linux and macOS every time and on Windows when changes land on main. Windows needs Git Bash.
 
-### Use the skills with Codex or another agent
+### Install skills for Claude Code and Codex
 
-From the target project's root, install all eight checkride skills into that project's Codex setup:
+From the target project's root, install all eight skills for both Claude Code and Codex:
 
 ```sh
-npx skills add IsthisLee/checkride
+npx skills add IsthisLee/checkride -a claude-code -a codex
 ```
 
-Run it from the target project's root to install all eight skills in `.agents/skills/`, where Codex can use them. In Codex, select a skill such as `$tdd`, or ask “use checkride's tdd skill.” Commit `.agents/skills/` to share them with the team. The CLI may also configure other supported agents that use the same skill path.
+This installs skill files only. Project scope is the default; repeat `-a` to select agents. Claude Code uses `.claude/skills/`, and Codex uses `.agents/skills/`. In Codex, select a skill such as `$tdd`, or ask “use checkride's tdd skill.” Commit both directories to share them with the team. Add `-g` to install globally for your user instead of in the current project.
 
-This installs workflow skills only. The four automatic gates and session profile are Claude Code hooks and do not run in Codex; adding `checkride.toml` does not enable automatic enforcement there. The `npx skills` CLI installs repository skills for selected agents. Checked on 2026-09-24: [Skills CLI docs](https://www.skills.sh/docs/cli) and [Codex skill docs](https://developers.openai.com/plugins/build/skills).
+The bare `npx skills add IsthisLee/checkride` command does not guarantee installation to both agents; it targets agents detected or selected in that environment. Use the command above to select both explicitly. `npx skills` does not register hooks.
+
+### Enable automatic gates and the repository profile in Codex
+
+Codex installs plugins separately from skills. The project's `.agents/plugins/marketplace.json` registers Checkride as a marketplace plugin. Each user adds the marketplace source once:
+
+```sh
+codex plugin marketplace add IsthisLee/checkride
+```
+
+To enable it only for a specific repository, commit this setting in that repository's `.codex/config.toml`. This repository already includes it; add the same setting to another repository to enable Checkride there.
+
+```toml
+[plugins."checkride@checkride"]
+enabled = true
+```
+
+Codex must trust the hook definition before it runs. The plugin connects gates and the repository profile to Codex's `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, and `SubagentStop` events. It also applies test integrity and the project guard to Codex `apply_patch` edits, and runs the configured command from `checkride.toml` at turn end.
+
+Project `.codex/config.toml` settings load only for trusted repositories. The single `npx skills add ... -a claude-code -a codex` command installs skills for both agents; it cannot install their hooks because Claude Code and Codex use separate plugin systems. Checked on 2026-09-24: [Codex plugin docs](https://developers.openai.com/plugins/build/plugins), [Codex hooks docs](https://developers.openai.com/codex/hooks/), and the [`skills` CLI documentation](https://github.com/vercel-labs/skills) for `-a` and `-g`.
 
 ### What to do after installing
 

@@ -6,12 +6,12 @@
 
 훅은 **당신의 권한으로 셸 명령을 실행한다.** 이 플러그인을 설치한다는 것은 그 코드를 신뢰한다는 뜻이므로, 무엇을 하는지 적어 둔다.
 
-| 무엇 | 어디 | 위험 |
-|---|---|---|
-| 매 프롬프트·도구 호출·턴 종료에 셸 스크립트 실행 | `hooks/hooks.json` → `hooks/no-guess-gate/*.sh` | 스크립트가 바뀌면 임의 코드가 돈다 |
-| Claude의 마지막 답 전문을 읽음 | `stop.sh`가 훅 입력의 `last_assistant_message`를 받음 | 답에 담긴 내용이 판정 로직을 지난다 |
-| 프롬프트·도구 이름·판정 로그를 파일에 씀 | `${CLAUDE_PLUGIN_DATA}/state/` | 프롬프트 앞부분과 답 80자가 `events.log`에 남는다 |
-| 모델 호출 (선택) | `judge.py`가 `claude -p --model haiku` 실행 | 걸린 문장이 모델에 전달된다 |
+| 무엇                                             | 어디                                                  | 위험                                              |
+| ------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------- |
+| 매 프롬프트·도구 호출·턴 종료에 셸 스크립트 실행 | `hooks/hooks.json` → `hooks/no-guess-gate/*.sh`       | 스크립트가 바뀌면 임의 코드가 돈다                |
+| Claude의 마지막 답 전문을 읽음                   | `stop.sh`가 훅 입력의 `last_assistant_message`를 받음 | 답에 담긴 내용이 판정 로직을 지난다               |
+| 프롬프트·도구 이름·판정 로그를 파일에 씀         | `${CLAUDE_PLUGIN_DATA}/state/`                        | 프롬프트 앞부분과 답 80자가 `events.log`에 남는다 |
+| 모델 호출 (선택)                                 | `judge.py`가 `claude -p --model haiku` 실행           | 걸린 문장이 모델에 전달된다                       |
 
 **네트워크로 나가는 것은 판정기 하나뿐이고, 그것도 당신의 Claude Code를 거친다.** 외부 서비스로 보내는 것은 없다. 판정기를 끄려면 `NGG_JUDGE=0`이다.
 
@@ -29,11 +29,12 @@ cd checkride
 git tag -v v1.4.1        # Good "git" signature 가 나와야 한다
 ```
 
-**실리는 것은 `plugin/` 뿐이다.** 25개 파일이고 그중 도는 것은 훅 열 개와 스킬 여덟 개다. 테스트·문서·CI는 설치본에 들어가지 않는다.
+**실리는 것은 `plugin/` 뿐이다.** 28개 파일이며 Claude Code와 Codex용 매니페스트·훅 어댑터, 기존 훅과 스킬이 들어 있다. 테스트·문서·CI는 설치본에 들어가지 않는다.
 
 ```bash
-git ls-files plugin | wc -l          # 25
-cat plugin/hooks/hooks.json          # 어느 이벤트에 무엇이 걸리는지 전부
+git ls-files plugin | wc -l          # 28
+cat plugin/hooks/hooks.json          # Claude Code 훅 이벤트
+cat plugin/hooks/hooks.codex.json    # Codex 훅 이벤트
 ```
 
 **`main` 브랜치는 강제 푸시와 삭제를 막아 두었다.** 당신이 어제 읽은 코드가 오늘 조용히 바뀌지 않는다.
@@ -44,7 +45,6 @@ cat plugin/hooks/hooks.json          # 어느 이벤트에 무엇이 걸리는�
 
 [![CodeQL](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/checkride/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/checkride)
-
 
 **판정기 프롬프트 주입.** 판정기는 Claude의 답을 모델에게 넘긴다. 답 안에 판정 JSON을 심어 두면 판정으로 읽혀 게이트가 풀릴 수 있었다. 답 텍스트를 데이터 블록으로 감싸고, 중괄호와 판정 키워드를 중화하고, 응답의 마지막 JSON만 읽도록 고쳤다. 회귀 테스트가 `unit.sh` 12군에 있다. 기록은 `docs/VERIFICATION.md` V4f.
 

@@ -4911,3 +4911,55 @@ $ git diff --check
 ```
 
 설치 확인은 네트워크가 연결된 로컬 `skills` CLI로 수행했다. 모델을 부르는 검증과 테스트 스위트는 실행하지 않았다.
+
+## V66 — Codex 플러그인 훅 연결
+
+Codex 플러그인에 별도 훅 매니페스트를 추가하고, 이벤트 입력을 기존 셸 게이트가 받는 형식으로 전달한다. Codex `apply_patch` 입력은 변경 hunk별로 테스트 무결성·프로젝트 가드에 넘기며, 적용된 파일 경로는 완료 게이트 상태에 기록한다. Codex는 별도 `PostToolUseFailure` 이벤트를 보내지 않으므로 `tool_response`에 종료 코드가 있을 때만 성공·실패를 기록하고, 없으면 중립값을 기록한다. Codex 플러그인 설치는 `npx skills`와 분리된다.
+
+Codex의 플러그인 매니페스트·훅 신뢰·저장소별 활성화 동작은 [공식 플러그인 문서](https://developers.openai.com/plugins/build/plugins), 이벤트 형식과 차단 응답은 [공식 훅 문서](https://developers.openai.com/codex/hooks/)에서 2026-09-24에 확인했다. 이 환경의 Codex CLI 0.156.1에서 설치 명령 구문도 확인했다.
+
+```
+$ codex --version
+codex-cli 0.156.1
+
+$ codex plugin add --help
+Install a plugin from a configured or remote marketplace.
+Pass either `PLUGIN@MARKETPLACE` or pass `PLUGIN` with `--marketplace MARKETPLACE`.
+Usage: codex plugin add [OPTIONS] <PLUGIN[@MARKETPLACE]>
+
+$ codex plugin marketplace add --help
+Add a local or Git marketplace to the configured marketplace sources
+Usage: codex plugin marketplace add [OPTIONS] <SOURCE>
+```
+
+매니페스트 JSON과 Python 문법, 프로젝트 TOML을 파싱했다. `npx prettier`를 README·AGENTS.md·이 기록의 변경 구간과 JSON 매니페스트에 실행했다. Codex 훅을 실제 세션에 설치해 차단 동작까지 시험하거나 단위 테스트를 돌리지는 않았다.
+
+```
+$ npx --yes prettier --write README.md --range-start 621 --range-end 4941
+README.md 60ms (unchanged)
+
+$ npx --yes prettier --write README.en.md --range-start 904 --range-end 7110
+README.en.md 57ms (unchanged)
+
+$ npx --yes prettier --write .agents/plugins/marketplace.json plugin/.codex-plugin/plugin.json plugin/hooks/hooks.codex.json
+.agents/plugins/marketplace.json 16ms (unchanged)
+plugin/.codex-plugin/plugin.json 1ms (unchanged)
+plugin/hooks/hooks.codex.json 4ms (unchanged)
+
+$ npx --yes prettier --write AGENTS.md --range-start 199 --range-end 350
+AGENTS.md 34ms (unchanged)
+
+$ npx --yes prettier --write AGENTS.md --range-start 3344 --range-end 7024
+AGENTS.md 25ms (unchanged)
+
+$ npx --yes prettier --write docs/VERIFICATION.md --range-start 179953 --range-end 999999
+docs/VERIFICATION.md 181ms (unchanged)
+
+$ python3 -c 'import ast,json,pathlib,tomllib; ast.parse(pathlib.Path("plugin/hooks/codex.py").read_text()); [json.loads(pathlib.Path(p).read_text()) for p in ("plugin/.codex-plugin/plugin.json", "plugin/hooks/hooks.codex.json", ".agents/plugins/marketplace.json")]; tomllib.loads(pathlib.Path(".codex/config.toml").read_text()); print("Python syntax: OK"); print("JSON manifests: OK"); print("Project TOML: OK")'
+Python syntax: OK
+JSON manifests: OK
+Project TOML: OK
+
+$ git diff --check
+(출력 없음)
+```

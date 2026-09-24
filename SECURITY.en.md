@@ -6,12 +6,12 @@
 
 Hooks **run shell commands as you.** Installing this plugin means trusting that code, so here is what it does.
 
-| What | Where | Risk |
-|---|---|---|
-| Runs a shell script on every prompt, tool call, and turn end | `hooks/hooks.json` → `hooks/no-guess-gate/*.sh` | If a script changes, arbitrary code runs |
-| Reads Claude's full final answer | `stop.sh` receives `last_assistant_message` from the hook input | Whatever is in that answer passes through the decision logic |
-| Writes prompts, tool names, and verdicts to files | `${CLAUDE_PLUGIN_DATA}/state/` | The start of the prompt and 80 characters of the answer land in `events.log` |
-| Calls a model (optional) | `judge.py` runs `claude -p --model haiku` | The flagged sentences are sent to the model |
+| What                                                         | Where                                                           | Risk                                                                         |
+| ------------------------------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Runs a shell script on every prompt, tool call, and turn end | `hooks/hooks.json` → `hooks/no-guess-gate/*.sh`                 | If a script changes, arbitrary code runs                                     |
+| Reads Claude's full final answer                             | `stop.sh` receives `last_assistant_message` from the hook input | Whatever is in that answer passes through the decision logic                 |
+| Writes prompts, tool names, and verdicts to files            | `${CLAUDE_PLUGIN_DATA}/state/`                                  | The start of the prompt and 80 characters of the answer land in `events.log` |
+| Calls a model (optional)                                     | `judge.py` runs `claude -p --model haiku`                       | The flagged sentences are sent to the model                                  |
 
 **The judge is the only thing that leaves this machine, and it goes through your own Claude Code.** Nothing is sent to any external service. Turn the judge off with `NGG_JUDGE=0`.
 
@@ -29,11 +29,12 @@ cd checkride
 git tag -v v1.4.1        # should print Good "git" signature
 ```
 
-**Only `plugin/` ships.** 25 files, of which ten hooks and eight skills actually run. Tests, docs, and CI never reach the installed copy.
+**Only `plugin/` ships.** It contains 28 files: manifests and a hook adapter for Claude Code and Codex, plus the existing hooks and skills. Tests, docs, and CI never reach the installed copy.
 
 ```bash
-git ls-files plugin | wc -l          # 25
-cat plugin/hooks/hooks.json          # every event and what it runs
+git ls-files plugin | wc -l          # 28
+cat plugin/hooks/hooks.json          # Claude Code hook events
+cat plugin/hooks/hooks.codex.json    # Codex hook events
 ```
 
 **The `main` branch blocks force-push and deletion.** Code you read yesterday does not quietly change today.
@@ -44,7 +45,6 @@ cat plugin/hooks/hooks.json          # every event and what it runs
 
 [![CodeQL](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml/badge.svg)](https://github.com/IsthisLee/checkride/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/IsthisLee/checkride/badge)](https://scorecard.dev/viewer/?uri=github.com/IsthisLee/checkride)
-
 
 **Prompt injection into the judge.** The judge hands Claude's answer to a model. An answer with a verdict JSON planted inside it could be read as the verdict and release the gate. The answer text is now wrapped in a data block, braces and verdict keywords are neutralized, and only the last JSON in the response is read. The regression test is group 12 of `unit.sh`; the record is `docs/VERIFICATION.md` V4f.
 

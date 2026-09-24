@@ -1,0 +1,7 @@
+{
+  "name": "checkride",
+  "version": "1.8.0",
+  "description": "Repository guardrails for Codex: evidence, verification, test integrity, and append-only paths.",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.codex.json"
+}

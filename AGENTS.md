@@ -2,7 +2,7 @@
 
 **이 파일이 이 저장소 지침의 정본이다.** 코딩 에이전트가 공유하는 `AGENTS.md` 규약을 따른다. `CLAUDE.md` 는 이 파일을 `@` 로 불러오는 포인터일 뿐이므로, 규칙을 고칠 때는 그쪽이 아니라 이 파일을 고친다. Claude Code 전용 규칙이 생기면 `CLAUDE.md` 의 import 아래에 적는다.
 
-Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 강제**하는 플러그인이다. 게이트 네 개(근거·완료·테스트 무결성·프로젝트 가드), 저장소 프로필, 사용자 전용 커맨드 여덟 개로 이뤄진다.
+Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 강제**하는 Claude Code·Codex 플러그인이다. 게이트 네 개(근거·완료·테스트 무결성·프로젝트 가드), 저장소 프로필, 사용자 전용 커맨드와 스킬 여덟 개로 이뤄진다.
 
 ## 검사 명령
 
@@ -45,12 +45,13 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 
 ## 구조
 
-**저장소는 두 층이다.** `plugin/` 만 사용자에게 실린다. 설치본은 25개 파일이고 그중 도는 것은 훅 열 개와 스킬 여덟 개다.
+**저장소는 두 층이다.** `plugin/` 만 사용자에게 실린다. 설치본에는 Claude Code와 Codex의 훅 매니페스트 및 Codex 입력 어댑터가 함께 들어 있다.
 공식 마켓플레이스와 tdd-guard 가 같은 방식이다(`source: "./plugin"`). 플러그인 설치는 폴더를 통째로 복사하고 제외 방법이 없다.
 **테스트·도구·문서·CI 를 `plugin/` 안에 두지 않는다.** 두면 사용자가 그것까지 내려받는다.
 
-- `plugin/hooks/hooks.json` — SessionStart · UserPromptSubmit · PreToolUse(넷) · PostToolUse · Stop(둘) · SubagentStop 배선. 상태는 `${CLAUDE_PLUGIN_DATA}`.
-- `plugin/hooks/no-guess-gate/bashres.sh` — `PostToolUse`·`PostToolUseFailure`(Bash)에서 이 턴의 Bash 결과를 `S`/`F`로 남긴다. R5가 마지막 글자만 본다.
+- `plugin/hooks/hooks.json` — Claude Code의 SessionStart · UserPromptSubmit · PreToolUse(넷) · PostToolUse · Stop(둘) · SubagentStop 배선. 상태는 `${CLAUDE_PLUGIN_DATA}`.
+- `plugin/.codex-plugin/plugin.json` · `plugin/hooks/hooks.codex.json` · `plugin/hooks/codex.py` — Codex 플러그인 매니페스트, Codex 이벤트 배선, Codex `apply_patch`를 기존 테스트 무결성·프로젝트 가드에 연결하는 어댑터. 상태는 `PLUGIN_DATA`를 쓴다. Codex 훅 설치는 `npx skills add`와 별도다.
+- `plugin/hooks/no-guess-gate/bashres.sh` — Claude Code의 `PostToolUse`·`PostToolUseFailure`(Bash)에서 이 턴의 Bash 결과를 `S`/`F`로 남긴다. R5가 마지막 글자만 본다. Codex는 `PostToolUse`에서 종료 코드를 확인할 수 있을 때만 같은 기록을 남긴다.
 - `plugin/hooks/lib/common.sh` — 모든 훅이 공유하는 입력 파서와 메시지 함수 `t`·`tn`, 항목 끄기(`item_off`)와 한 번 허용(`allow_once`). 허용 목록은 `no-guess-gate/prompt.sh`가 사용자 프롬프트에서만 적는다. `no-guess-gate/pre.sh`는 도구 호출마다 돌아 파라미터 확장만 쓰는 빠른 경로가 따로 있다.
 - `plugin/hooks/lib/msg.sh` — 사람과 모델에게 나가는 문장 62개를 한국어와 영어로 담는다. 차단이 일어날 때만 읽는다. **훅 안에 문장을 직접 쓰지 않는다.** 한쪽 언어에만 넣으면 `tests/lib/unit.sh`가 잡는다.
 - `plugin/hooks/no-guess-gate/stop.sh` — 규칙 R0~R5와 면제 다섯. `judge.py`가 R2a·R2b만 걸렸을 때 의견인지 상태 주장인지 작은 모델에게 묻는다(`NGG_JUDGE_MODEL`, 기본 haiku).
@@ -59,7 +60,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `plugin/hooks/test-integrity/` — 테스트 무력화 편집, 테스트 파일 삭제, 러너 설정의 제외 추가를 막는다.
 - `plugin/hooks/project-guard/` — `append_only` 경로의 기존 파일 수정을 막는다. 새 파일 추가와 삭제는 막지 않는다(V50). Edit·Write 에만 배선한다.
 - `plugin/hooks/repo-profile/` — `SessionStart`에 저장소 사실을 컨텍스트로 싣는다. 사실만 싣고 행동 지시는 넣지 않는다.
-- `skills/` — 사용자 전용 커맨드 여덟 개. 내장과 겹치는 것은 만들지 않는다. 새 스킬을 넣으면 `tests/skills-unit.sh`가 정의를 검사한다.
+- `skills/` — Claude Code 커맨드와 Claude Code·Codex 공용 스킬 여덟 개. 내장과 겹치는 것은 만들지 않는다. 새 스킬을 넣으면 `tests/skills-unit.sh`가 정의를 검사한다.
 - **훅을 임시 폴더로 복사해 돌리는 하네스는 `lib/`를 통째로 옮긴다.** `msg.sh`를 빠뜨리면 게이트는 여전히 막지만 모델이 받는 문장이 `ngg.r0` 같은 키 이름이 된다. 막히기만 하고 무엇을 하라는지 모르니 측정값이 통째로 달라진다. `tests/invariants.sh`가 `cp` 줄을 본다.
 - **중괄호 없는 변수 뒤에 한글을 붙이지 않는다.** `"$n개"`는 bash가 `n개`를 변수 이름으로 읽고, `set -u` 아래서는 그 자리에서 죽는다. 실패 분기에 있으면 통과할 때는 안 보이다가 정작 실패를 알려야 할 때 죽는다. **이 저장소에서 세 번 났다.** `${n}개`로 쓴다. `tests/invariants.sh`가 전수로 막는다.
 - **테스트가 훅에 넣는 입력 JSON 은 `printf` 로 만든다.** Git Bash 는 네이티브 파이썬에 POSIX 경로를 **인자로** 넘길 때 `C:/Users/...` 로 바꾼다. 그러면 `cwd` 만 Windows 경로가 되고 `changed` 는 `/tmp/...` 로 남아 접두가 안 맞고, 게이트가 코드 파일을 0개로 세어 조용히 통과한다. **로컬에서는 안 보이고 Windows CI 에서만 빨갛다.** 파이프로 넘기는 것은 변환되지 않으므로 무방하다.
@@ -68,4 +69,3 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - **테스트는 주변 환경에 기대지 않는다.** `unit.sh`가 머리에서 `NGG_*`를 `unset`한다. 게이트가 자식에게 물려주는 변수 때문에 폴백 검사가 조용히 뒤집힌 적이 있다. **테스트를 돌리는 폴더도 환경이다.** `tests/lib/unit.sh`의 `run`은 `CWD`를 빈 폴더로 준다. 이 저장소 `checkride.toml`에 `lang`을 넣자 로케일 폴백 검사 네 건이 뒤집힌 적이 있다.
 - 요구 사항: bash, python3. macOS · Linux · Windows 셋 다 CI 매트릭스에 있다. Windows는 Git Bash가 있어야 한다.
 - **우리 파이썬 호출에는 `py`를 쓴다.** Windows 파이썬은 기본 인코딩이 UTF-8이 아니라 한국어가 지나가면 죽는다. `common.sh`의 `py()`가 `PYTHONUTF8=1`을 붙인다. 전역으로 export하지 않는 이유는 `done-gate`가 남의 테스트 명령을 그대로 돌리기 때문이다.
-
