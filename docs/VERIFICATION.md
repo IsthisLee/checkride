@@ -5006,3 +5006,19 @@ $ shellcheck -x -s bash plugin/setup-project-hooks.sh
 ```
 
 단위 테스트와 실제 Claude Code·Codex 세션 승인은 실행하지 않았다.
+
+## V69 — 설치본 파일 수 문서 갱신
+
+PR CI의 `tests/invariants.sh`가 `plugin/`의 추적 파일 29개와 `SECURITY.md`의 28개 표기가 다르다고 실패했다. 설명과 `git ls-files plugin | wc -l` 예시를 29개로 맞췄다. 첫 실행의 실제 실패 출력은 `❌ plugin/ 파일 수가 문서와 다르다(실제 29개)`였다.
+
+수정한 PR의 CI 결과:
+
+```
+$ gh pr checks 33
+Analyze (actions)	pass	46s	https://github.com/IsthisLee/checkride/actions/runs/36100868425/job/107962871268
+Analyze (python)	pass	52s	https://github.com/IsthisLee/checkride/actions/runs/36100868425/job/107962871447
+CodeQL	pass	3s	https://github.com/IsthisLee/checkride/runs/107962998510
+unit (macos-latest)	pass	4m29s	https://github.com/IsthisLee/checkride/actions/runs/36100868432/job/107962891053
+unit (ubuntu-latest)	pass	3m7s	https://github.com/IsthisLee/checkride/actions/runs/36100868432/job/107962891173
+unit (windows-latest)	pass	4m20s	https://github.com/IsthisLee/checkride/actions/runs/36100868432/job/107962890960
+```
