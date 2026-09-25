@@ -51,6 +51,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 
 - `plugin/hooks/hooks.json` — Claude Code의 SessionStart · UserPromptSubmit · PreToolUse(넷) · PostToolUse · Stop(둘) · SubagentStop 배선. 상태는 `${CLAUDE_PLUGIN_DATA}`.
 - `plugin/.codex-plugin/plugin.json` · `plugin/hooks/hooks.codex.json` · `plugin/hooks/codex.py` — Codex 플러그인 매니페스트, Codex 이벤트 배선, Codex `apply_patch`를 기존 테스트 무결성·프로젝트 가드에 연결하는 어댑터. 상태는 `PLUGIN_DATA`를 쓴다. Codex 훅 설치는 `npx skills add`와 별도다.
+- `plugin/setup-project-hooks.sh` — 플러그인 훅을 대상 저장소의 `.checkride/hooks/`로 복사하고 Claude Code·Codex 프로젝트 훅 설정에 병합한다. 팀원이 플러그인을 설치하지 않고 저장소 훅을 승인해 쓰는 배포 경로다.
 - `plugin/hooks/no-guess-gate/bashres.sh` — Claude Code의 `PostToolUse`·`PostToolUseFailure`(Bash)에서 이 턴의 Bash 결과를 `S`/`F`로 남긴다. R5가 마지막 글자만 본다. Codex는 `PostToolUse`에서 종료 코드를 확인할 수 있을 때만 같은 기록을 남긴다.
 - `plugin/hooks/lib/common.sh` — 모든 훅이 공유하는 입력 파서와 메시지 함수 `t`·`tn`, 항목 끄기(`item_off`)와 한 번 허용(`allow_once`). 허용 목록은 `no-guess-gate/prompt.sh`가 사용자 프롬프트에서만 적는다. `no-guess-gate/pre.sh`는 도구 호출마다 돌아 파라미터 확장만 쓰는 빠른 경로가 따로 있다.
 - `plugin/hooks/lib/msg.sh` — 사람과 모델에게 나가는 문장 62개를 한국어와 영어로 담는다. 차단이 일어날 때만 읽는다. **훅 안에 문장을 직접 쓰지 않는다.** 한쪽 언어에만 넣으면 `tests/lib/unit.sh`가 잡는다.

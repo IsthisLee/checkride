@@ -71,6 +71,20 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 
 **프로젝트 훅이 목적이면 `npx skills add`는 필요하지 않습니다.** Checkride 플러그인을 설치하면 해당 도구의 훅과 함께 플러그인에 포함된 스킬도 등록됩니다. 훅만 따로 고르는 설치 옵션은 없습니다. 스킬을 실행하지 않으면 훅만 사용하면 됩니다.
 
+#### 팀 저장소에 훅을 커밋해 공유
+
+팀원마다 플러그인을 설치하게 하지 않으려면, 저장소 관리자가 한 번 훅 코드를 저장소에 복사하고 프로젝트 설정을 커밋합니다. Checkride 플러그인을 설치한 관리자가 대상 저장소에서 다음 명령을 실행합니다.
+
+```sh
+bash "$(find ~/.claude/plugins ~/.codex/plugins -path '*/setup-project-hooks.sh' -print -quit 2>/dev/null)"
+```
+
+이 명령은 `.checkride/hooks/`에 훅 코드를 넣고, 기존 항목을 보존하면서 `.claude/settings.json`과 `.codex/hooks.json`에 프로젝트 훅을 등록합니다. `.checkride/data/`는 로컬 상태 디렉터리로 Git에서 제외합니다. 생성·수정된 파일을 검토한 뒤 저장소에 커밋합니다.
+
+그다음 팀원은 저장소를 각 도구에서 열고 훅 정의를 승인하면 됩니다. Codex는 저장소를 신뢰해야 하고 훅 정의를 검토·신뢰해야 실행합니다. 내용이 바뀌면 다시 승인해야 할 수 있습니다. 이 저장소 훅만 쓸 팀원은 Checkride 플러그인을 설치하지 않아도 됩니다. 플러그인 훅과 저장소 훅을 동시에 켜면 중복 실행되므로 하나만 사용하세요.
+
+이 경로는 훅 코드와 설정을 저장소가 소유합니다. 업데이트할 때 관리자가 Checkride 플러그인을 갱신한 뒤 위 명령을 다시 실행하고, 변경을 검토·커밋해야 합니다. Checkride 스킬을 함께 쓰려면 스킬을 별도로 설치합니다.
+
 #### Claude Code
 
 팀이 프로젝트 설정을 공유하려면 저장소의 `.claude/settings.json`에 마켓플레이스와 플러그인을 선언합니다.
@@ -148,7 +162,7 @@ npx skills add IsthisLee/checkride -a claude-code -a codex
 
 대상 도구를 생략한 `npx skills add IsthisLee/checkride`만으로 Claude Code와 Codex 양쪽에 설치된다고 보장하지 않습니다. 두 도구에 스킬만 설치하려면 위 명령처럼 `-a`를 두 번 지정합니다.
 
-외부 동작과 설치 범위는 2026-09-24에 확인했습니다. [Claude Code의 프로젝트 marketplace·설치 범위 안내](https://code.claude.com/docs/en/discover-plugins), [Codex의 프로젝트 플러그인 설정 안내](https://developers.openai.com/plugins/build/plugins), [`skills` CLI 문서](https://github.com/vercel-labs/skills).
+훅 공유 동작은 2026-09-25에 확인했습니다. [Claude Code 훅 설정](https://code.claude.com/docs/en/hooks), [Codex 훅 설정·신뢰 검토](https://learn.chatgpt.com/docs/hooks). 플러그인 설치 범위는 2026-09-24에 확인했습니다. [Claude Code의 프로젝트 marketplace·설치 범위 안내](https://code.claude.com/docs/en/discover-plugins), [Codex의 프로젝트 플러그인 설정 안내](https://developers.openai.com/plugins/build/plugins), [`skills` CLI 문서](https://github.com/vercel-labs/skills).
 
 ### 설치 다음에 할 일
 

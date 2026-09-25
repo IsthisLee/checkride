@@ -4982,3 +4982,27 @@ $ git diff --check
 ```
 
 문서 변경이므로 단위 테스트는 실행하지 않았다.
+
+## V68 — Claude Code·Codex 저장소 훅 배포
+
+팀원이 각자 Checkride 플러그인을 설치하지 않아도 되도록, 설치된 플러그인의 `setup-project-hooks.sh`가 훅을 대상 저장소의 `.checkride/hooks/`로 복사하고 `.claude/settings.json`·`.codex/hooks.json`에 등록하게 했다. 기존 훅 설정은 보존하며, 런타임 데이터는 `.checkride/data/` 아래에 두고 ignore 처리한다. 관리자가 설정과 훅 코드를 검토해 커밋하면 팀원은 각 도구에서 저장소 훅을 신뢰·승인한다. 훅 코드가 업데이트되면 저장소에 다시 복사해 변경 내용을 커밋한다.
+
+Claude Code의 프로젝트 훅 설정과 Codex의 프로젝트 훅 위치·신뢰 검토는 공식 문서에서 2026-09-25에 확인했다: [Claude Code hooks](https://code.claude.com/docs/en/hooks), [Codex hooks](https://learn.chatgpt.com/docs/hooks).
+
+정적 구문 검사:
+
+```
+$ bash -n plugin/setup-project-hooks.sh
+(출력 없음)
+
+$ awk '/^python3 - .* <<.PY./ { in_py=1; next } in_py && /^PY$/ { exit } in_py { print }' plugin/setup-project-hooks.sh | python3 -c 'import ast,sys; ast.parse(sys.stdin.read()); print("installer Python syntax: OK")'
+installer Python syntax: OK
+
+$ git diff --check
+(출력 없음)
+
+$ shellcheck -x -s bash plugin/setup-project-hooks.sh
+(출력 없음)
+```
+
+단위 테스트와 실제 Claude Code·Codex 세션 승인은 실행하지 않았다.

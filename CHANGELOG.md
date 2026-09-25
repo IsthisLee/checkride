@@ -6,6 +6,7 @@
 
 ### 추가
 
+- **Checkride 훅을 저장소에 복사해 Claude Code와 Codex 팀 설정으로 공유한다.** `plugin/setup-project-hooks.sh`가 `.checkride/hooks/`에 코드를 복사하고 `.claude/settings.json`·`.codex/hooks.json`을 갱신한다. 팀원은 플러그인을 따로 설치하지 않고 각 도구에서 저장소 훅을 검토·승인한다.
 - **`npx skills add IsthisLee/checkride`로 Codex에 스킬을 설치한다.** 기존 여덟 스킬을 프로젝트의 `.agents/skills/`에 내려받아 Codex에서 사용할 수 있다. 자동 게이트와 세션 프로필은 Claude Code 훅에서만 실행된다.
 - **커밋 가드를 켜는 `setup.sh`.** `.githooks/pre-commit` 은 커밋돼 있지만 `core.hooksPath` 가 `.git/config` 에 있어 클론과 함께 오지 않는다. 그래서 새로 클론한 곳과 워크트리에서는 가드가 조용히 꺼져 있었다. `setup.sh` 가 그 설정을 걸고, 실행 비트를 채우고, 되읽어 확인한 뒤 어떤 패턴 출처가 잡히는지 알린다. 개인 패턴은 저장소별 `.private/guard-patterns` 외에 저장소 밖의 공용 목록(`$GIT_GUARD_PATTERNS`, 없으면 `~/.config/git-guard/patterns`)에서도 읽으므로, 저장소가 늘어도 목록은 하나다. `bash` 와 `git` 만 있으면 된다.
 - **저장소 프로필이 커밋 가드가 꺼진 저장소를 세션 머리에서 알린다.** 훅 폴더(`.githooks` 또는 `.husky`)가 있는데 `core.hooksPath` 가 없으면 꺼졌다고 알리고 켜는 명령을 함께 준다. 설정돼 있으면 그 값을 보인다. 훅 폴더가 없는 저장소에는 줄을 넣지 않는다. 가드를 쓰지 않는 곳까지 권유를 실으면 이 모듈의 원칙(사실만 싣고 행동 지시는 넣지 않는다)에서 벗어나기 때문이다.

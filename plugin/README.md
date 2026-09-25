@@ -4,7 +4,7 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 
 ## 지금 설치된 것
 
-파일 25개다. 실제로 도는 것은 훅 열 개와 커맨드 여덟 개뿐이다.
+파일 26개다. 실제로 도는 것은 훅 열 개와 커맨드 여덟 개뿐이다. `setup-project-hooks.sh`는 훅을 대상 저장소에 복사하는 설치 스크립트다.
 
 | 검사하는 모범 사례 | 게이트가 보는 것 | 끄기 |
 |---|---|---|
@@ -39,6 +39,16 @@ Claude Code 공식 문서가 권하는 모범 사례를 지켰는지 **턴마다
 
 검사 명령을 찾아 `checkride.toml`에 확정하고 `append_only` 경로를 제안한다. 쓰기 전에 물어본다.
 
+## 팀 저장소에 훅 공유
+
+팀원마다 플러그인을 설치하지 않게 하려면, 플러그인을 설치한 저장소 관리자가 대상 저장소에서 다음을 실행한다.
+
+```sh
+bash "$(find ~/.claude/plugins ~/.codex/plugins -path '*/setup-project-hooks.sh' -print -quit 2>/dev/null)"
+```
+
+훅 코드가 `.checkride/hooks/`에 복사되고, 프로젝트 설정이 `.claude/settings.json`과 `.codex/hooks.json`에 병합된다. 변경 사항을 검토하고 커밋한다. 팀원은 각 도구에서 훅을 검토·승인하면 된다. 이 경로는 스킬을 설치하지 않는다.
+
 ## 메시지 언어
 
 `NGG_LANG=ko` 또는 `en`. 주지 않으면 `checkride.toml`의 `lang`을 보고, 그것도 없으면 `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 보고 `ko` 계열일 때만 한국어다. 저장소마다 정하려면 `checkride.toml`에 `lang`을, 모든 저장소에 걸려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 둔다. `/checkride:config`로 둘 다 고를 수 있다.
@@ -65,7 +75,7 @@ claude plugin disable checkride@checkride --scope project
 
 Checks, every turn, whether the best practices the Claude Code docs recommend were actually followed. Your `settings.json` and `CLAUDE.md` are not touched.
 
-25 files. Four gates run on `Stop` and `PreToolUse`, plus a session repo profile and eight user-only commands. Pick which checks to enforce with `/checkride:config`.
+26 files. Four gates run on `Stop` and `PreToolUse`, plus a session repo profile and eight user-only commands. `setup-project-hooks.sh` copies the hooks into a target repository. Pick which checks to enforce with `/checkride:config`.
 
 | Practice checked | What the gate looks at | Off switch |
 |---|---|---|
@@ -77,6 +87,8 @@ Checks, every turn, whether the best practices the Claude Code docs recommend we
 To get past one false positive, write `check allow <item>` on its own line in your next prompt; it lets one action through and is gone.
 
 Start with `/checkride:setup-checks`. Ask `/checkride:status` when something blocks you.
+
+To share repository-local hooks without requiring every collaborator to install the plugin, run `setup-project-hooks.sh` from the target repository, then review and commit its changes. Collaborators review and trust the hooks in their agent tools. Skills still require a separate install.
 
 The eight command files are written in Korean, so their one-line descriptions read as Korean in the command list. They still reply in whatever language you write in, and the sentences they quote from the official docs are kept in the original English.
 
