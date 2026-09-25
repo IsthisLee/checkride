@@ -29,10 +29,10 @@ cd checkride
 git tag -v v1.4.1        # Good "git" signature 가 나와야 한다
 ```
 
-**실리는 것은 `plugin/` 뿐이다.** 28개 파일이며 Claude Code와 Codex용 매니페스트·훅 어댑터, 기존 훅과 스킬이 들어 있다. 테스트·문서·CI는 설치본에 들어가지 않는다.
+**실리는 것은 `plugin/` 뿐이다.** 29개 파일이며 Claude Code와 Codex용 매니페스트·훅 어댑터, 기존 훅과 스킬이 들어 있다. 테스트·문서·CI는 설치본에 들어가지 않는다.
 
 ```bash
-git ls-files plugin | wc -l          # 28
+git ls-files plugin | wc -l          # 29
 cat plugin/hooks/hooks.json          # Claude Code 훅 이벤트
 cat plugin/hooks/hooks.codex.json    # Codex 훅 이벤트
 ```
