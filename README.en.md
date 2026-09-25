@@ -65,6 +65,20 @@ Requires `bash` and `python3`. **macOS, Linux and Windows run the unit tests on 
 
 **You do not need `npx skills add` to get project hooks.** Installing the Checkride plugin registers that tool's hooks and its bundled skills together. There is no installer option to select hooks alone; you can simply leave the skills unused.
 
+#### Commit hooks to the team repository
+
+If you do not want every teammate to install the plugin, a repository maintainer can copy the hook code into the project and commit project settings once. After installing the Checkride plugin, run this from the target repository:
+
+```sh
+bash "$(find ~/.claude/plugins ~/.codex/plugins -path '*/setup-project-hooks.sh' -print -quit 2>/dev/null)"
+```
+
+The command copies hooks to `.checkride/hooks/` and merges project hook entries into `.claude/settings.json` and `.codex/hooks.json`, preserving unrelated entries. Runtime state in `.checkride/data/` is ignored by Git. Review and commit the changed files.
+
+Each teammate then opens the repository in their agent tool and reviews/trusts the hooks. Codex requires a trusted project and hook review; changed definitions may require a new approval. Teammates using only repository hooks do not need to install the Checkride plugin. Do not enable plugin hooks at the same time or they will run twice.
+
+This mode makes the repository own the hook code and settings. To update, a maintainer updates the Checkride plugin, reruns the command, reviews the diff, and commits it. Install skills separately if the team also wants Checkride skills.
+
 #### Claude Code
 
 To share the setup with a team, add the marketplace and plugin to the repository's `.claude/settings.json`:
@@ -142,7 +156,7 @@ If you already installed the plugin, skip this command to avoid installing dupli
 
 The bare `npx skills add IsthisLee/checkride` command does not guarantee that both tools receive the skills. To install skills only for both, repeat `-a` as shown above.
 
-External installation behavior and scope were checked on 2026-09-24: [Claude Code project marketplace and install scopes](https://code.claude.com/docs/en/discover-plugins), [Codex project plugin settings](https://developers.openai.com/plugins/build/plugins), and the [`skills` CLI documentation](https://github.com/vercel-labs/skills).
+Hook sharing behavior was checked on 2026-09-25: [Claude Code hooks](https://code.claude.com/docs/en/hooks) and [Codex hooks and trust review](https://learn.chatgpt.com/docs/hooks). External plugin installation behavior and scope were checked on 2026-09-24: [Claude Code project marketplace and install scopes](https://code.claude.com/docs/en/discover-plugins), [Codex project plugin settings](https://developers.openai.com/plugins/build/plugins), and the [`skills` CLI documentation](https://github.com/vercel-labs/skills).
 
 ### What to do after installing
 
