@@ -1,9 +1,9 @@
 # checkride 저장소 설정. 완료 게이트가 이 명령으로 검사한다.
 # 형식은 한 줄에 키 하나다. macOS 기본 파이썬(3.9)에 tomllib이 없어 온전한 TOML 파서를 쓰지 않는다.
 # 턴 끝에는 이것만 (빠름)
-fast_test_command = "tests/lib/unit.sh && tests/no-guess-gate/unit.sh && tests/skills-unit.sh"
+fast_test_command = "tests/lib/unit.sh && tests/codex/unit.sh && tests/no-guess-gate/unit.sh && tests/skills-unit.sh"
 # 커밋 직전에 이것 (전체)
-test_command = "for g in lib no-guess-gate done-gate test-integrity project-guard repo-profile setup; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh && tests/doc-counts.sh"
+test_command = "for g in lib codex no-guess-gate done-gate test-integrity project-guard repo-profile setup; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh && tests/doc-counts.sh"
 
 # 특정 규칙이 이 저장소에서 계속 오탐이면 여기에 적어 끈다. 환경변수와 달리 PR에 보인다.
 # disabled_rules = "R2b"

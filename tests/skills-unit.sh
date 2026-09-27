@@ -13,7 +13,7 @@ python3 - "$G" <<'PY'
 import os, re, sys
 root = sys.argv[1]
 want = {"spec","setup-checks","tdd","finish","handoff","status","full-cycle","config"}
-found = {d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))}
+found = {d for d in os.listdir(root) if os.path.isfile(os.path.join(root, d, "SKILL.md"))}
 assert found == want, f"스킬 목록 불일치: {sorted(found)}"
 for name in sorted(want):
     p = os.path.join(root, name, "SKILL.md")

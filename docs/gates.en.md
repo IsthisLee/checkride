@@ -4,7 +4,7 @@ The README stays short; the detail lives here — what each gate blocks, how to 
 
 ## In plain terms
 
-Claude Code is an AI assistant that writes code for you. It is good at the work. But now and then it says "there's no such thing" without opening the document, and "all done" without running the check.
+Claude Code and Codex are AI assistants that write code for you. They are good at the work. But now and then they say "there's no such thing" without opening the document, and "all done" without running the check.
 
 When a person does that, you just ask back, "did you check?" The trouble is that you have to ask **every** time. A person eventually forgets, and the day they forget is the day something breaks.
 
@@ -12,7 +12,9 @@ This plugin makes that asking automatic. It is like a car that beeps when you sk
 
 ## When each runs
 
-The four gates and the repo profile hook into different events. **At `Stop` (turn end) only the evidence gate and the completion gate run.** Test integrity and the project guard block at the moment an edit or Bash call is about to run, not when the turn ends. The wiring lives in `plugin/hooks/hooks.json`.
+The four gates and the repo profile hook into different events. **At `Stop` (turn end) only the evidence gate and the completion gate run.** Test integrity and the project guard block at the moment an edit or Bash call is about to run, not when the turn ends. The table below describes Claude Code's wiring in `plugin/hooks/hooks.json`; Codex's adapter is described in its own section below.
+
+In a Git repository, only the root `checkride.toml` applies. A package-level file cannot override the root test command or disable rules. For a monorepo, set a root aggregate command such as `turbo run test` or `nx affected -t test`, and keep package-specific scripts in their packages. Outside a Git repository, the nearest `checkride.toml` applies.
 
 | Event | Evidence | Completion | Test integrity | Project guard | Repo profile |
 |---|---|---|---|---|---|
@@ -30,7 +32,8 @@ The evidence gate's Stop rules fire only under their conditions. Most fire **onl
 
 | Rule | Checked when |
 |---|---|
-| R0 · R1 | only when zero tool calls this turn |
+| R0 | only when there were zero tool calls and the prompt asks about the repository or a file |
+| R1 | only when there were zero tool calls and the prompt or answer has local file/path context |
 | R2a | only when zero tool calls and the turn is about the codebase (the prompt asks about the repo or a file, or the answer names a path or says something like "the files here") |
 | R3 | only when zero Bash calls |
 | R5 | only when the last Bash run failed (F) |
@@ -68,6 +71,24 @@ The wiring is in `plugin/hooks/hooks.json`: 12 hooks in all. Each one either **b
 
 Script paths are relative to `plugin/hooks/`. The semantic judge `judge.py` is not a hook; `stop.sh` calls it only when R2a or R2b alone fired.
 
+## Codex hooks and trust
+
+Codex uses `plugin/hooks/hooks.codex.json` and `plugin/hooks/codex.py`. The hook integration comes with the Checkride plugin; `npx skills add` copies skills and does not install hooks. A repository maintainer can instead run `setup-project-hooks.sh` to copy the scripts into `.checkride/hooks/` and register them in `.codex/hooks.json`.
+
+Codex hooks are enabled by default unless the active config disables `features.hooks`. Project hooks load only when the repository's `.codex/` layer is trusted. Each non-managed hook definition also needs review and trust in `/hooks`; Codex records trust for the current definition, so changed hooks or a different checkout/worktree path may need another review. `--dangerously-bypass-hook-trust` is for a one-off automation run after external review; it does not establish ongoing project trust.
+
+With Codex CLI 0.156.1, a fresh Git repository's `.codex/hooks.json` hook did not run under `codex exec --dangerously-bypass-hook-trust`. OpenAI's docs say Codex skips project hooks until the project `.codex/` layer is trusted. In this repository, we opened the interactive hook review, inspected the new Checkride SessionStart hook, and trusted it with `t`; a later `codex exec` ran that hook without the bypass flag. So `codex exec` is supported once project trust and trust for the current hook definition are already stored. Non-interactive execution does not display approval prompts.
+
+The adapter connects `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, and `SubagentStop`. It records Bash changes and results, reads Codex's `apply_patch` body from `tool_input.command`, checks edits against test-integrity and append-only rules, and checks recognized MCP/local-function file tools when their inputs expose paths. A missing or unrecognized patch body is blocked; unsupported move targets are blocked rather than treated as inspected edits. Stop hooks emit Codex's required JSON success response and avoid re-entry when `stop_hook_active` is true. Codex marks a turn after a Stop continuation; Checkride then does not rerun either stop gate, so the rewritten answer after the first block is not rechecked. The Codex hook docs publish no retry cap, and OpenAI's implementation tests use this no-reblock pattern. This is a platform boundary to avoid repeated continuation loops.
+
+Codex's Bash `PostToolUse.tool_response` contains command output without the process exit status. R5 therefore does not run in Codex. Claude Code provides failed-command details through `PostToolUseFailure`, which lets Checkride apply R5 there. Checkride can add R5 recording for Codex if it provides process status through a stable hook input.
+
+Claude Code rechecks a continuation response in both stop gates. Claude Code overrides a later block after eight consecutive stop-hook continuations and ends the turn. If the cap is reached, the final response may still fail the gate and needs human review.
+
+When a repository-shared install exists, Checkride's plugin copy skips its own gate work so both distributions do not enforce the same rules twice. Session state and one-time allowances use a per-user directory outside the repository, keyed by the Git root. The generated `.checkride/README.md` documents updates and review. The scripts and `test_command`/`fast_test_command` are repository-provided executable code; review them before trusting the hooks.
+
+Official documentation checked 2026-09-28: [Codex hooks, trust, and `tool_response` contract](https://developers.openai.com/codex/hooks), [Codex Bash PostToolUse response generation](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/context.rs#L2147-L2160), [Codex PostToolUse dispatch conditions](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/registry.rs#L3122-L3188), [Codex configuration](https://developers.openai.com/codex/config-reference), [Codex Stop re-entry tests](https://github.com/openai/codex/blob/main/codex-rs/core/tests/suite/hooks.rs#L2667-L2694), [Claude Code hooks](https://code.claude.com/docs/en/hooks), [Claude Code permissions](https://code.claude.com/docs/en/permissions).
+
 ## Judge settings
 
 When only R2a/R2b fire, the evidence gate asks a small model whether the flagged wording is an opinion or a claim about state. The judge can only release, never block. The rules and exemptions are in the [README](../README.en.md#what-gets-blocked).
@@ -75,9 +96,11 @@ When only R2a/R2b fire, the evidence gate asks a small model whether the flagged
 | Variable | Default | Meaning |
 |---|---|---|
 | `NGG_JUDGE` | `1` | `0` disables judging entirely |
-| `NGG_JUDGE_MODEL` | `haiku` | Judge model. One classification call, so a large model is not needed, but you can change it |
+| `NGG_JUDGE_MODEL` | Claude Code: `haiku`; Codex: current Codex default | Set a model for the current agent CLI |
 | `NGG_JUDGE_CMD` | (unset) | Replace the whole judge command. Overrides the model setting |
 | `NGG_JUDGE_TIMEOUT` | `40` | Seconds |
+
+Claude Code runs one `claude -p` classification call. Codex runs `codex exec`, using the Codex CLI's current default model unless `NGG_JUDGE_MODEL` is set. That call ignores user configuration and hooks, uses an empty temporary working directory, a read-only sandbox, and closed stdin. If Codex CLI is missing, errors, or times out, the original block remains.
 
 ### Message language
 
@@ -289,12 +312,12 @@ Most of the cost is Python startup. `stop.sh` invokes Python three times and sta
 If it feels slow, turn the profile off with `NGG_PROFILE=0`, or disable gates individually with `NGG_DONE=0`, `NGG_TESTGUARD=0`, `NGG_GUARD=0`.
 ## Eight commands
 
-The gates run on their own. What needs your judgment about *when* and *what it costs* stays a command. All eight are **user-invoked only** (`disable-model-invocation: true`), as the docs advise: "Use `disable-model-invocation: true` for workflows with side effects that you want to trigger manually."
+The gates run on their own. What needs your judgment about *when* and *what it costs* stays a command. All eight are **user-invoked only** (`disable-model-invocation: true`), which the official guidance recommends for side-effectful workflows that should start only when a user asks.
 
 | Command | What it does |
 |---|---|
 | `/checkride:spec` | Interviews you with `AskUserQuestion` before a large feature and writes `SPEC.md` |
-| `/checkride:setup-checks` | Actually runs the candidate check command, then pins it in `checkride.toml`; proposes a baseline, append-only paths, and secret-file denies |
+| `/checkride:setup-checks` · `$setup-checks` | Runs the candidate check command, then writes it to `checkride.toml`; proposes a baseline, append-only paths, and settings/hook-code protections |
 | `/checkride:tdd` | Failing test first, confirm RED, minimum implementation |
 | `/checkride:finish` | Runs the checks and lints, then commits, pushes, and opens a PR with the command output as evidence in its body |
 | `/checkride:handoff` | Writes a handoff for the next session |

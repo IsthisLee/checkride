@@ -6,6 +6,7 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" session",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" session",
             "timeout": 15,
             "statusMessage": "Loading repository profile"
           }
@@ -18,6 +19,7 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" prompt",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" prompt",
             "timeout": 10,
             "statusMessage": "Evidence gate"
           }
@@ -31,6 +33,7 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" pre-bash",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" pre-bash",
             "timeout": 660,
             "statusMessage": "Checkride gates"
           }
@@ -42,8 +45,21 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" pre-patch",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" pre-patch",
             "timeout": 10,
             "statusMessage": "Edit guardrails"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" pre-other",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" pre-other",
+            "timeout": 10,
+            "statusMessage": "Inspect file tool arguments"
           }
         ]
       }
@@ -55,6 +71,7 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" post-bash",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" post-bash",
             "timeout": 5
           }
         ]
@@ -65,8 +82,21 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" post-patch",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" post-patch",
             "timeout": 10,
             "statusMessage": "Record changed files"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" post-other",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" post-other",
+            "timeout": 10,
+            "statusMessage": "Record file tool changes"
           }
         ]
       }
@@ -77,6 +107,7 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" stop",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" stop",
             "timeout": 240,
             "statusMessage": "Completion and evidence gates"
           }
@@ -89,6 +120,7 @@
           {
             "type": "command",
             "command": "python3 \"${PLUGIN_ROOT}/hooks/codex.py\" subagent-stop",
+            "commandWindows": "py -3 \"$env:PLUGIN_ROOT/hooks/codex.py\" subagent-stop",
             "timeout": 90,
             "statusMessage": "Evidence gate"
           }

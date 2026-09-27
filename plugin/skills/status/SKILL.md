@@ -9,16 +9,16 @@ allowed-tools: Read, Grep, Glob, Bash
 
 checkride 가 이 저장소에서 실제로 무엇을 하고 있는지 보고한다. **전부 실측한다.** 이 질문에 추측으로 답하는 커맨드는 그 자체로 자기모순이다.
 
-현재 에이전트가 Codex라면 Claude Code 훅은 실행되지 않는다. 이 경우 훅이 동작 중이라고 보고하지 말고, Codex에서 확인할 수 없는 Claude 플러그인 상태와 `events.log`는 확인 불가로 표시한다. `checkride.toml`의 저장소 설정은 별도로 읽어서 보고한다.
+Claude Code와 Codex의 적용 경로를 따로 확인한다. 플러그인 설치만 확인하지 말고, Codex에서는 프로젝트 또는 사용자 플러그인 활성화와 `/hooks`의 현재 신뢰 상태를 확인한다. 저장소 공유 설치라면 `.codex/hooks.json` 및 `.checkride/hooks/`도 확인한다. 화면에서 활성 상태를 확인하지 못하면 훅 실행 여부는 미확인으로 보고한다.
 
 **내가 쓰는 언어로 답한다.**
 
 ## 무엇을 확인하는가
 
-1. **설치와 배선.** Claude Code에서는 설치 상태를 `claude plugin list`로, 이벤트 배선을 `hooks/hooks.json`으로 확인한다. Codex에서는 이 훅들이 실행되지 않는다고 보고한다.
+1. **설치와 배선.** Claude Code에서는 설치 상태를 `claude plugin list`로, 이벤트 배선을 `hooks/hooks.json`으로 확인한다. Codex에서는 플러그인 설정 또는 저장소 공유 훅 파일과 `/hooks`의 신뢰 상태를 각각 확인한다. 새 훅이나 변경된 훅이 검토 대기 중이면 비활성으로 보고한다.
 2. **저장소 설정.** `checkride.toml` 이 있으면 읽어서 `test_command`, `fast_test_command`, `append_only`, `disabled_rules` 를 보여 준다. 없으면 없다고 말하고, 그래서 어떤 게이트가 놀고 있는지 이름을 댄다.
 3. **꺼짐 스위치.** `NGG_JUDGE`, `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD`, `NGG_PROFILE` 중에 환경에서 꺼진 것이 있는지 확인한다.
-4. **최근 판정.** Claude Code에서는 상태 폴더의 `events.log` 마지막 20줄을 읽고 요약한다. 위치는 `${CLAUDE_PLUGIN_DATA}/state/events.log` 다. Codex에서는 이 로그를 사용할 수 없다고 말한다.
+4. **최근 판정.** 설치 경로에서 `state_path.py`가 알려 주는 사용자 상태 경로의 `state/events.log` 마지막 20줄을 읽고 요약한다. 실행 중인 도구의 상태 디렉터리를 확인할 수 없으면 로그 위치와 판정을 확인 불가로 보고한다.
 
 ## 어떻게 보고하는가
 

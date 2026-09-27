@@ -20,7 +20,7 @@ fail=0
 # 모델을 부르는 tests/acceptance.sh 와 회귀·A/B·판정기 정확도는 세지 않는다. 건수가 고정돼 있지 않다.
 # **이 파일 자신도 목록에 넣지 않는다.** 아래 루프가 각 파일을 실제로 실행하므로, 자신을 넣으면
 # 자기가 자기를 부르는 무한 재귀가 된다. 그래서 합계에는 이 검사의 1건을 상수로 더한다.
-TESTS="lib/unit.sh no-guess-gate/unit.sh done-gate/unit.sh test-integrity/unit.sh
+TESTS="lib/unit.sh codex/unit.sh no-guess-gate/unit.sh done-gate/unit.sh test-integrity/unit.sh
        project-guard/unit.sh repo-profile/unit.sh setup/unit.sh
        skills-unit.sh attack-surface.sh invariants.sh"
 
