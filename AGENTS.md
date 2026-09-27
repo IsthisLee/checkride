@@ -7,7 +7,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 ## 검사 명령
 
 - `tests/lib/unit.sh` — 메시지 카탈로그 31건. 두 언어의 키가 맞는지, 언어 결정 순서(NGG_LANG · checkride.toml lang · 로케일)가 맞는지, Git 루트·독립 폴더의 설정 경계를 지키는지 본다.
-- `tests/codex/unit.sh` — Codex 훅 어댑터 33건. 입력 계약, `apply_patch`, MCP 파일 도구, Bash 전후 파일 기록, 종료 상태가 빠진 출력의 중립 처리, 사용자별 상태, 중복 실행 방지, Codex 판정기 명령을 본다. 모델을 부르지 않는다.
+- `tests/codex/unit.sh` — Codex 훅 어댑터 53건. 입력 계약, `apply_patch`, MCP 파일 도구, Bash 전후 파일 기록, 종료 상태가 빠진 출력의 중립 처리, 사용자별 상태, 중복 실행 방지, Codex 판정기 명령, Stop 재진입·프롬프트 보존·반복 상태 정리 오류를 본다. 모델을 부르지 않는다.
 - `tests/no-guess-gate/unit.sh` — 근거 게이트 188건. 모델을 부르지 않는다.
 - `tests/done-gate/unit.sh` — 완료 게이트 86건. PR 본문 근거 23건 포함.
 - `tests/test-integrity/unit.sh` — 테스트 무결성 69건.
@@ -16,7 +16,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `tests/setup/unit.sh` — 활성화·공유 설치 스크립트와 상태 경로 71건. 남이 잡은 `core.hooksPath` 를 덮지 않고, 프로젝트 설정을 멱등하게 갱신하는지 본다.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 13건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선, 옛 이름 잔존 21건.  **합계 570건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선, 옛 이름 잔존 21건.  **합계 590건.**
 - `tests/doc-counts.sh` — 이 파일이 적은 각 검사의 건수가 실제와 같은지 1건. **단위 테스트를 실제로 돌려 센다.**
   `tests/invariants.sh` 안에 넣으면 그것이 자기 자신을 불러 재귀가 되고, `check` 호출 수를 정적으로 세는 것은
   루프·함수 때문에 맞지 않는다(실측: 근거 게이트는 호출 7곳에 실제 170건). 그래서 전체 검사의 맨 끝에 둔다.

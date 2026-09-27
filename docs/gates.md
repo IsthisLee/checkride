@@ -106,9 +106,9 @@ Codex에서는 플러그인을 활성화해 번들 훅을 쓰거나, 저장소 �
 
 Codex CLI 0.156.1에서 새 Git 저장소의 `.codex/hooks.json`은 `codex exec --dangerously-bypass-hook-trust`로도 실행되지 않았습니다. Codex 공식 문서는 프로젝트 `.codex/` 계층이 신뢰되지 않으면 프로젝트 훅을 불러오지 않는다고 설명합니다. 이 저장소에서는 대화형 Codex의 훅 검토 화면을 열어 새 Checkride SessionStart 훅을 살펴보고 `t`로 신뢰한 뒤, `codex exec`가 위험 우회 플래그 없이 해당 훅을 실행하는 것을 확인했습니다. 따라서 자동화에서는 프로젝트 신뢰와 현재 훅 정의 신뢰를 실행 전에 해당 실행기의 Codex 설정에 저장해야 합니다. 비대화형 실행은 승인 화면을 띄우지 않습니다.
 
-Codex 훅은 기본으로 켜져 있습니다. 활성 설정에서 `[features] hooks = false`면 꺼집니다. Checkride는 `SessionStart`·`UserPromptSubmit`·`PreToolUse`·`PostToolUse`·`Stop`·`SubagentStop`을 연결합니다. Bash 결과와 변경 파일을 기록하고, `apply_patch`는 `tool_input.command`를 읽어 테스트 무결성과 append-only 검사를 적용합니다. 입력이 없거나 지원하지 않는 이동 대상이 있으면 통과시키지 않습니다. 파일 경로를 입력에 표시하는 MCP/local-function 쓰기도 검사합니다. Stop 성공 응답은 Codex 형식의 JSON을 내고 `stop_hook_active`가 참이면 재진입을 건너뜁니다. Codex가 재진입 표시를 보내면 Checkride는 두 게이트를 다시 실행하지 않습니다. 따라서 첫 응답을 차단한 뒤 다시 작성된 답은 재검사하지 않습니다. Codex 훅 문서는 반복 차단의 상한을 정하지 않고, 공식 구현 테스트도 재진입에서는 다시 차단하지 않는 예를 사용합니다. 이는 반복 차단 루프를 피하기 위한 플랫폼 경계입니다.
+Codex 훅은 기본으로 켜져 있습니다. 활성 설정에서 `[features] hooks = false`면 꺼집니다. Checkride는 `SessionStart`·`UserPromptSubmit`·`PreToolUse`·`PostToolUse`·`Stop`·`SubagentStop`을 연결합니다. Bash 결과와 변경 파일을 기록하고, `apply_patch`는 `tool_input.command`를 읽어 테스트 무결성과 append-only 검사를 적용합니다. 입력이 없거나 지원하지 않는 이동 대상이 있으면 통과시키지 않습니다. 파일 경로를 입력에 표시하는 MCP/local-function 쓰기도 검사합니다. `Stop`과 `SubagentStop`은 `stop_hook_active`가 참인 재진입에서도 해당 게이트를 다시 실행합니다. Stop 차단 뒤 Codex가 자동 continuation 프롬프트를 보내면 어댑터는 원래 사용자 프롬프트를 유지해 로컬 맥락을 보존합니다. Codex 문서에는 반복 상한이 없으므로 Checkride는 재검사·차단을 최대 여덟 번 이어 갑니다. 여덟 번째 재진입에서도 실패하거나 반복 상태를 저장·정리하지 못하면 `continue: false`와 `systemMessage`로 턴을 끝내고 경고합니다. 마지막 답은 사용자가 확인해야 합니다.
 
-Codex의 Bash `PostToolUse.tool_response`에는 명령 출력만 있고 프로세스 종료 상태가 없습니다. 따라서 R5는 Codex에서 실행되지 않습니다. Claude Code에서는 `PostToolUseFailure`가 실패 이벤트와 실패 정보를 제공하므로 R5를 적용할 수 있습니다. Codex가 종료 상태를 안정적인 훅 입력으로 제공하면 어댑터에 R5 기록을 추가할 수 있습니다.
+Codex의 Bash `PostToolUse.tool_response`에는 명령 출력만 있고 프로세스 종료 상태가 없습니다. 따라서 R5는 Codex에서 실행되지 않습니다. Claude Code에서는 `PostToolUseFailure`가 실패 이벤트와 실패 정보를 제공하므로 R5를 적용할 수 있습니다. 종료 상태가 Codex 훅 입력에 전달되지 않는 문제는 [OpenAI Codex 이슈 #34289](https://github.com/openai/codex/issues/34289)에서 추적 중이며, Codex가 안정적인 상태 신호를 제공하면 어댑터에 R5 기록을 추가할 수 있습니다.
 
 Claude Code에서는 `stop_hook_active` 재진입 답변도 근거·완료 게이트가 다시 검사합니다. Claude Code는 Stop 훅이 여덟 번 연속 턴을 이어 간 뒤 다음 차단을 덮어쓰고 턴을 끝냅니다. 상한에 이르면 마지막 답이 게이트를 통과하지 못했을 수 있으므로 사용자가 확인해야 합니다.
 
@@ -116,7 +116,7 @@ Claude Code에서는 `stop_hook_active` 재진입 답변도 근거·완료 게�
 
 공유 훅의 `check allow` 기록과 그 밖의 세션 상태는 저장소 밖의 사용자 데이터 경로에 둡니다. 저장소 에이전트가 `.checkride/`를 편집해 일회 허용을 위조하거나 런타임 로그를 커밋하는 일을 막기 위한 것입니다.
 
-공식 근거(2026-09-28 확인): [Codex 훅의 위치·신뢰·tool_response 계약](https://developers.openai.com/codex/hooks), [Codex 실행기의 Bash PostToolUse 응답 생성](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/context.rs#L2147-L2160), [Codex 실행기의 PostToolUse 호출 조건](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/registry.rs#L3122-L3188), [Codex 플러그인 훅](https://developers.openai.com/plugins/build/plugins), [Codex Stop 재진입 테스트](https://github.com/openai/codex/blob/main/codex-rs/core/tests/suite/hooks.rs#L2667-L2694), [Claude Code 훅의 작업공간 신뢰와 권한](https://code.claude.com/docs/en/hooks), [Claude Code 권한과 샌드박스 경계](https://code.claude.com/docs/en/permissions).
+공식 근거(2026-09-28 확인): [Codex 훅의 위치·신뢰·tool_response 계약](https://developers.openai.com/codex/hooks), [Codex Bash 종료 상태 누락 이슈 #34289](https://github.com/openai/codex/issues/34289), [Codex 실행기의 Bash PostToolUse 응답 생성](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/context.rs#L2147-L2160), [Codex 실행기의 PostToolUse 호출 조건](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/registry.rs#L3122-L3188), [Codex 플러그인 훅](https://developers.openai.com/plugins/build/plugins), [Codex Stop 재진입 테스트](https://github.com/openai/codex/blob/main/codex-rs/core/tests/suite/hooks.rs#L2667-L2694), [Claude Code 훅의 작업공간 신뢰와 권한](https://code.claude.com/docs/en/hooks), [Claude Code 권한과 샌드박스 경계](https://code.claude.com/docs/en/permissions).
 
 ## 의미 판정기 설정
 

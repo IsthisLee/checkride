@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOKS = ROOT / "hooks"
+STOP_RETRY_LIMIT = 8
 
 
 def fail(message):
@@ -79,7 +80,7 @@ STATE = state_path()
 os.environ["NGG_STATE"] = STATE
 
 
-def run(script, event, judge_provider=False):
+def run(script, event, judge_provider=False, capture_start_error=False):
     env = dict(os.environ)
     env["CLAUDE_PROJECT_DIR"] = str(REPO)
     if judge_provider:
@@ -90,7 +91,39 @@ def run(script, event, judge_provider=False):
             capture_output=True, cwd=event.get("cwd") or None, env=env,
         )
     except (OSError, subprocess.SubprocessError, TypeError, ValueError) as exc:
-        fail(f"Checkride could not start hook {script}: {exc}")
+        message = f"Checkride could not start hook {script}: {exc}"
+        if capture_start_error:
+            return subprocess.CompletedProcess(["bash", str(HOOKS / script)], 2, "", message)
+        fail(message)
+
+
+def stop_retry_file(event, hook_mode):
+    turn_id = event.get("turn_id")
+    if not turn_id:
+        prompt = Path(STATE) / "state" / str(event.get("session_id") or "") / "prompt"
+        try:
+            turn_id = prompt.read_text(encoding="utf-8")
+        except OSError:
+            turn_id = ""
+    identity = json.dumps([hook_mode, event.get("session_id"), turn_id, event.get("agent_id")],
+                          ensure_ascii=False, separators=(",", ":"))
+    key = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    return Path(STATE) / "stop-retries" / f"{key}.count"
+
+
+def end_stop(reason):
+    message = " ".join(reason.split())[:1000] or "Checkride could not verify this turn."
+    print(json.dumps({"continue": False, "stopReason": message,
+                      "systemMessage": message}, ensure_ascii=False))
+    raise SystemExit(0)
+
+
+def clear_retry_file(path):
+    try:
+        path.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
 
 
 def synthetic(path, old, new):
@@ -335,7 +368,13 @@ def block(result):
 
 
 if mode == "prompt":
-    block(run("no-guess-gate/prompt.sh", EVENT))
+    retry_file = stop_retry_file(EVENT, "stop")
+    try:
+        stop_continuation = int(retry_file.read_text(encoding="ascii")) > 0
+    except (OSError, ValueError):
+        stop_continuation = False
+    if not stop_continuation:
+        block(run("no-guess-gate/prompt.sh", EVENT))
 elif mode == "session":
     result = run("repo-profile/session.sh", EVENT)
     if result.stdout.strip():
@@ -389,16 +428,34 @@ elif mode == "post-other":
         else:
             record_changed([str((Path(EVENT.get("cwd") or os.getcwd()) / p).resolve()) for p in paths])
 elif mode in ("stop", "subagent-stop"):
-    # Codex marks a Stop continuation with stop_hook_active. Do not start another
-    # continuation from that retry; Codex's hook loop has no documented retry cap.
-    if EVENT.get("stop_hook_active") is True:
-        print('{"continue":true}')
-        raise SystemExit(0)
     scripts = ["no-guess-gate/stop.sh"]
     if mode == "stop":
         scripts.append("done-gate/stop.sh")
+    retry_file = stop_retry_file(EVENT, mode)
+    active = EVENT.get("stop_hook_active") is True
+    try:
+        retries = int(retry_file.read_text(encoding="ascii")) if active else 0
+    except (OSError, ValueError):
+        retries = 0
     for script in scripts:
-        block(run(script, EVENT, judge_provider=True))
+        result = run(script, EVENT, judge_provider=True, capture_start_error=True)
+        if result.returncode:
+            if active and retries >= STOP_RETRY_LIMIT:
+                reason = result.stderr or "Checkride could not verify this turn."
+                if not clear_retry_file(retry_file):
+                    reason += " Retry state could not be cleared; the turn ended for manual review."
+                end_stop(reason)
+            retries += 1
+            try:
+                retry_file.parent.mkdir(parents=True, exist_ok=True)
+                retry_file.write_text(str(retries), encoding="ascii")
+            except OSError:
+                end_stop((result.stderr or "Checkride could not verify this turn.") +
+                         " Retry state could not be saved, so the turn ended for manual review.")
+            block(result)
+    if not clear_retry_file(retry_file):
+        end_stop("The gates passed, but Checkride could not clear the retry state. "
+                 "The turn ended for manual review.")
     print('{"continue":true}')
 else:
     fail(f"unknown Codex hook mode: {mode}")
