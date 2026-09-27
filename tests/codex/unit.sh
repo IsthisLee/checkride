@@ -91,11 +91,12 @@ run_event "$T/outside-config.json" "$T/outside-config-state" pre-other >/dev/nul
 if [ "$r" -ne 0 ]; then cat "$T/outside-config.err"; fi
 check 0 "$r" "Codex 독립 프로젝트가 상위 폴더의 Checkride 설정을 물려받지 않는다"
 
-# Stop 계열 훅은 성공 시 Codex가 요구하는 JSON 을 내고, 재진입에서는 게이트를 다시 부르지 않는다.
+# Stop 계열 훅은 성공 시 Codex가 요구하는 JSON 을 내고, 차단 뒤 다시 쓴 답도 검사한다.
 python3 - "$T/stop.json" "$P" <<'PY'
 import json, sys
 json.dump({"session_id":"stop","cwd":sys.argv[2],"hook_event_name":"Stop",
-           "stop_hook_active":False,"last_assistant_message":"작업을 마쳤습니다."},
+           "turn_id":"turn-stop","stop_hook_active":False,
+           "last_assistant_message":"작업을 마쳤습니다."},
           open(sys.argv[1],"w"))
 PY
 run_event "$T/stop.json" "$T/stop-state" stop >"$T/stop.out" 2>"$T/stop.err"; r=$?
@@ -106,19 +107,140 @@ d=json.load(open(sys.argv[1], encoding="utf-8")); assert d.get("continue") is Tr
 PY
 check 0 $? "Stop 게이트 통과 시 Codex JSON 을 출력한다"
 
+RSTATE="$T/active-stop-state"; mkdir -p "$RSTATE/state/reentry-session"
+printf '%s' 'Does this repository have package.json?' > "$RSTATE/state/reentry-session/prompt"
 python3 - "$T/active-stop.json" "$P" <<'PY'
 import json, sys
-json.dump({"session_id":"active-stop","cwd":sys.argv[2],"hook_event_name":"Stop",
-           "stop_hook_active":True,"last_assistant_message":"재진입"}, open(sys.argv[1],"w"))
+json.dump({"session_id":"reentry-session","turn_id":"turn-reentry","cwd":sys.argv[2],
+           "hook_event_name":"Stop","stop_hook_active":False,
+           "last_assistant_message":"This repository has package.json."}, open(sys.argv[1],"w"))
 PY
-run_event "$T/active-stop.json" "$T/active-stop-state" stop >"$T/active-stop.out" 2>"$T/active-stop.err"; r=$?
-check 0 "$r" "Codex Stop 재진입이면 게이트를 다시 돌리지 않는다"
-python3 - "$T/active-stop.out" "$T/active-stop-state" <<'PY'
+NGG_JUDGE=0 run_event "$T/active-stop.json" "$RSTATE" stop >"$T/active-stop.out" 2>"$T/active-stop.err"; r=$?
+check 2 "$r" "첫 번째 근거 게이트 차단은 Codex continuation 을 요청한다"
+python3 - "$T/active-stop.json" "$T/stop-continuation-prompt.json" <<'PY'
+import json, sys
+d=json.load(open(sys.argv[1], encoding="utf-8"))
+json.dump({"session_id":d["session_id"],"turn_id":d["turn_id"],"cwd":d["cwd"],
+           "hook_event_name":"UserPromptSubmit",
+           "prompt":"Checkride: answer the request with evidence."}, open(sys.argv[2],"w"))
+PY
+run_event "$T/stop-continuation-prompt.json" "$RSTATE" prompt >"$T/stop-continuation-prompt.out" 2>"$T/stop-continuation-prompt.err"; r=$?
+check 0 "$r" "Codex Stop continuation 프롬프트는 정상 처리한다"
+grep -qFx 'Does this repository have package.json?' "$RSTATE/state/reentry-session/prompt"
+check 0 "$?" "자동 continuation 이 원래 사용자 프롬프트를 덮어쓰지 않는다"
+python3 - "$T/active-stop.json" "$T/active-stop-retry.json" <<'PY'
+import json, sys
+d=json.load(open(sys.argv[1], encoding="utf-8")); d["stop_hook_active"]=True
+json.dump(d, open(sys.argv[2],"w"))
+PY
+NGG_JUDGE=0 run_event "$T/active-stop-retry.json" "$RSTATE" stop >"$T/active-stop-retry.out" 2>"$T/active-stop-retry.err"; r=$?
+check 2 "$r" "Codex Stop 재진입에서도 근거 게이트가 다시 차단한다"
+
+# 모델이 답을 고치면 재진입 검사는 통과하고 해당 turn 의 반복 상태를 지운다.
+printf 'Bash\n' > "$RSTATE/state/reentry-session/tools"
+python3 - "$T/active-stop-retry.json" "$T/active-stop-pass.json" <<'PY'
+import json, sys
+d=json.load(open(sys.argv[1], encoding="utf-8")); d["last_assistant_message"]="I checked package.json with cat and confirmed it exists."
+json.dump(d, open(sys.argv[2],"w"))
+PY
+NGG_JUDGE=0 run_event "$T/active-stop-pass.json" "$RSTATE" stop >"$T/active-stop-pass.out" 2>"$T/active-stop-pass.err"; r=$?
+check 0 "$r" "수정된 Codex 재진입 답은 두 Stop 게이트를 통과한다"
+python3 - "$T/active-stop-pass.out" "$RSTATE/state/reentry-session" <<'PY'
 import json, pathlib, sys
 assert json.load(open(sys.argv[1], encoding="utf-8")) == {"continue": True}
-assert not (pathlib.Path(sys.argv[2]) / "state/active-stop").exists()
+assert not (pathlib.Path(sys.argv[2]) / "stop").exists()
 PY
-check 0 $? "재진입 응답은 Codex JSON 이고 게이트 상태를 쓰지 않는다"
+check 0 "$?" "통과한 재진입은 JSON 을 출력하고 반복 상태를 비운다"
+
+# SubagentStop도 stop_hook_active 재진입 때 원래 agent의 답을 다시 검사한다.
+SSTATE="$T/subagent-stop-state"; mkdir -p "$SSTATE/state/subagent-session/agent-agent-test"
+printf '%s' 'Does this repository have package.json?' > "$SSTATE/state/subagent-session/agent-agent-test/prompt"
+python3 - "$T/subagent-stop.json" "$P" <<'PY'
+import json, sys
+json.dump({"session_id":"subagent-session","turn_id":"turn-subagent","agent_id":"agent-test",
+           "cwd":sys.argv[2],"hook_event_name":"SubagentStop","stop_hook_active":False,
+           "last_assistant_message":"This repository has package.json."}, open(sys.argv[1],"w"))
+PY
+NGG_JUDGE=0 run_event "$T/subagent-stop.json" "$SSTATE" subagent-stop 2>"$T/subagent-stop.err"; r=$?
+check 2 "$r" "Codex SubagentStop 첫 차단은 continuation 을 요청한다"
+python3 - "$T/subagent-stop.json" "$T/subagent-stop-retry.json" <<'PY'
+import json, sys
+d=json.load(open(sys.argv[1], encoding="utf-8")); d["stop_hook_active"]=True
+json.dump(d, open(sys.argv[2],"w"))
+PY
+NGG_JUDGE=0 run_event "$T/subagent-stop-retry.json" "$SSTATE" subagent-stop 2>"$T/subagent-stop-retry.err"; r=$?
+check 2 "$r" "Codex SubagentStop 재진입에서도 근거 게이트가 다시 차단한다"
+
+# Codex 의 stop_hook_active 는 재진입 상한이 아니므로 Checkride 가 여덟 번까지만 다시 요청한다.
+BST="$T/bounded-stop-state"; mkdir -p "$BST/state/bounded-session"
+printf '%s' 'Does this repository have package.json?' > "$BST/state/bounded-session/prompt"
+for attempt in 0 1 2 3 4 5 6 7 8; do
+  active=false; [ "$attempt" -eq 0 ] || active=true
+  python3 - "$T/bounded-$attempt.json" "$P" "$active" <<'PY'
+import json, sys
+json.dump({"session_id":"bounded-session","turn_id":"turn-bounded","cwd":sys.argv[2],
+           "hook_event_name":"Stop","stop_hook_active":sys.argv[3] == "true",
+           "last_assistant_message":"This repository has package.json."}, open(sys.argv[1],"w"))
+PY
+  NGG_JUDGE=0 run_event "$T/bounded-$attempt.json" "$BST" stop \
+    >"$T/bounded-$attempt.out" 2>"$T/bounded-$attempt.err"
+  r=$?
+  if [ "$attempt" -lt 8 ]; then
+    check 2 "$r" "Codex 재진입 $((attempt+1))회까지 실패 답을 다시 검사한다"
+  else
+    check 0 "$r" "8회 재진입이 실패하면 Codex turn 을 안전하게 종료한다"
+    python3 - "$T/bounded-$attempt.out" <<'PY'
+import json, sys
+d=json.load(open(sys.argv[1], encoding="utf-8"))
+assert d["continue"] is False and d["stopReason"] and d["systemMessage"]
+PY
+    check 0 "$?" "상한 응답은 Codex 종료 형식과 사용자 경고를 포함한다"
+  fi
+done
+
+# 반복 횟수를 사용자 상태 경로에 기록하지 못하면 무한 continuation을 만들지 않고 경고와 함께 끝낸다.
+FSTATE="$T/unwritable-retry-state"; mkdir -p "$FSTATE/state/retry-failure"; printf x > "$FSTATE/stop-retries"
+printf '%s' 'Does this repository have package.json?' > "$FSTATE/state/retry-failure/prompt"
+python3 - "$T/retry-state-error.json" "$P" <<'PY'
+import json, sys
+json.dump({"session_id":"retry-failure","turn_id":"turn-retry-failure","cwd":sys.argv[2],
+           "hook_event_name":"Stop","stop_hook_active":False,
+           "last_assistant_message":"This repository has package.json."}, open(sys.argv[1],"w"))
+PY
+NGG_JUDGE=0 run_event "$T/retry-state-error.json" "$FSTATE" stop \
+  >"$T/retry-state-error.out" 2>"$T/retry-state-error.err"; r=$?
+check 0 "$r" "Codex retry 상태를 저장할 수 없으면 안전하게 turn 을 끝낸다"
+python3 - "$T/retry-state-error.out" <<'PY'
+import json, sys
+d=json.load(open(sys.argv[1], encoding="utf-8"))
+assert d["continue"] is False and d["systemMessage"]
+PY
+check 0 "$?" "retry 상태 저장 오류를 사용자 경고로 반환한다"
+
+# 검사를 통과해도 반복 상태 정리에 실패하면 Codex 응답을 빠뜨리지 않고 종료를 알린다.
+CLEANSTATE="$T/unclearable-retry-state"; mkdir -p "$CLEANSTATE/state/cleanup-failure"
+printf 'Bash\n' > "$CLEANSTATE/state/cleanup-failure/tools"
+python3 - "$CLEANSTATE" <<'PY'
+import hashlib, json, pathlib, sys
+identity=json.dumps(["stop", "cleanup-failure", "turn-cleanup", None], ensure_ascii=False, separators=(",", ":"))
+path=pathlib.Path(sys.argv[1]) / "stop-retries" / (hashlib.sha256(identity.encode("utf-8")).hexdigest() + ".count")
+path.mkdir(parents=True)
+PY
+python3 - "$T/retry-cleanup-error.json" "$P" <<'PY'
+import json, sys
+json.dump({"session_id":"cleanup-failure","turn_id":"turn-cleanup","cwd":sys.argv[2],
+           "hook_event_name":"Stop","stop_hook_active":False,
+           "last_assistant_message":"I checked package.json with cat and confirmed it exists."}, open(sys.argv[1],"w"))
+PY
+NGG_JUDGE=0 run_event "$T/retry-cleanup-error.json" "$CLEANSTATE" stop \
+  >"$T/retry-cleanup-error.out" 2>"$T/retry-cleanup-error.err"; r=$?
+check 0 "$r" "Codex retry 상태 정리 오류도 Stop 응답을 반환한다"
+python3 - "$T/retry-cleanup-error.out" <<'PY'
+import json, sys
+d=json.load(open(sys.argv[1], encoding="utf-8"))
+assert d["continue"] is False and "clear" in d["systemMessage"].lower()
+PY
+check 0 "$?" "retry 상태 정리 오류에서 turn 을 경고와 함께 끝낸다"
 
 # Codex Bash의 PostToolUse.tool_response 는 명령 출력 문자열이라 종료 코드를 주지 않는다.
 Q="$T/bash-repo"; mkrepo "$Q"

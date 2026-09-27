@@ -153,8 +153,8 @@ codex plugin marketplace add IsthisLee/checkride
 
 Codex가 프로젝트 설정을 읽으려면 해당 저장소를 신뢰해야 하며, 훅 정의도 `/hooks`에서 검토·신뢰해야 실행됩니다. `.codex/config.toml`의 프로젝트 신뢰와 훅 정의 신뢰는 별개입니다. 변경된 훅은 다시 검토 대상이 될 수 있고, checkout/worktree마다 절대 경로가 달라지면 별도로 승인해야 할 수 있습니다.
 Codex 훅은 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`에 연결됩니다. Bash와 `apply_patch`의 변경은 검사하고, 지원되는 파일 변경 인자를 가진 MCP/local-function 도구는 경로를 알아낼 수 있는 입력만 검사합니다. 파일 경로를 해석할 수 없는 도구는 자동으로 안전하다고 간주하지 않습니다. 현재 훅 신뢰 상태는 Codex의 `/hooks` 화면에서 확인하세요.
-Codex의 Bash `PostToolUse.tool_response`에는 명령 출력만 있고 종료 상태가 없습니다. 따라서 마지막 실패 명령 뒤 성공을 주장하는 R5는 Codex에서 실행되지 않습니다. Claude Code에서는 `PostToolUseFailure` 이벤트로 이 규칙을 적용합니다.
-Codex가 Stop 재진입 표시를 보내면 Checkride는 근거·완료 게이트를 다시 실행하지 않습니다. 따라서 첫 응답이 차단된 뒤 다시 쓴 답은 재검사되지 않습니다. Codex 훅 문서에는 재시도 상한이 없고, OpenAI의 구현 테스트는 재진입에서 다시 차단하지 않는 패턴을 씁니다. 이는 반복 차단 루프를 피하기 위한 플랫폼 경계입니다. Claude Code에서는 재진입 답변도 다시 검사하지만, 여덟 번 연속 턴을 이어 간 뒤에는 다음 차단을 덮어쓰고 턴을 끝냅니다. 어느 도구든 반복 상한에 도달한 마지막 답은 게이트를 통과하지 못했을 수 있으므로 사용자가 확인해야 합니다.
+Codex의 Bash `PostToolUse.tool_response`에는 명령 출력만 있고 종료 상태가 없습니다. 따라서 마지막 실패 명령 뒤 성공을 주장하는 R5는 Codex에서 실행되지 않습니다. Claude Code에서는 `PostToolUseFailure` 이벤트로 이 규칙을 적용합니다. 종료 상태가 Codex 훅에 전달되지 않는 문제는 [2026-09-28 현재 열린 OpenAI Codex 이슈 #34289](https://github.com/openai/codex/issues/34289)에서 추적 중입니다.
+Codex의 `Stop` 훅은 `stop_hook_active`가 참인 재진입에서도 근거·완료 게이트를 다시 실행합니다. 자동 continuation 프롬프트가 들어오면 원래 사용자 질문을 보존해 로컬 맥락 검사도 이어 갑니다. Checkride는 재검사·차단을 최대 여덟 번 이어 갑니다. 여덟 번째 재진입도 실패하거나 반복 상태를 저장·정리하지 못하면 `continue: false`와 `systemMessage`를 반환해 턴을 끝냅니다. 이 경고가 나오면 사용자가 답을 확인해야 합니다. Claude Code도 재진입 답변을 다시 검사하며, 여덟 번 연속 턴을 이어 간 뒤에는 다음 차단을 덮어쓰고 턴을 끝냅니다.
 
 ### 스킬만 별도 설치
 

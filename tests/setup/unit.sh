@@ -112,7 +112,7 @@ for h in '## 소유' '## 업데이트와 재설치' '## 끄기와 제거' '## �
   grep -qx "$h" "$P1/.checkride/README.md"; check 0 $? "README 에 '$h' 절이 있다"
 done
 grep -q '샌드박스' "$P1/.checkride/README.md"; check 0 $? "README 가 샌드박스 밖에서 실행된다고 경고한다"
-grep -q '첫 답을 차단한 뒤 다시 작성된 답은 검사하지 않습니다' "$P1/.checkride/README.md"; check 0 $? "README 가 Codex Stop 재진입 검사 경계를 알린다"
+grep -q 'stop_hook_active' "$P1/.checkride/README.md" && grep -q '여덟 번째 재진입 검사도 실패하거나' "$P1/.checkride/README.md"; check 0 $? "README 가 Codex 재검사와 종료 상한을 알린다"
 printf '%s' "$out" | grep -q 'outside the agent sandbox'; check 0 $? "설치 완료 메시지도 실행 권한과 샌드박스 경계를 경고한다"
 
 # 11. 남의 설정과 인라인 배열은 글자 그대로 두고, 옛 Checkride 핸들러는 지운다

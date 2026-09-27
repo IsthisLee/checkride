@@ -223,7 +223,7 @@ bash "$(find ~/.claude/plugins ~/.codex/plugins -path '*/setup-project-hooks.sh'
 
 Codex CLI 0.156.1에서 새 저장소 훅은 프로젝트 `.codex/` 계층을 신뢰하지 않으면 `codex exec --dangerously-bypass-hook-trust`로도 실행되지 않았습니다. 이 플래그는 훅 정의 신뢰만 한 번 우회하고 프로젝트 신뢰를 대신하지 않습니다. 이 저장소에서는 `/hooks`에서 새 Checkride 훅을 검토하고 신뢰한 뒤 `codex exec`가 별도 우회 플래그 없이 프로젝트 훅을 실행했습니다. 자동화에서는 실행 전에 Codex 설정에 프로젝트 신뢰와 현재 훅 정의 신뢰가 저장되어 있어야 합니다. 비대화형 실행은 승인 화면을 띄우지 않습니다. [Codex 훅 문서](https://developers.openai.com/codex/hooks) (확인일: 2026-09-28).
 
-Codex가 Stop 재진입 표시를 보내면 Checkride는 두 게이트를 다시 실행하지 않습니다. 첫 답을 차단한 뒤 다시 작성된 답은 검사하지 않습니다. Codex 훅 문서에는 반복 상한이 없으므로, 이 동작은 무한 차단을 피하기 위한 플랫폼 경계입니다. Claude Code는 재진입 답변도 검사하지만, 여덟 번 연속 턴을 이어 간 뒤에는 다음 차단을 덮어쓰고 턴을 끝냅니다. 상한에 도달하면 마지막 답이 게이트를 통과하지 못했을 수 있으므로 사용자가 확인해야 합니다.
+Codex의 `Stop` 훅은 `stop_hook_active`가 참인 재진입에서도 두 게이트를 다시 실행합니다. 자동 continuation 프롬프트가 들어오면 원래 사용자 질문을 보존해 로컬 맥락 검사도 이어 갑니다. 최대 여덟 번 continuation을 요청하고, 여덟 번째 재진입 검사도 실패하거나 반복 상태를 저장·정리하지 못하면 `continue: false`와 `systemMessage`를 반환해 턴을 끝냅니다. 이 경고가 나오면 사용자가 답을 확인해야 합니다. Claude Code도 재진입 답변을 검사하며, 여덟 번 연속 턴을 이어 간 뒤에는 다음 차단을 덮어쓰고 턴을 끝냅니다.
 
 ## 보안 경고
 
