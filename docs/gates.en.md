@@ -91,7 +91,7 @@ Official documentation checked 2026-09-28: [Codex hooks, trust, and `tool_respon
 
 ## Judge settings
 
-When only R2a/R2b fire, the evidence gate asks a small model whether the flagged wording is an opinion or a claim about state. The judge can only release, never block. The rules and exemptions are in the [README](../README.en.md#what-gets-blocked).
+When only R0/R2a/R2b fire, the evidence gate asks a small model whether the reply is an opinion, general explanation, or hypothetical, or an unsupported claim about this project's state. With R0 it classifies the full reply; with only R2a/R2b it classifies the flagged sentences. The judge can only release, never block, and cannot release R1/R3/R5. The rules and exemptions are in the [README](../README.en.md#what-gets-blocked).
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -119,9 +119,9 @@ Claude Code ships [prompt hooks](https://code.claude.com/docs/en/hooks) for judg
 | Approach | Runs on | Cost per turn |
 |---|---|---|
 | `type: "prompt"` Stop hook | **every turn** | measured +1.6s (4.8s baseline → 6.4s) |
-| Ours (regex + `judge.py`) | about 4% of blocks | median 8s when it fires, zero otherwise |
+| Ours (regex + `judge.py`) | only when R0/R2a/R2b candidates remain | model call only on turns selected for judgment |
 
-The regex floor is free and the model is consulted rarely. Moving to a prompt hook would slow down every uneventful turn. The `ok:false` path does work: the model kept going for 6 turns after being blocked.
+Regex applies the initial rules, and the model is called only when R0/R2a/R2b candidates remain.
 
 If it fails or times out, the block stands. Each verdict is logged to `${CLAUDE_PLUGIN_DATA}/state/events.log` as `judge=released|kept|failed` with the elapsed seconds.
 

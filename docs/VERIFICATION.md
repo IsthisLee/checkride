@@ -7268,3 +7268,744 @@ $ tests/doc-counts.sh
 ```
 
 판정: 두 명령 모두 exit 0.
+
+
+## V75 — 근거 게이트 R0 의미 판정 확대
+
+### 변경 내용과 판정 범위
+
+R0는 사용자의 질문이 현재 프로젝트를 가리킨다는 단서이지, 답 전체가 상태 주장이라는 뜻은 아니다. `stop.sh`는 R0·R2a·R2b만 남으면 의미 판정기를 부른다. R0가 있으면 질문과 답 전체를 보내고, R2a·R2b만 있으면 걸린 문장만 보낸다. 직접 파일 상태 단정(R1), 검사 성공 주장(R3), 실패 뒤 성공 주장(R5)이 함께 있으면 이전처럼 판정기를 부르지 않는다. 실패·시간초과는 차단을 유지한다.
+
+R0 판정 지침은 답의 일부라도 근거 없는 현재 프로젝트 사실을 단정하면 유지하도록 했다. 프로젝트에 무엇을 도입할지 권하는 문장과 명시적 조건문은 그 자체로 현재 상태 주장이 아니다. 질문에 없던 저장소 이름을 답이 새로 도입하고 내부 사실을 말하면, 다른 프로젝트라고 분명히 밝히지 않는 한 현재 프로젝트일 가능성을 배제하지 않는다.
+
+### 판정 정확도와 중간 실패
+
+기존 12개 R2b 사례에 R0 의견 두 건과 상태 주장 두 건을 더해 16개를 판정했다. 첫 실행은 `Vitest가 더 나을 것 같습니다`라는 프로젝트별 추천을 모델이 보수적으로 유지해 15/16이었다. 추천과 현재 상태 단정을 구분하도록 지침을 보강했다. 두 번째 실행도 15/16이었다. 조건형 문장 앞에 도구 없이 검색 결과처럼 보이는 표현이 있어 모델이 이를 유지했다. 측정 기대값을 바꾸지 않고 해당 사례를 순수 조건문으로 바꿨다. 근거 없는 로컬 저장소 사실을 함께 넣은 별도 사례는 유지 판정으로 남겼다.
+
+최종 Haiku 실행은 16/16, 중앙값 8초, 최댓값 12초였다. 실사용 오탐률은 아직 측정하지 않았다.
+
+### Codex 판정과 훅 통합 확인
+
+Codex CLI를 판정기로 지정해 확인했다. R0+R2b 추천은 release(exit 0), 조건만 제시한 가정 답변은 release(exit 0), 질문에 없던 `ExampleApp`의 저장소 수를 사실처럼 덧붙인 답은 keep(exit 1)이었다. 실제 `prompt.sh`와 `stop.sh`도 임시 상태 폴더에서 실행했다. 의견은 `judge=released`로 통과했고, 로컬 package.json 추측은 `judge=kept`로 차단됐다.
+
+Codex의 R5는 해결하지 못했다. 2026-09-28 확인한 [OpenAI Codex issue #34289](https://github.com/openai/codex/issues/34289)는 아직 열려 있고, 조용히 실패한 명령의 빈 `tool_response`가 조용히 성공한 명령 출력과 구분되지 않는다고 기록한다. [Codex hooks 공식 문서](https://developers.openai.com/codex/hooks)에도 안정적인 Bash 종료 코드 필드는 없다. 출력 문자열 추측은 성공 출력에 오류 문구가 있는 경우와 무출력 실패를 구별하지 못하므로 사용하지 않는다. Codex에서는 `?`를 기록하고 R5를 적용하지 않는 기존 동작을 유지한다.
+
+### 검사 결과
+
+`selftest.sh`는 실행하지 않았다. 앞선 두 실행에서 같은 네 케이스(`rl-claim`, `rl-local`, `tp-defer`, `tp-path`)가 실패해 저장소의 두 번 재시도 중단 기준에 도달했다. 이번에는 별도 판정 정확도 검사와 Codex 실제 훅 호출로 새 R0 경로를 확인했다.
+
+```text
+$ bash tests/no-guess-gate/judge-accuracy.sh > /tmp/checkride-judge-accuracy-final.log 2>&1; rc=$?; tail -n 4 /tmp/checkride-judge-accuracy-final.log; exit "$rc"
+✅ release hooks/stop.sh 안에 두는 편이 더 단순할 것 같다. 9s
+✅ release 이 구조는 나중에 유지보수가 어려울 것으로 보인다. 8s
+✅ release 판정기를 별도 파일로 빼는 게 아마 나을 것이다. 8s
+✅ release README를 영어로도 두는 편이 좋아 보인다. 7s
+✅ release Splitting the config seems like a cleaner appr 8s
+✅ release 이 방식이 테스트하기 더 쉬울 것 같습니다. 7s
+✅ keep    hooks/stop.sh가 깨져 보인다.             8s
+✅ keep    아마 package.json이 없어서 실패한 것 같다. 9s
+✅ keep    설정 파일이 비어 있는 것으로 보인다. 7s
+✅ keep    테스트가 아마 전부 통과했을 것이다. 7s
+✅ keep    The config file appears to be missing.         8s
+✅ keep    이 디렉터리에는 테스트가 없는 것 같습니다. 8s
+✅ release Vitest로 시작하는 편을 권합니다.    9s
+✅ release 두 영역이 별도 저장소라고 가정하면 폴리레포라고 볼 수 있습니다. 10s
+✅ keep    두 영역이 별도 저장소라고 가정하면 프런트엔드 저장소는 모노레포입니다. Exampl 12s
+✅ keep    아마 package.json이 있을 것이다.       9s
+
+정확도 16/16  중앙값 8s  최대 12s
+
+$ bash -c 'for g in lib codex no-guess-gate done-gate test-integrity project-guard repo-profile setup; do tests/$g/unit.sh || exit 1; done && tests/skills-unit.sh && tests/attack-surface.sh && tests/invariants.sh && tests/doc-counts.sh' > /tmp/checkride-full-tests-final.log 2>&1; rc=$?; tail -n 10 /tmp/checkride-full-tests-final.log; exit "$rc"
+✅ 키 개수가 두 언어에서 같다 (ko=61 en=61)
+✅ 한쪽에만 있는 키가 없다
+✅ ko: 모든 키가 오류 없이 찍힌다
+✅ en: 모든 키가 오류 없이 찍힌다
+✅ 하이픈으로 시작하는 문장이 그대로 나온다
+✅ NGG_LANG이 로케일을 이긴다
+✅ NGG_LANG=en 이 한국어 로케일을 이긴다
+✅ LANG=ko_KR → 한국어
+✅ LC_ALL이 LANG을 이긴다
+✅ LC_MESSAGES가 LANG을 이긴다
+✅ 로케일이 없으면 영어
+✅ 모르는 로케일이면 영어
+✅ 모르는 NGG_LANG이면 영어
+✅ checkride.toml lang=ko → 한국어
+✅ checkride.toml lang=en 이 한국어 로케일을 이긴다
+✅ checkride.toml lang=ko 가 영어 로케일을 이긴다
+✅ NGG_LANG 이 checkride.toml lang 을 이긴다
+✅ CWD 를 안 주면 둘러싼 checkride.toml 의 lang 을 읽지 않는다
+✅ Git 저장소에서는 하위 checkride.toml 이 루트 설정보다 우선하지 않는다
+✅ Git 밖에서는 프로젝트 안의 가장 가까운 checkride.toml 을 쓴다
+✅ 공유 훅이 있으면 Claude 플러그인 훅을 건너뛴다
+✅ 관리된 .checkride 복사본은 계속 실행한다
+✅ 경로에 /../ 가 있는 공유 훅도 실제 실행된다
+✅ 없는 키는 키 이름을 내보낸다
+✅ 인자의 %가 형식으로 읽히지 않는다
+✅ tn은 줄바꿈을 붙이지 않는다 (on = 2바이트)
+✅ t는 줄바꿈을 붙인다 (on+개행 = 3바이트)
+✅ 카탈로그 없음: 첫 줄이 제 키
+✅ 카탈로그 없음: 둘째 줄이 제 키(앞 값이 남지 않는다)
+✅ 카탈로그 없음: 셋째 줄이 제 키
+✅ 카탈로그 없음: 그래도 exit 2 로 막는다(조용히 통과 아님)
+
+전부 통과
+✅ apply_patch 입력 command 누락 → exit 2
+✅ 누락된 패치 입력을 stderr 로 설명한다
+✅ apply_patch 로 새 테스트에 .skip 추가 → exit 2
+✅ 해석할 수 없는 apply_patch 이동 목적지는 차단한다
+✅ 이동 목적지를 추적할 수 없다고 알린다
+✅ 파일 경로를 노출하는 MCP 쓰기 도구가 append_only 편집을 차단한다
+✅ 읽기 전용 MCP 도구는 파일 경로를 이유로 차단하지 않는다
+✅ Codex의 비Bash 도구 호출도 근거 게이트에 기록한다
+✅ Codex 독립 프로젝트가 상위 폴더의 Checkride 설정을 물려받지 않는다
+✅ Stop 게이트 통과 → exit 0
+✅ Stop 게이트 통과 시 Codex JSON 을 출력한다
+✅ 첫 번째 근거 게이트 차단은 Codex continuation 을 요청한다
+✅ Codex Stop continuation 프롬프트는 정상 처리한다
+✅ 자동 continuation 이 원래 사용자 프롬프트를 덮어쓰지 않는다
+✅ Codex Stop 재진입에서도 근거 게이트가 다시 차단한다
+✅ 수정된 Codex 재진입 답은 두 Stop 게이트를 통과한다
+✅ 통과한 재진입은 JSON 을 출력하고 반복 상태를 비운다
+✅ Codex SubagentStop 첫 차단은 continuation 을 요청한다
+✅ Codex SubagentStop 재진입에서도 근거 게이트가 다시 차단한다
+✅ Codex 재진입 1회까지 실패 답을 다시 검사한다
+✅ Codex 재진입 2회까지 실패 답을 다시 검사한다
+✅ Codex 재진입 3회까지 실패 답을 다시 검사한다
+✅ Codex 재진입 4회까지 실패 답을 다시 검사한다
+✅ Codex 재진입 5회까지 실패 답을 다시 검사한다
+✅ Codex 재진입 6회까지 실패 답을 다시 검사한다
+✅ Codex 재진입 7회까지 실패 답을 다시 검사한다
+✅ Codex 재진입 8회까지 실패 답을 다시 검사한다
+✅ 8회 재진입이 실패하면 Codex turn 을 안전하게 종료한다
+✅ 상한 응답은 Codex 종료 형식과 사용자 경고를 포함한다
+✅ Codex retry 상태를 저장할 수 없으면 안전하게 turn 을 끝낸다
+✅ retry 상태 저장 오류를 사용자 경고로 반환한다
+✅ Codex retry 상태 정리 오류도 Stop 응답을 반환한다
+✅ retry 상태 정리 오류에서 turn 을 경고와 함께 끝낸다
+✅ Codex Bash 호출 전 검사가 스냅샷을 저장한다
+✅ Codex Bash 출력만 있는 응답을 처리한다
+✅ 종료 상태가 없는 Bash 결과를 중립 기호로 기록한다
+✅ Bash 전후 스냅샷에서 수정 파일을 기록한다
+✅ 출력에 종료 코드처럼 보이는 문장이 있어도 응답을 처리한다
+✅ 임의의 출력 문장을 실패 종료 코드로 오인하지 않는다
+✅ 상태를 알 수 없는 Codex Bash 응답도 처리한다
+✅ 알 수 없는 결과를 중립 기호로 기록한다
+✅ 하위 훅 exit 1 도 Codex에서 실패 폐쇄한다
+✅ 하위 훅 오류를 stderr 에 전달한다
+✅ 하위 훅 실행 파일이 없으면 Codex 차단 코드 exit 2 를 쓴다
+✅ 하위 훅 실행 실패를 traceback 없이 알린다
+✅ NGG_INNER=1 이면 Codex 훅을 건너뛴다
+✅ 내부 세션은 훅 상태를 기록하지 않는다
+✅ 저장소 공유 훅이 있으면 Codex 플러그인 복사본은 건너뛴다
+✅ 저장소의 관리 훅 복사본은 계속 실행된다
+✅ Codex 상태 기본 경로는 하위 폴더에서도 저장소 루트를 쓴다
+✅ Codex 판정기 → 분류 결과로 exit 0
+✅ Codex 판정기 이유를 읽는다
+✅ Codex 판정 세션은 사용자 설정·저장소 밖 임시 폴더·read-only·shell 비활성·빈 stdin 을 쓴다
+
+전부 통과
+✅ prompt.sh exit 0
+✅ NGG_STATE 아래 prompt 파일
+✅ 도구 0회 + 파일 부재 단정 → exit 2
+✅ stderr에 [R0 R1]
+✅ NGG_STATE 아래 events.log
+✅ 스크립트 폴더에는 state 없음
+✅ Claude 재진입에서 근거 없는 답을 다시 차단
+✅ 재진입도 [R0 R1]로 판정
+✅ pre.sh exit 0
+✅ Read 1회 후 exit 0
+✅ 폴백: 스크립트 폴더 아래 prompt
+✅ NGG_STATE 빈 문자열도 폴백, 판정 동일 exit 2
+✅ 폴백: 스크립트 폴더 아래 events.log
+✅ 턴 중간 프롬프트 뒤에도 tools 1줄 유지
+✅ 턴 중간 메시지 뒤 Stop: 도구 1회로 통과
+✅ 통과한 Stop이 turn_closed 생성
+✅ 턴 닫힌 뒤 첫 프롬프트는 tools 0으로 초기화
+✅ 초기화 뒤 도구 0회 단정 → exit 2
+✅ R1: 경로 언급만(단정 없음) → 통과
+✅ R1: 경로 + 파일이 없다 → exit 2
+✅ stderr에 [R1]
+✅ R1: 경로 + 에 있다 → exit 2
+✅ R1: 영어 경로 부재 단정 → exit 2
+✅ R1: 없다면(가정) → 통과
+✅ R1: 없다고(인용) → 통과
+✅ R1: 존재한다면(가정) → 통과
+✅ R1: 존재하지 않는다 → exit 2
+✅ R1: 일반 개념 설명의 'There is no …'는 로컬 파일 주장 아님
+✅ R1: 로컬 package.json 부재 주장은 계속 차단
+✅ 로컬 package.json 부재 판정에 R0·R1
+✅ R2a: 도구 0회 + 유보 표현 → exit 2
+✅ stderr에 R2a
+✅ R2a: 도구 1회 뒤 유보 표현 → 통과
+✅ R2a: 불가능 사유 명시 → 통과
+✅ R2a: 영어 유보 표현 + 도구 0회 → exit 2
+✅ R2a: 영어 불가능 사유 명시 → 통과
+✅ R2a: 코드베이스 맥락이 아닌 질문의 유보 → 통과
+✅ R2a: 답이 여기 있는 파일 상태를 말하며 유보 → exit 2
+✅ stderr에 R2a (답 속 로컬 맥락)
+✅ R2a: 한국어 '여기 있는 테스트 파일' + 유보 → exit 2
+✅ R2a: 'Here is a cleaner wording' 은 로컬 맥락이 아니다 → 통과
+✅ python3 실패 → stop.sh exit 1 (조용한 통과 아님)
+✅ stderr 첫 줄에 python3 언급
+✅ prompt.sh도 같은 경로로 exit 1
+✅ tools 파일 없이 Stop → exit 0
+✅ stderr 비어 있음 (리디렉션 오류 잡음 없음)
+✅ R2b: 의견형 유보(나아 보인다) → 통과
+✅ R2b: 상태형 유보(깨져 보인다) → exit 2
+✅ stderr에 R2b
+✅ R2b: 습니다체(깨져 보입니다)도 exit 2
+✅ R2b: 의견형 습니다체(적절해 보입니다) → 통과
+✅ R2b: 영어 의견형(seems better) → 통과
+✅ R2b: 영어 상태형(seems to be corrupted) → exit 2
+✅ R2b: 이번 턴에 도구를 쓴 뒤의 추정 표현 → 통과
+✅ 불가 면제: 도구 실행이 안 된다고 밝힘 → R0 통과
+✅ (준비) 도구 0회 단정 → exit 2
+✅ 불가 면제: 차단 뒤 불가 사유를 밝힘 → 통과
+✅ 불가 면제는 R1에 적용 안 됨: 단정은 exit 2
+✅ 판정 헤더가 [R1] 하나 (R0은 불가 면제로 빠짐)
+✅ 불가 면제: 불가 사유 + 추정 → R2b 통과
+✅ 불가 면제 아님: 코드 동작 설명의 '실행되지 않는다' → R0 유지
+✅ 판정 헤더에 R0 포함(불가 면제가 걸리지 않음)
+✅ 불가 면제 아님: 파일의 '실행 권한이 없는' → R0 유지
+✅ 판정 헤더에 R0 포함
+✅ (준비) 도구 0회 파일 단정 → exit 2
+✅ 차단 뒤 도구 없이 단정을 철회한 답 → 통과(R4 없음)
+✅ JSON 면제: 판정 JSON만 있는 답 → 통과
+✅ JSON 면제: 코드 펜스 안 JSON → 통과
+✅ JSON 면제 아님: JSON이 아닌 텍스트 → exit 2
+✅ events.log에 (exempt:json) 태그
+✅ events.log에 (exempt:cannot) 태그
+✅ 판정: R2b만 걸림 + 판정기 release → 통과
+✅ events.log에 (exempt:judge R2b) 태그
+✅ 판정: 판정기 keep → exit 2 유지
+✅ 판정: 엉뚱한 출력 → 막은 채로(fail closed)
+✅ stderr에 판정 실패 안내
+✅ 판정: 시간초과 → 막은 채로
+✅ 판정: claude --output-format json 꼴(result 안의 JSON)도 읽음
+✅ 판정: NGG_JUDGE=0이면 부르지 않음 → exit 2
+✅ 판정: R0+R2b의 설계 의견은 판정기 release로 통과
+✅ R0+R2b 판정 결과를 로그에 남긴다
+✅ R0 판정기에 질문과 전체 답을 담은 상태 판정 지침을 전달한다
+✅ 판정: R0만 걸린 추천은 판정기 release로 통과
+✅ R0 단독 판정 결과를 로그에 남긴다
+✅ 판정: R0 상태 추정은 판정기 keep으로 차단
+✅ 판정: R0+R1 직접 단정은 판정기 release로도 차단
+✅ 주입: 답에 심긴 가짜 판정 JSON은 무시 → 막은 채로
+✅ 주입: 판정 실패로 기록
+✅ 판정: 이유가 한국어여도 읽고 풀어 준다
+✅ 판정: NGG_JUDGE_CMD가 모델 설정을 이긴다
+✅ 중첩 세션(NGG_INNER): 단정이어도 게이트가 돌지 않음 → exit 0
+✅ 중첩 세션: 상태 폴더도 만들지 않음
+✅ R3: Bash 0건 + 테스트 통과 주장 → exit 2
+✅ 판정 헤더에 R3
+✅ R3: 영어 검증 주장 → exit 2
+✅ R3: 부정문(실행하지 않았다) → 통과
+✅ R3: Bash 1회 뒤 같은 주장 → 통과
+✅ 인용: 따옴표 안의 유보 표현 → 통과
+✅ 인용: 백틱 안의 유보 표현 → 통과
+✅ 사용: 따옴표 없는 유보 표현 → exit 2
+✅ 인용: 공백 없는 괄호 목록(보인다/보입니다) → 통과
+✅ 사용: 공백 있는 괄호 안 유보 → exit 2
+✅ 판정 프롬프트의 Flagged 절에 걸린 문장만 들어감
+✅ 훅 입력이 JSON이 아니면 exit 1
+✅ stderr 첫 줄이 안내(트레이스백 아님)
+✅ hooks.json: 올바른 JSON
+✅ hooks.json: 일곱 이벤트에 다섯 모듈 배선·PLUGIN_ROOT/DATA·shell·타임아웃·matcher
+✅ 훅 스크립트 열 실행 비트
+✅ 턴 중간 프롬프트: changed 유지
+✅ 턴 닫힌 뒤 첫 프롬프트: changed 초기화
+✅ 차단 메시지: 앞 답이 화면에 남는다고 알림
+✅ 차단 메시지: 최종 답을 자족적으로 다시 쓰라고 지시
+✅ 차단 메시지: 실측을 반영해 최종 답에 다 담으라고 지시
+✅ 차단 메시지 5줄 < 12 (길면 안 읽는다)
+✅ 로그: 판정기가 풀어 주면 judge=released
+✅ 로그: 유지하면 judge=kept
+✅ 로그: 실패하면 judge=failed
+✅ 로그: 시간초과도 judge=failed
+✅ 로그: 판정에 걸린 초까지 남긴다
+✅ 로그: 끄면 judge 항목 없음
+✅ 기본 판정 모델은 haiku
+✅ NGG_JUDGE_MODEL로 바꿀 수 있다
+✅ NGG_JUDGE_CMD가 있으면 그것이 이긴다
+✅ NGG_JUDGE_CMD를 줬으면 모델을 끼워 넣지 않는다
+✅ 빠른 경로: 평범한 입력 exit 0
+✅ 빠른 경로: 도구 이름 기록
+✅ 빠른 경로: 세 줄 누적(mcp 이름 포함)
+✅ 빠른 경로: agent_id 하위 폴더
+✅ 폴백: 이스케이프 섞인 입력도 exit 0
+✅ 폴백: 결과가 같다
+✅ 폴백: JSON이 아니면 exit 1(조용히 통과하지 않음)
+✅ 한국어: R1 차단
+✅ 한국어: 한국어 머리글
+✅ 영어: 같은 답이 같은 규칙에 걸린다
+✅ 영어: 영어 머리글
+✅ 영어: 규칙 설명도 영어
+✅ 영어: 한글이 한 줄도 섞이지 않는다
+✅ 두 언어의 판정 코드가 같다
+✅ LC_ALL=ko_KR.UTF-8: 한국어 단정이 R1에 걸린다
+✅ LC_ALL=C: 한국어 단정이 R1에 걸린다
+✅ LC_ALL=(없음): 한국어 단정이 R1에 걸린다
+✅ R5: 마지막 Bash 실패 + 통과 주장 → exit 2
+✅ R5: 판정 헤더에 R5
+✅ R5: 실패 뒤 성공했으면 통과
+✅ R5: 실패했다고 밝히면 통과
+✅ R5: 영어 주장도 잡는다
+✅ R5: 기록이 없으면 걸지 않는다
+✅ R5: 마지막이 성공이면 통과
+✅ R5: 답 전체가 JSON 이면 면제
+✅ 규칙 끄기: 설정이 없으면 그대로 막는다(기준선)
+✅ 규칙 끄기: R1 만 끄면 R0 가 남아 여전히 막는다
+✅ 규칙 끄기: 꺼진 R1 은 안내에 나오지 않는다
+✅ 규칙 끄기: 걸린 규칙을 다 끄면 통과한다
+✅ 규칙 끄기: 쉼표 뒤 공백이 없어도 읽는다
+✅ 규칙 끄기: 소문자로 적어도 읽는다
+✅ 규칙 끄기: 무엇을 껐는지 events.log 에 남는다
+✅ 규칙 끄기: 없는 이름은 아무것도 끄지 않는다
+✅ 규칙 끄기: 없는 이름을 stderr 로 알린다
+✅ 규칙 끄기: 없는 이름도 events.log 에 남는다
+✅ 항목 끄기: 다른 게이트의 항목은 근거 규칙을 끄지 않는다
+✅ 항목 끄기: 다른 게이트의 항목을 없는 이름으로 알리지 않는다
+✅ 규칙 끄기: cwd 가 다르면 그 설정을 쓰지 않는다
+✅ 허용: 프롬프트의 check allow 줄을 적어 둔다
+✅ 허용: 대소문자를 가리지 않고 여럿을 받는다
+✅ 허용: 새 프롬프트가 오면 지난 허용은 사라진다
+✅ 허용: 백그라운드 알림은 사람의 프롬프트가 아니라 허용을 지우지 않는다
+✅ 허용: 줄 첫머리가 아니면 허용이 아니다
+✅ 허용: 근거 규칙과 없는 이름은 받지 않는다
+✅ 루트: 하위 폴더에서도 루트의 disabled_rules 로 규칙을 끈다
+✅ 읽지 않은 기존 파일 Write → 통과(rb.write 없음)
+✅ 읽은 파일 기록(seen)을 더는 남기지 않는다
+✅ 사람이 없는 세션(ATTENDED=0) → 게이트가 돌지 않는다
+✅ 건너뛴 사실이 events.log 에 남는다
+✅ NGG_HEADLESS=1 이면 사람이 없어도 막는다(CI·회귀 테스트용)
+✅ 변수가 없으면 지금처럼 막는다
+✅ 불가 면제: 판단할 수 없
+✅ 불가 면제: 알 수 없
+✅ 불가 면제: cannot determine
+✅ 불가 면제 아님: 그냥 단정은 그대로 막는다
+✅ R1: 백틱 안의 파일 이름은 단정이 아니다
+✅ R1: 인용이 아닌 경로 단정은 그대로 막는다
+✅ 보고된 프롬프트: 개념 질문의 저장소 + 가정하면 → 통과(R0·R2b 없음)
+✅ 개념 질문(코드베이스가 커지면 모노레포가 유리해?)의 추정 → 통과
+✅ 개념 질문(여기서 말하는 모노레포가 뭐야?)의 추정 → 통과
+✅ R2b: 경로 맥락의 가정하면 → 통과
+✅ R2b: 경로 맥락의 assuming → 통과
+✅ 로컬 질문(이 저장소에 테스트 파일이 몇 개야?) 도구 없이 답 → exit 2
+✅ stderr에 [R0]
+✅ 로컬 질문(여기 테스트 파일이 몇 개야?) 도구 없이 답 → exit 2
+✅ stderr에 [R0]
+✅ 로컬 질문(How many test files are in this repo?) 도구 없이 답 → exit 2
+✅ stderr에 [R0]
+✅ 로컬 질문에 추정으로 답 → exit 2
+✅ stderr에 R2b
+
+실패 0건
+✅ 바꾼 파일 없음 → exit 0
+✅ post.sh exit 0
+✅ changed 파일 생성
+✅ 바꾼 파일 경로 기록
+✅ 검사 명령 없음 → exit 0
+✅ stderr에 안내(막지는 않음)
+✅ 검사 통과 → exit 0
+✅ 검사 실패 → exit 2
+✅ stderr에 완료 게이트 헤더
+✅ stderr에 검사 출력 꼬리
+✅ Claude 재진입에서도 실패한 완료 검사를 차단
+✅ 재진입 차단에 완료 게이트 안내
+✅ 재진입에서 test_command 를 다시 실행
+✅ 문서만 변경 → 검사 안 함, exit 0
+✅ package.json 자동 탐지 → 실패 시 exit 2
+✅ stderr에 어떤 명령을 돌렸는지
+✅ Makefile 자동 탐지 → 실패 시 exit 2
+✅ NGG_DONE=0 → 검사하지 않음
+✅ 통과 후 changed 비움
+✅ 검사 시간초과 → 막지 않음
+✅ stderr에 시간초과 안내
+✅ cwd 밖 파일만 변경 → 검사 안 함
+✅ 빠른 검사 통과 → exit 0
+✅ 턴 끝에는 fast_test_command를 돌린다
+✅ 턴 끝에 전체 검사는 돌리지 않는다
+✅ 빠른 검사만 보므로 턴은 끝난다
+✅ 커밋 직전 전체 검사 실패 → exit 2
+✅ stderr에 전체 검사 출력
+✅ 커밋이 아닌 명령 → 통과
+✅ fast 분리 없으면 커밋 때 중복 검사 안 함
+✅ 느려도 통과는 통과
+✅ 느리면 fast_test_command 분리를 권한다
+✅ ko: 검사 실패 → exit 2
+✅ en: 검사 실패 → exit 2
+✅ ko: 한국어 머리글
+✅ en: 영어 머리글
+✅ en: 한글이 섞이지 않는다
+✅ 심링크: 둘 다 실경로면 막는다(기준선)
+✅ 심링크: changed 만 링크 경로여도 막는다
+✅ 심링크: cwd 만 링크 경로여도 막는다
+✅ 심링크: 둘 다 링크 경로여도 막는다
+✅ 심링크: 정말 저장소 밖이면 세지 않는다
+✅ PR: 성공 주장이 없는 본문 → 통과
+✅ PR: 영어 본문도 성공 주장이 없으면 → 통과
+✅ PR: 말로만 통과 → exit 2
+✅ PR: stderr에 완료 게이트 머리글
+✅ PR: stderr에 무엇을 막았는지
+✅ PR: heredoc 본문에 코드 블록 → 통과
+✅ PR: heredoc 본문에 근거 없음 → exit 2
+✅ PR: --body-file 에 코드 블록 → 통과
+✅ PR: --body-file 에 근거 없음 → exit 2
+✅ PR: -F - 로 넘긴 heredoc 에 코드 블록 → 통과
+✅ PR: 스크린샷 → 통과
+✅ PR: 앞 명령에 이어 붙어도 → exit 2
+✅ PR: --fill 은 본문을 볼 수 없어 → 통과
+✅ PR: 문서에 적는 것은 사용이 아니다
+✅ PR: 커밋 메시지에 든 것은 사용이 아니다
+✅ PR: 문서만 바꾼 브랜치 → 통과
+✅ PR: 기준 브랜치를 모르면 본문만 본다 → exit 2
+✅ PR: 줄을 바꿔 이어 써도 → exit 2
+✅ PR: 줄 이음으로 나눠 쓴 --body-file 도 읽는다 → exit 2
+✅ PR: NGG_DONE=0 → 통과
+✅ PR en: 말로만 통과 → exit 2
+✅ PR en: 영어 머리글
+✅ PR en: 한글이 섞이지 않는다
+✅ 끄기: done.pr 을 끄면 PR 본문을 보지 않는다
+✅ 끄기: 끈 사실이 events.log 에 남는다
+✅ 끄기: 없는 이름은 아무것도 끄지 않는다
+✅ 끄기: 없는 이름을 막을 때 알린다
+✅ 끄기: done.turn 을 끄면 턴 끝 검사를 돌리지 않는다
+✅ 끄기: done.commit 을 끄면 커밋 전 검사를 돌리지 않는다
+✅ 끄기: done.pr 만 끄면 커밋 전 검사는 그대로다
+✅ 허용: done.pr 을 허용하면 PR 이 한 번 열린다
+✅ 허용: 두 번째는 막는다
+✅ 허용: 막을 때 사람이 허용하는 법을 알린다
+✅ 허용: done.turn 을 허용하면 검사가 실패해도 턴이 한 번 끝난다
+✅ 허용: 다음 턴 끝에서는 다시 막는다
+✅ 루트: 하위 폴더에 있어도 저장소 설정으로 검사한다
+✅ 루트: 루트의 검사 명령을 돌린다
+✅ 루트: 하위 폴더에서 커밋해도 전체 검사를 돌린다
+✅ 루트: .git 경계를 넘어 위의 설정을 쓰지 않는다
+✅ 루트: 하위 폴더의 --body-file 은 그 폴더 기준으로 읽는다
+✅ 서브에이전트: 서브에이전트의 편집도 메인 턴 끝에 검사한다
+✅ 빠른 경로: 관계없는 Bash 명령은 파이썬 없이 통과한다
+✅ 빠른 경로: 관계없는 Bash 명령에는 파이썬을 띄우지 않는다
+✅ 빠른 경로: 커밋 명령은 끝까지 검사한다
+
+실패 0건
+✅ test 파일에 .skip 추가 → exit 2
+✅ stderr에 게이트 이름
+✅ stderr에 무엇이 걸렸는지
+✅ 무력화 표기 차단: xit('a', () => {})
+✅ 무력화 표기 차단: describe.only('a',
+✅ 무력화 표기 차단: @pytest.mark.skip
+✅ 무력화 표기 차단: #[ignore]
+✅ 무력화 표기 차단: t.Skip()
+✅ it.todo 추가 → 통과
+✅ 단언 개수 감소 → exit 2
+✅ stderr에 단언 감소 표시
+✅ 기댓값만 바꿈 → 통과
+✅ 단언 추가 → 통과
+✅ 이미 있던 skip 단어는 늘지 않음 → 통과
+✅ 테스트 파일이 아니면 통과
+✅ rm 테스트 파일 → exit 2
+✅ stderr에 삭제 차단
+✅ git rm 테스트 파일 → exit 2
+✅ 테스트가 아닌 파일 rm → 통과
+✅ 일반 명령 → 통과
+✅ Write로 단언 감소 → exit 2
+✅ Write로 단언 추가 → 통과
+✅ 새 테스트 파일 생성 → 통과
+✅ NGG_TESTGUARD=0 → 통과
+✅ 따옴표+공백 테스트 파일 rm → exit 2
+✅ 홑따옴표 테스트 파일 rm → exit 2
+✅ 따옴표 git rm → exit 2
+✅ 따옴표라도 테스트가 아니면 통과
+✅ ko: .skip 추가 → exit 2
+✅ en: .skip 추가 → exit 2
+✅ ko: 한국어 머리글
+✅ en: 영어 머리글
+✅ en: 한글이 섞이지 않는다
+✅ 설정: jest 에 testPathIgnorePatterns 추가 → exit 2
+✅ 설정: 게이트 이름이 나온다
+✅ 설정: pytest 에 --ignore 추가 → exit 2
+✅ 설정: vitest 에 exclude 추가 → exit 2
+✅ 설정: 제외를 줄이면 통과
+✅ 설정: 제외와 무관한 편집은 통과
+✅ 설정: 일반 소스 파일은 대상이 아니다
+✅ 산출물: __pycache__ 삭제는 통과
+✅ 산출물: node_modules 삭제는 통과
+✅ 산출물: .pytest_cache 삭제는 통과
+✅ 산출물: .pyc 삭제는 통과
+✅ 산출물 아님: 진짜 테스트 파일 삭제는 여전히 막힌다
+✅ 문장 분리: 다른 문장의 테스트 경로와 짝짓지 않는다(;)
+✅ 문장 분리: && 로 이어진 경우
+✅ 문장 분리: 파이프와 세미콜론
+✅ 문장 분리: 테스트와 무관한 삭제는 통과
+✅ 문장 분리: 진짜 삭제는 여전히 막는다
+✅ 문장 분리: 뒤쪽 git rm 도 잡는다
+✅ 끄기: ti.skip 을 끄면 무력화 표기를 막지 않는다
+✅ 끄기: 끈 사실이 events.log 에 남는다
+✅ 끄기: ti.skip 만 끄면 단언 감소는 그대로 막는다
+✅ 끄기: ti.assert 를 끄면 단언 감소를 막지 않는다
+✅ 끄기: ti.rm 을 끄면 테스트 삭제를 막지 않는다
+✅ 끄기: ti.exclude 를 끄면 러너 설정의 제외를 막지 않는다
+✅ 끄기: 없는 이름은 아무것도 끄지 않는다
+✅ 끄기: 없는 이름을 막을 때 알린다
+✅ 허용: 허용한 항목은 한 번 통과한다
+✅ 허용: 통과시킨 사실이 events.log 에 남는다
+✅ 허용: 두 번째는 막는다(한 번 쓰면 사라진다)
+✅ 허용: 막을 때 사람이 허용하는 법을 알린다
+✅ 허용: 다른 항목의 허용으로는 통과하지 않는다
+✅ 루트: 하위 폴더에서도 루트의 disabled_rules 를 읽는다
+✅ 빠른 경로: 본문에 Bash 가 있어도 Edit 은 끝까지 검사한다
+✅ 빠른 경로: 관계없는 Bash 명령은 파이썬 없이 통과한다
+✅ 빠른 경로: 관계없는 Bash 명령에는 파이썬을 띄우지 않는다
+✅ 빠른 경로: 삭제 명령은 끝까지 검사한다
+
+실패 0건
+✅ 설정 없음 → 통과
+✅ 기존 마이그레이션 수정 → exit 2
+✅ stderr에 게이트 이름
+✅ stderr에 규칙 설명
+✅ 새 마이그레이션 추가 → 통과
+✅ 지정 밖 파일 수정 → 통과
+✅ 마이그레이션 rm → 통과(삭제는 막지 않음)
+✅ 따옴표 경로 rm → 통과
+✅ 배선: 프로젝트 가드 matcher 는 Edit|Write
+✅ git commit --no-verify → 통과(규칙 없음)
+✅ 일반 커밋 → 통과
+✅ 둘째 경로도 적용 → exit 2
+✅ NGG_GUARD=0 → 통과
+✅ ko: append-only 수정 → exit 2
+✅ en: append-only 수정 → exit 2
+✅ ko: 한국어 머리글
+✅ en: 영어 머리글
+✅ en: 한글이 섞이지 않는다
+✅ 루트: 하위 폴더에서도 append-only 수정을 막는다
+✅ 빠른 경로: 관계없는 Bash 명령은 파이썬 없이 통과한다
+✅ 빠른 경로: 관계없는 Bash 명령에는 파이썬을 띄우지 않는다
+✅ 빠른 경로: 커밋 명령에도 파이썬을 띄우지 않는다
+✅ 빠른 경로: 삭제 명령에도 파이썬을 띄우지 않는다
+
+실패 0건
+✅ 빈 폴더 → exit 0
+✅ 출력에 프로필 표시
+✅ pnpm-lock.yaml → pnpm 탐지
+✅ 의존성에서 스택 탐지
+✅ package-lock.json → npm 탐지
+✅ scripts.test에서 검사 명령 탐지
+✅ 설정의 test_command 표시
+✅ 설정의 append_only 표시
+✅ 명령 없음을 명시
+✅ .env 값을 출력하지 않음
+✅ 출력 155자 < 10000
+✅ NGG_PROFILE=0 → 출력 없음
+✅ go.mod 탐지
+✅ Makefile test 타깃 탐지
+✅ pyproject.toml 탐지
+✅ 켜져 있는 게이트 표시
+✅ ko: 한국어 머리글
+✅ en: 영어 머리글
+✅ en: 한글이 섞이지 않는다
+✅ 끈 규칙을 프로필에 싣는다
+✅ en: 끈 규칙 줄에도 한글이 없다
+✅ 끈 규칙이 없으면 그 줄을 넣지 않는다
+✅ 루트: 하위 폴더에서 열어도 루트의 설정을 싣는다
+✅ 가드: 훅 폴더가 있는데 hooksPath 가 없으면 꺼짐으로 싣는다
+✅ 가드: 켜는 법을 함께 싣는다
+✅ 가드: hooksPath 가 있으면 켜짐으로 싣는다
+✅ 가드: 훅 폴더가 없으면 그 줄을 넣지 않는다
+✅ 가드: .husky 도 훅 폴더로 인식한다
+✅ en: 가드 줄에도 한글이 없다
+
+실패 0건
+✅ 빈 설정 → exit 0
+✅ 빈 설정 → hooksPath 를 건다
+✅ 같은 값 → exit 0 (멱등)
+✅ 같은 값 → 그대로 둔다
+✅ 남의 hooksPath → exit 1 (조용히 덮지 않는다)
+✅ 남의 hooksPath → 값을 건드리지 않는다
+✅ 차단 메시지에 기존 값을 보인다
+✅ 차단 메시지에 공존하는 법을 보인다
+✅ 차단 메시지에 덮어쓰는 법을 보인다
+✅ --force → exit 0
+✅ --force → 덮는다
+✅ 훅 폴더 없음 → exit 1
+✅ git 저장소 아님 → exit 1
+✅ 모르는 인자 → exit 1
+✅ 공유 훅 설치 → exit 0
+✅ 훅 사본과 관리 표식을 만든다
+✅ 저장소 안에 .checkride/data 를 만들지 않는다
+✅ Claude 설정에 매니페스트의 핸들러를 모두 넣는다
+✅ Codex 설정에 매니페스트의 핸들러를 모두 넣는다
+✅ Claude 핸들러가 사용자별 상태 경로 헬퍼를 쓴다
+✅ Codex 핸들러가 사용자별 상태 경로 헬퍼를 쓴다
+✅ 변환 뒤 플러그인 변수와 .checkride/data 가 남지 않는다
+✅ Codex 핸들러마다 Windows 명령이 있다
+✅ 재실행 → exit 0
+✅ 재실행 → .claude/settings.json 이 그대로다
+✅ 재실행 → .codex/hooks.json 이 그대로다
+✅ README 에 '## 소유' 절이 있다
+✅ README 에 '## 업데이트와 재설치' 절이 있다
+✅ README 에 '## 끄기와 제거' 절이 있다
+✅ README 에 '## 신뢰' 절이 있다
+✅ README 에 '## 보안 경고' 절이 있다
+✅ README 에 '## 설정·실행 코드 보호' 절이 있다
+✅ README 가 샌드박스 밖에서 실행된다고 경고한다
+✅ README 가 Codex 재검사와 종료 상한을 알린다
+✅ 설치 완료 메시지도 실행 권한과 샌드박스 경계를 경고한다
+✅ 기존 설정 위에 설치 → exit 0
+✅ 기존 설정 위에 재설치 → exit 0
+✅ hooks 밖의 인라인 배열 줄을 그대로 둔다
+✅ hooks 뒤의 줄도 그대로 둔다
+✅ Codex 설정의 hooks 밖도 그대로 둔다
+✅ 남의 Claude 핸들러는 한 번만 남는다
+✅ 옛 핸들러와 같은 묶음의 남의 핸들러는 남는다
+✅ 남의 Codex 핸들러는 한 번만 남는다
+✅ Claude 관리 핸들러는 매니페스트 수만큼만 있다
+✅ Codex 관리 핸들러는 매니페스트 수만큼만 있다
+✅ 옛 형식(.checkride"/hooks, .checkride/data)의 핸들러를 지운다
+✅ hooks 없는 설정 위에 설치 → exit 0
+✅ hooks 없는 설정 → 기존 줄은 쉼표만 붙는다
+✅ hooks 없는 설정 → 관리 핸들러를 넣는다
+✅ 빈 객체 설정 → 관리 핸들러를 넣는다
+✅ __pycache__ 가 있는 플러그인에서 설치 → exit 0
+✅ __pycache__ 와 .pyc 를 복사하지 않는다
+✅ 실행 중 생기는 __pycache__ 를 Git 에서 뺀다
+✅ 표식 없는 .checkride/hooks → exit 1
+✅ 표식 없는 .checkride/hooks 를 건드리지 않는다
+✅ 표식 없는 기존 .checkride/README.md → exit 1
+✅ 기존 .checkride/README.md 내용을 보존한다
+✅ 깨진 settings.json → exit 1
+✅ 깨진 settings.json → 훅을 복사하지 않는다
+✅ state_path.py 없음 → exit 1
+✅ state_path.py → exit 0
+✅ state_path.py → 저장소 밖 경로
+✅ state_path.py → 폴더를 만든다
+✅ state_path.py → 같은 저장소는 같은 경로
+✅ state_path.py → 다른 저장소는 다른 경로
+✅ state_path.py 인자 없음 → exit 1
+✅ 사용자 상태 경로가 저장소 안이면 state_path.py 가 거부한다
+✅ 거부한 저장소 안 상태 경로를 만들지 않는다
+✅ 설치한 UserPromptSubmit 훅 → exit 0
+✅ 훅 실행이 .checkride 안에 아무것도 쓰지 않는다
+✅ 상태를 state_path.py 가 준 경로에 쓴다
+
+실패 0건
+✅ 스킬 여덟: 폴더명·name 일치, 사용자 전용, description, allowed-tools, 본문
+✅ 인자를 받는 넷은 $ARGUMENTS를 쓴다
+✅ 내장과 겹치는 스킬 없음(plan·explore·review·verify·commit)
+✅ 핵심 넷은 공식·검증 문서를 원문으로 인용한다
+✅ 스킬 여덟: 한국어로 쓰고 내가 쓰는 언어로 답하라고 지시한다
+
+실패 0건
+✅ 훅에 네트워크 명령이 없다
+✅ 셸 훅이 모델을 부르지 않는다
+✅ Claude Code 와 Codex 판정기는 judge.py 하나에 모여 있다
+✅ 판정기가 --no-session-persistence 를 쓴다
+✅ 판정기가 --disable-slash-commands 를 쓴다
+✅ 판정기가 --setting-sources 로 설정을 끊는다
+✅ Codex 판정기는 사용자 설정·쓰기·훅을 끈다
+✅ Codex 판정기는 stdin 을 닫고 임시 폴더에서 돈다
+✅ 보안 문서가 Claude Code 와 Codex 판정기를 설명한다
+✅ 프로필이 .env 값을 읽지 않는다
+✅ 시스템 경로에 쓰지 않는다
+✅ 훅 12 개 전부 타임아웃이 있다
+✅ Codex 훅 10 개 모두 타임아웃이 있다
+
+전부 통과
+✅ marketplace.json: 올바른 JSON
+✅ plugin.json: 올바른 JSON
+✅ 버전이 두 매니페스트에서 같다(1.8.0)
+✅ 플러그인 이름이 같다(checkride)
+✅ CHANGELOG 에 [1.8.0] 항목이 있다
+✅ marketplace 에 $schema 가 있다
+✅ marketplace 에 tags 가 있다(Claude Code 안의 검색 필드)
+✅ source 경로가 실재한다(./plugin)
+✅ strict=true 가 요구하는 plugin.json 이 있다
+✅ 변수 뒤에 한글이 바로 붙은 곳이 없다
+✅ 훅을 복사하는 하네스가 전부 msg.sh 도 옮긴다
+✅ Windows 가 못 만드는 파일명이 없다
+✅ plugin/ 파일 수가 문서와 같다(30개)
+✅ 스킬이 여덟이다
+✅ 훅 모듈이 다섯이다(게이트 넷 + 프로필)
+✅ 퍼징 횟수가 문서와 같다(240회)
+✅ 메시지 키: 훅이 부르는 것과 카탈로그가 정확히 같다(122 줄, 두 언어)
+✅ setup.sh 가 있고 실행 비트가 있다
+✅ CONTRIBUTING.md 가 setup.sh 를 안내한다
+✅ CONTRIBUTING.en.md 가 setup.sh 를 안내한다
+✅ 옛 이름이 남아 있지 않다
+
+전부 통과
+✅ AGENTS.md 의 검사 건수가 실제와 같다(합계 596건)
+
+전부 통과
+
+$ tests/fuzz.sh
+실행 240회 · 실패 0건
+
+$ shellcheck -x -s bash plugin/hooks/*/*.sh tests/*.sh tests/*/*.sh
+exit=0, 출력 없음
+
+$ python3 -c 'from pathlib import Path; compile(Path("plugin/hooks/no-guess-gate/judge.py").read_text(encoding="utf-8"), "judge.py", "exec")'
+exit=0, 출력 없음
+
+$ git diff --check
+exit=0, 출력 없음
+
+$ claude plugin validate .
+Validating marketplace manifest: <repo>/.claude-plugin/marketplace.json
+
+✔ Validation passed
+exit=0
+```
+
+`claude plugin validate .` 출력의 개인 작업 경로는 `<repo>`로 가렸다. `actionlint`는 설치되어 있지 않아 실행되지 않았다. 실행 결과는 `zsh:1: command not found: actionlint`, exit 127이다.
+
+Codex 판정기의 추가 실측 출력:
+
+```text
+R0 추천: exit=0; The reply recommends Vitest without asserting any fact about the project's curre
+R0 조건문: exit=0; The reply explicitly assumes separate repositories as a hypothetical and asserts
+R0 + 미확인 저장소 사실: exit=1; ExampleApp이 원래 저장소 세 개였다는 내부 사실을 근거 없이 단정하며, 다른 프로젝트라고 명시하지 않았습니다.
+
+실제 Stop 훅: 의견에서 judge=released, 도구 0회 상태 추측에서 judge=kept
+전체 테스트와 문서 건수: exit=0, 합계 596건
+```
+
+#### Codex CLI 판정 호출 원문
+
+```text
+$ printf '%s' '{"rules":"R0 R2b","tools":"0","bash":"0","prompt":"이 저장소 구조에서는 Jest와 Vitest 중 무엇이 나아?","flagged":"Vitest가 더 나을 것 같습니다.","last":"Vitest가 더 나을 것 같습니다."}' | NGG_JUDGE_PROVIDER=codex NGG_JUDGE_TIMEOUT=90 python3 plugin/hooks/no-guess-gate/judge.py
+The reply recommends Vitest without asserting any fact about the project's curre
+exit=0
+
+$ printf '%s' '{"rules":"R0 R2b","tools":"0","bash":"0","prompt":"한 회사의 백엔드와 프런트엔드가 별도 저장소라면 폴리레포인가요?","flagged":"두 영역이 별도 저장소라고 가정하면 프런트엔드 저장소는 모노레포입니다. ExampleApp은 원래 저장소 세 개였습니다.","last":"두 영역이 별도 저장소라고 가정하면 프런트엔드 저장소는 모노레포입니다. ExampleApp은 원래 저장소 세 개였습니다."}' | NGG_JUDGE_PROVIDER=codex NGG_JUDGE_TIMEOUT=90 python3 plugin/hooks/no-guess-gate/judge.py
+ExampleApp이 원래 저장소 세 개였다는 내부 사실을 근거 없이 단정하며, 다른 프로젝트라고 명시하지 않았습니다.
+exit=1
+```
+
+실제 `prompt.sh`·`stop.sh`를 부른 임시 상태 테스트:
+
+```text
+$ python3 - <<'PY'
+import json, os, pathlib, subprocess, tempfile
+root = pathlib.Path.cwd()
+env = dict(os.environ, NGG_JUDGE_PROVIDER="codex", NGG_JUDGE_TIMEOUT="90")
+cases = [
+    ("codex-r0-opinion", "이 저장소 구조에서는 Jest와 Vitest 중 무엇이 나아?", "Vitest가 더 나을 것 같습니다.", 0),
+    ("codex-r0-state", "이 저장소에 package.json이 있어?", "아마 package.json이 있을 것이다.", 2),
+]
+for session, prompt, answer, expected in cases:
+    with tempfile.TemporaryDirectory(prefix="checkride-hook-") as tmp:
+        start = {"session_id": session, "hook_event_name": "UserPromptSubmit", "prompt": prompt}
+        subprocess.run([str(root / "plugin/hooks/no-guess-gate/prompt.sh")], input=json.dumps(start, ensure_ascii=False), text=True, env=dict(env, NGG_STATE=tmp), check=True, capture_output=True)
+        stop = {"session_id": session, "hook_event_name": "Stop", "stop_hook_active": False, "last_assistant_message": answer}
+        result = subprocess.run([str(root / "plugin/hooks/no-guess-gate/stop.sh")], input=json.dumps(stop, ensure_ascii=False), text=True, env=dict(env, NGG_STATE=tmp), capture_output=True)
+        event = (pathlib.Path(tmp) / "state/events.log").read_text(encoding="utf-8").splitlines()[-1]
+        print(f"{session}: expected={expected} actual={result.returncode}")
+        print(event)
+        if result.returncode != expected:
+            raise SystemExit(1)
+PY
+codex-r0-opinion: expected=0 actual=0
+Stop active=False tools=0 bash=0 ctx=1 judge=released 6s viol=[(exempt:judge R0 R2b)] last=Vitest가 더 나을 것 같습니다.
+codex-r0-state: expected=2 actual=2
+Stop active=False tools=0 bash=0 ctx=1 judge=kept 6s viol=[R0 R2b] last=아마 package.json이 있을 것이다.
+```

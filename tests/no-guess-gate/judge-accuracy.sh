@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # 의미 판정기의 정확도와 소요 시간을 잰다. 실제 모델을 부르고 몇 분 걸린다.
-# 의견 여섯과 상태 주장 여섯. 한국어와 영어를 섞었다. README 가 인용하는 숫자가 여기서 나온다.
+# R2b 의견 여섯·상태 주장 여섯과 R0 의견 둘·상태 주장 둘을 섞는다.
 set -u
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
 # 이 스크립트는 tests/ 에 있고 검사 대상은 plugin/ 에 있다. G 를 훅 폴더로 맞춰 두면
@@ -29,10 +29,10 @@ STATE=(
 )
 
 ok=0; n=0
-run() { # $1 기대(release|keep)  $2 문장
-  local want="$1" sent="$2" t0 t1 el rc
+run() { # $1 기대(release|keep)  $2 문장  $3 규칙(기본 R2b)  $4 질문(기본 검토해줘)
+  local want="$1" sent="$2" rules="${3:-R2b}" prompt="${4:-검토해줘}" t0 t1 el rc
   t0=$(date +%s)
-  python3 -c 'import json,sys; print(json.dumps(dict(prompt="검토해줘",rules="R2b",tools="0",bash="0",last=sys.argv[1],flagged=sys.argv[1]),ensure_ascii=False))' "$sent" \
+  python3 -c 'import json,sys; print(json.dumps(dict(prompt=sys.argv[2],rules=sys.argv[1],tools="0",bash="0",last=sys.argv[3],flagged=sys.argv[3]),ensure_ascii=False))' "$rules" "$prompt" "$sent" \
     | "$G/judge.py" >/dev/null 2>&1
   rc=$?
   t1=$(date +%s); el=$((t1-t0))
@@ -47,6 +47,10 @@ run() { # $1 기대(release|keep)  $2 문장
 
 for s in "${OPINION[@]}"; do run release "$s"; done
 for s in "${STATE[@]}";   do run keep    "$s"; done
+run release "Vitest로 시작하는 편을 권합니다." R0 "이 저장소에 Jest나 Vitest를 새로 도입한다고 가정하면 어느 쪽이 나아?"
+run release "두 영역이 별도 저장소라고 가정하면 폴리레포라고 볼 수 있습니다." R0 "한 회사의 백엔드와 프런트엔드가 별도 저장소라면 폴리레포인가요?"
+run keep "두 영역이 별도 저장소라고 가정하면 프런트엔드 저장소는 모노레포입니다. ExampleApp은 원래 저장소 세 개였습니다." R0 "한 회사의 백엔드와 프런트엔드가 별도 저장소라면 폴리레포인가요?"
+run keep "아마 package.json이 있을 것이다." R0 "이 저장소에 package.json이 있어?"
 
 med=$(sort -n "$T/times" | awk '{a[NR]=$1} END{print (NR%2)?a[(NR+1)/2]:(a[NR/2]+a[NR/2+1])/2}')
 max=$(sort -n "$T/times" | tail -1)

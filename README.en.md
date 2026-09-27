@@ -229,11 +229,11 @@ The official docs say to give Claude explicit permission to admit uncertainty, s
 | **Mention** | Text inside quotes or backticks. A document explaining the rules doesn't trip the rules |
 | **Opinion** | "This structure seems better" is a design preference, not a claim about state |
 
-The last two cannot be fully separated by regex. So when *only* R2a/R2b fire, the gate asks a small model whether the flagged wording is an opinion or a state claim, and releases it if it's an opinion. **That judge can only release, never block.** R0, R1, R3, and R5 — the rules grounded in "no tool was run" or "the command failed" — are never sent to the judge, so the deterministic floor stays. If the judge fails or times out, the block stands.
+The last two cannot be fully separated by regex. So when only R0/R2a/R2b fire, the gate asks a small model to classify the question and answer together. For R0 it checks whether the full reply makes an unsupported claim about this project's state; for R2a/R2b it checks the flagged wording. **The judge can only release, never block.** R1, R3, and R5 are never released by the judge. If judging fails or times out, the block stands.
 
-It runs on about 4% of blocks; median 8s when it does (measured over 12 cases, max 9s). See [the detail doc](docs/gates.en.md#judge-settings) to turn it off or change the model.
+The previous measurement (12 opinion/state cases, 8s median) did not cover R0 classification, so it does not describe the current call rate or latency. The judge runs only when R0/R2a/R2b candidates remain.
 
-What the judge did is recorded in `events.log` as `judge=released` / `kept` / `failed` with the elapsed seconds, so you can count how often it runs or fails. Accuracy measured on 6 opinions and 6 state claims: 12/12. Re-measure it with `tests/no-guess-gate/judge-accuracy.sh`.
+What the judge did is recorded in `events.log` as `judge=released` / `kept` / `failed` with the elapsed seconds, so you can count calls, releases, and failures. The default Haiku model classified 12 R2b cases and four R0 cases at 16/16, with an 8s median and 12s maximum. Re-run `tests/no-guess-gate/judge-accuracy.sh` to measure again.
 
 ### When it runs
 
@@ -332,13 +332,13 @@ So this plugin does not instruct the model ahead of time. It compares the finish
 | --- | --- |
 | A turn that trips nothing | No model tokens. Only regex checks run, adding about 256ms |
 | A blocked turn | One more turn in which Claude checks and answers again. In real use, 69 of 898 checks (about 8%) |
-| A turn where opinion vs. state claim is unclear | One small-model (haiku) judgment, called on only about 4% of blocks |
+| A turn where opinion vs. state claim is unclear | One judgment call. Claude Code defaults to haiku; Codex uses the Codex CLI's current default model. It runs only when R0/R2a/R2b candidates remain |
 
 The turn after a block also got cheaper. [Claude Code's changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) 2.1.259 fixed the turn after a block missing the cache.
 
 > "Fixed blocking Stop hooks causing the turn after a block to lose the model's reasoning from that turn and, on some models, miss the prompt cache"
 
-It is not free. A false positive wastes that one turn, and R0 still has many false positives ([V48](docs/VERIFICATION.md#v48-r0-오탐-실측-대화-기록으로-한-턴씩-판정)). Why the plugin does not force investigation **before** editing a file is in the [design decisions](docs/decisions.md#2-파일을-고치기-전에-조사를-먼저-시켜야-하는가) (Korean). Every quote was checked against the original (2026-09-15).
+It is not free. A false positive wastes that one turn. Historical usage showed many R0 false positives ([V48](docs/VERIFICATION.md#v48-r0-오탐-실측-대화-기록으로-한-턴씩-판정)); semantic judging now gives those cases a chance to be released, but the post-change false-positive rate has not been measured in real use. Why the plugin does not force investigation **before** editing a file is in the [design decisions](docs/decisions.md#2-파일을-고치기-전에-조사를-먼저-시켜야-하는가) (Korean). Every quote was checked against the original (2026-09-15).
 
 ## Who it's for
 
