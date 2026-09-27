@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### 수정
+
+- **근거 게이트 R0 오탐을 의미 판정기로 구제한다.** R0·R2a·R2b만 걸리면 질문과 답을 함께 판정해 의견·일반 설명은 통과시키고, 로컬 상태 추측은 계속 막는다. R1·R3·R5는 판정기로 풀지 않는다.
+
 ### 추가
 
 - **Checkride 훅을 저장소에 복사해 Claude Code와 Codex 팀 설정으로 공유한다.** `plugin/setup-project-hooks.sh`가 `.checkride/hooks/`에 코드를 복사하고 `.claude/settings.json`·`.codex/hooks.json`을 갱신한다. 팀원은 플러그인을 따로 설치하지 않고 각 도구에서 저장소 훅을 검토·승인한다.

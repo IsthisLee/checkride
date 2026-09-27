@@ -115,12 +115,15 @@ if [ -n "$off" ] && [ -n "$v" ]; then
   done
   v="${keep# }"; off="${dropped# }"
 fi
-# 수준 2. 정규식이 R2a·R2b만 잡았으면 모델에게 의견인지 상태 주장인지 묻는다. 풀어 줄 수만 있고 새로 막지 못한다.
-# R0·R1·R3·R5(도구를 안 돌린 사실, 단정, 검증 주장)는 판정 대상이 아니다. 실패·시간초과면 막은 채로 둔다(fail closed).
+# 수준 2. R0은 질문이 이 프로젝트를 가리킨다는 신호일 뿐 답이 상태 주장이라는 뜻은 아니다.
+# R0·R2a·R2b만 걸렸으면 의미 판정을 허용한다. 직접 단정(R1)·검증 주장(R3)·실패 뒤 성공 주장(R5)은 풀지 않는다.
+# 판정기는 풀어 줄 수만 있고 새로 막지 못한다. 실패·시간초과면 막은 채로 둔다(fail closed).
 JUDGE_DEFAULT=1; judge_note=""; judged=""; judge_log=""
-if [ -n "$v" ] && [ "${NGG_JUDGE:-$JUDGE_DEFAULT}" != "0" ] && ! printf '%s' "$v" | grep -qE 'R0|R1|R3|R5'; then
-  # 걸린 문장만 뽑아 보낸다. 판정 대상이 분명해지고 입력이 짧아진다.
-  flagged=$(printf '%s\n' "$last" | sed -E 's/(\.|!|\?|。)([[:space:]]|$)/\1\n/g' | while IFS= read -r sent; do [ -n "$sent" ] && printf '%s' "$sent" | xform | grep -qiE "$R2a|$R2b" && printf '%s\n' "$sent"; done)
+if [ -n "$v" ] && [ "${NGG_JUDGE:-$JUDGE_DEFAULT}" != "0" ] && ! printf '%s' "$v" | grep -qE 'R1|R3|R5'; then
+  # R0은 답 전체에 로컬 상태 주장이 있는지 묻는다. R2a·R2b만 걸렸으면 해당 문장만 보낸다.
+  if printf '%s' "$v" | grep -q 'R0'; then flagged="$last"
+  else flagged=$(printf '%s\n' "$last" | sed -E 's/(\.|!|\?|。)([[:space:]]|$)/\1\n/g' | while IFS= read -r sent; do [ -n "$sent" ] && printf '%s' "$sent" | xform | grep -qiE "$R2a|$R2b" && printf '%s\n' "$sent"; done)
+  fi
   jt0=$(date +%s)
   why=$(py -c 'import json,sys; print(json.dumps(dict(prompt=sys.argv[1],rules=sys.argv[2],tools=sys.argv[3],bash=sys.argv[4],last=sys.argv[5],flagged=sys.argv[6]),ensure_ascii=False))' "$prompt" "$v" "$ntools" "$nbash" "$last" "$flagged" | PYTHONUTF8=1 PYTHONIOENCODING=utf-8 "$d/judge.py" 2>/dev/null); jr=$?
   jel=$(( $(date +%s) - jt0 ))

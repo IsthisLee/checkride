@@ -8,7 +8,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 
 - `tests/lib/unit.sh` — 메시지 카탈로그 31건. 두 언어의 키가 맞는지, 언어 결정 순서(NGG_LANG · checkride.toml lang · 로케일)가 맞는지, Git 루트·독립 폴더의 설정 경계를 지키는지 본다.
 - `tests/codex/unit.sh` — Codex 훅 어댑터 53건. 입력 계약, `apply_patch`, MCP 파일 도구, Bash 전후 파일 기록, 종료 상태가 빠진 출력의 중립 처리, 사용자별 상태, 중복 실행 방지, Codex 판정기 명령, Stop 재진입·프롬프트 보존·반복 상태 정리 오류를 본다. 모델을 부르지 않는다.
-- `tests/no-guess-gate/unit.sh` — 근거 게이트 188건. 모델을 부르지 않는다.
+- `tests/no-guess-gate/unit.sh` — 근거 게이트 194건. 모델을 부르지 않는다.
 - `tests/done-gate/unit.sh` — 완료 게이트 86건. PR 본문 근거 23건 포함.
 - `tests/test-integrity/unit.sh` — 테스트 무결성 69건.
 - `tests/project-guard/unit.sh` — 프로젝트 가드 23건.
@@ -16,7 +16,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `tests/setup/unit.sh` — 활성화·공유 설치 스크립트와 상태 경로 71건. 남이 잡은 `core.hooksPath` 를 덮지 않고, 프로젝트 설정을 멱등하게 갱신하는지 본다.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 13건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선, 옛 이름 잔존 21건.  **합계 590건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선, 옛 이름 잔존 21건.  **합계 596건.**
 - `tests/doc-counts.sh` — 이 파일이 적은 각 검사의 건수가 실제와 같은지 1건. **단위 테스트를 실제로 돌려 센다.**
   `tests/invariants.sh` 안에 넣으면 그것이 자기 자신을 불러 재귀가 되고, `check` 호출 수를 정적으로 세는 것은
   루프·함수 때문에 맞지 않는다(실측: 근거 게이트는 호출 7곳에 실제 170건). 그래서 전체 검사의 맨 끝에 둔다.
@@ -56,7 +56,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `plugin/hooks/no-guess-gate/bashres.sh` — Claude Code의 `PostToolUse`·`PostToolUseFailure`(Bash)에서 이 턴의 Bash 결과를 `S`/`F`로 남긴다. R5가 마지막 글자만 본다. Codex의 `PostToolUse.tool_response`에는 Bash 출력만 있고 종료 상태가 없어 `?`를 기록하며, Codex에서는 R5가 작동하지 않는다.
 - `plugin/hooks/lib/common.sh` — 모든 훅이 공유하는 입력 파서와 메시지 함수 `t`·`tn`, 항목 끄기(`item_off`)와 한 번 허용(`allow_once`). 허용 목록은 `no-guess-gate/prompt.sh`가 사용자 프롬프트에서만 적는다. `no-guess-gate/pre.sh`는 도구 호출마다 돌아 파라미터 확장만 쓰는 빠른 경로가 따로 있다.
 - `plugin/hooks/lib/msg.sh` — 사람과 모델에게 나가는 문장 62개를 한국어와 영어로 담는다. 차단이 일어날 때만 읽는다. **훅 안에 문장을 직접 쓰지 않는다.** 한쪽 언어에만 넣으면 `tests/lib/unit.sh`가 잡는다.
-- `plugin/hooks/no-guess-gate/stop.sh` — 규칙 R0~R5와 면제 다섯. `judge.py`가 R2a·R2b만 걸렸을 때 의견인지 상태 주장인지 묻는다. Claude Code 판정 기본은 haiku, Codex 판정 기본은 Codex CLI 설정 모델이다(`NGG_JUDGE_MODEL`로 지정 가능).
+- `plugin/hooks/no-guess-gate/stop.sh` — 규칙 R0~R5와 면제 다섯. `judge.py`가 R0·R2a·R2b만 걸렸을 때 답 전체의 로컬 상태 주장 여부 또는 걸린 문장의 성격을 묻는다. R1·R3·R5는 판정기로 풀지 않는다. Claude Code 판정 기본은 haiku, Codex 판정 기본은 Codex CLI 설정 모델이다(`NGG_JUDGE_MODEL`로 지정 가능).
 - `checkride.toml` 이 읽는 키는 다섯이다. `test_command`·`fast_test_command`(완료 게이트), `append_only`(프로젝트 가드), `disabled_rules`(근거 게이트의 규칙과 다른 게이트의 항목을 하나씩 끄기. 이름 목록은 `common.sh`의 `NGG_ITEMS`), `lang`(게이트 메시지 언어. `common.sh`의 `ngg_lang_cfg`가 차단 메시지를 낼 때만 읽고, `NGG_LANG`이 있으면 무시한다). **파서는 한 줄에 키 하나다.** macOS 기본 파이썬(3.9)에 `tomllib` 이 없어 온전한 TOML 파서를 쓰지 않는다.
 - `plugin/hooks/done-gate/` — 코드를 고친 턴에 저장소 검사를 돌린다. 이 저장소의 `checkride.toml`이 자기 테스트를 가리킨다.
 - `plugin/hooks/test-integrity/` — 테스트 무력화 편집, 테스트 파일 삭제, 러너 설정의 제외 추가를 막는다.
