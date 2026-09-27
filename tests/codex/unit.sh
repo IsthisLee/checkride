@@ -20,7 +20,7 @@ with open(path, "w", encoding="utf-8") as stream:
     json.dump(event, stream)
 PY
 }
-run_event() { cat "$1" | env NGG_STATE="$2" python3 "$W/codex.py" "$3"; }
+run_event() { env NGG_STATE="$2" python3 "$W/codex.py" "$3" < "$1"; }
 
 # apply_patch 의 command 가 빠지면 훅은 변경 대상을 알아낼 수 없으므로 차단한다.
 P="$T/repo"; mkrepo "$P"
@@ -200,10 +200,10 @@ mkdir -p "$P/.checkride" "$T/user-plugin"; touch "$P/.checkride/.managed-by-chec
 cp -R "$W" "$T/user-plugin/hooks"
 cp -R "$W" "$P/.checkride/hooks"
 printf '{"session_id":"duplicate","cwd":"%s","hook_event_name":"UserPromptSubmit","prompt":"hello"}' "$P" > "$T/duplicate.json"
-cat "$T/duplicate.json" | env NGG_STATE="$T/plugin-copy-state" python3 "$T/user-plugin/hooks/codex.py" prompt >/dev/null
+env NGG_STATE="$T/plugin-copy-state" python3 "$T/user-plugin/hooks/codex.py" prompt < "$T/duplicate.json" >/dev/null
 if [ -e "$T/plugin-copy-state/state/duplicate/prompt" ]; then plugin_copy_ran=1; else plugin_copy_ran=0; fi
 check 0 "$plugin_copy_ran" "저장소 공유 훅이 있으면 Codex 플러그인 복사본은 건너뛴다"
-cat "$T/duplicate.json" | env NGG_STATE="$T/shared-copy-state" python3 "$P/.checkride/hooks/codex.py" prompt >/dev/null
+env NGG_STATE="$T/shared-copy-state" python3 "$P/.checkride/hooks/codex.py" prompt < "$T/duplicate.json" >/dev/null
 if [ -e "$T/shared-copy-state/state/duplicate/prompt" ]; then shared_copy_ran=1; else shared_copy_ran=0; fi
 check 1 "$shared_copy_ran" "저장소의 관리 훅 복사본은 계속 실행된다"
 
