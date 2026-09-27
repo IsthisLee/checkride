@@ -9,7 +9,7 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, AskUserQuestion
 
 checkride 가 이 저장소에서 무엇을 강제할지 검사 하나씩 고르게 한다. **모든 검사는 켜진 채로 시작한다.** 무언가를 끄는 것은 `checkride.toml` 에 적히는 결정이고, 그래서 풀 리퀘스트에 드러나 팀이 볼 수 있다.
 
-Codex에서 이 스킬을 쓸 때 `checkride.toml` 변경은 설정 기록일 뿐이다. 자동 게이트는 Claude Code 플러그인을 설치해 훅이 실행될 때만 적용된다. Codex에서는 이 저장소에 적용할 규칙과 언어를 정리하되, Codex에서 강제된다고 말하지 않는다. `~/.claude/settings.json`은 Codex의 전역 설정이 아니므로 수정하지 않는다.
+이 설정은 Claude Code와 Codex 양쪽의 Checkride 훅이 읽는다. Codex에서 훅 설치와 신뢰가 확인되지 않았다면 설정 파일만으로 자동 게이트가 켜졌다고 말하지 않는다. `~/.claude/settings.json`은 Codex의 전역 설정이 아니므로 수정하지 않는다.
 
 **내가 쓰는 언어로 답하고,** 설정 파일의 주석도 그 언어로 쓴다.
 
@@ -17,7 +17,7 @@ Codex에서 이 스킬을 쓸 때 `checkride.toml` 변경은 설정 기록일 �
 
 저장소 루트의 `checkride.toml` 을 읽는다. `disabled_rules` 줄과 `lang` 줄이 있으면 가져온다. **이 커맨드가 바꾸는 것은 그 두 줄, 그리고 전역 언어를 고를 때의 `~/.claude/settings.json` 의 `env.NGG_LANG` 뿐이다.** 나머지 키와 주석은 그대로 둔다.
 
-Claude Code에서는 환경도 확인한다. `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD`, `NGG_JUDGE` 중 `0` 인 것이 있으면 그 스위치가 파일과 무관하게 게이트 하나를 통째로 끈다. 그 사실을 알린다. `NGG_LANG` 이 `ko` 나 `en` 이면 파일과 무관하게 게이트 언어를 강제하므로, 그것이 설정돼 있는 동안 파일의 `lang` 은 효력이 없다고 알린다. Codex에서는 이 환경변수를 게이트 상태로 해석하지 않는다.
+실행 환경에서 `NGG_DONE`, `NGG_TESTGUARD`, `NGG_GUARD`, `NGG_JUDGE` 중 `0`인 값이 있으면 해당 게이트나 판정이 설정 파일과 무관하게 꺼진다. `NGG_PROFILE=0`은 저장소 프로필만 끈다. 근거 규칙 전체를 끄는 환경변수는 없고, 개별 규칙은 `disabled_rules`에서만 끈다. `NGG_LANG`이 `ko`나 `en`이면 설정 파일의 `lang`보다 우선한다. 환경변수는 Claude Code 또는 Codex가 훅에 전달하는 실행 환경에서만 확인한다.
 
 `NGG_LANG` 은 `~/.claude/settings.json` 의 `env` 블록에도 있을 수 있다. 거기서는 그 키 하나만 본다. **그 파일에는 토큰이 들어 있을 수 있으므로 절대 통째로 출력하지 않는다.**
 

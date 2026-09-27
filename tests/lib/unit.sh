@@ -68,6 +68,39 @@ out=$(run "NGG_LANG=en CWD=$LP_KO" t rp.on);                check "on"   "$out" 
 #     둘러싼 저장소의 lang 을 읽어, 이 저장소에 lang = "ko" 를 넣자 3의 네 건이 뒤집혔다(2026-09-14).
 out=$(cd "$LP_KO" && run "LANG=en_US.UTF-8" t rp.on);       check "on"   "$out" "CWD 를 안 주면 둘러싼 checkride.toml 의 lang 을 읽지 않는다"
 
+# 3d. Git 저장소 루트 설정만 사용한다. 하위 패키지의 checkride.toml 이 루트 정책을 덮으면
+# test_command 실행과 disabled_rules 완화가 에이전트가 만든 파일에 좌우된다.
+RGIT="$T/repo"; mkdir -p "$RGIT/.git/apps/web" "$RGIT/apps/web"
+printf 'lang = "en"\n' > "$RGIT/checkride.toml"
+printf 'lang = "ko"\n' > "$RGIT/apps/web/checkride.toml"
+# shellcheck disable=SC2016  # 안쪽 bash가 펼친다
+out=$(env -u LANG -u LC_ALL -u LC_MESSAGES CWD="$RGIT/apps/web" bash -c '. "$1"/common.sh; find_root; printf "%s" "$NGG_ROOT"' _ "$G")
+check "$RGIT" "$out" "Git 저장소에서는 하위 checkride.toml 이 루트 설정보다 우선하지 않는다"
+
+# Git 이 없는 독립 프로젝트에서는 프로젝트 경계를 넘지 않고 가장 가까운 설정을 쓴다.
+STANDALONE="$T/standalone"; mkdir -p "$STANDALONE/apps/web"
+touch "$STANDALONE/checkride.toml" "$STANDALONE/apps/web/checkride.toml"
+# shellcheck disable=SC2016  # 안쪽 bash가 펼친다
+out=$(env -u LANG -u LC_ALL -u LC_MESSAGES CWD="$STANDALONE/apps/web" CLAUDE_PROJECT_DIR="$STANDALONE" bash -c '. "$1"/common.sh; find_root; printf "%s" "$NGG_ROOT"' _ "$G")
+check "$STANDALONE/apps/web" "$out" "Git 밖에서는 프로젝트 안의 가장 가까운 checkride.toml 을 쓴다"
+
+# 3e. 저장소 hook 설치가 있으면 같은 저장소의 Claude 플러그인 복사본은 중복 실행하지 않는다.
+MANAGED="$T/managed"; mkdir -p "$MANAGED/.checkride/hooks/lib"; touch "$MANAGED/.checkride/.managed-by-checkride"
+cp "$G/common.sh" "$MANAGED/.checkride/hooks/lib/common.sh"
+out=$(CLAUDE_PROJECT_DIR="$MANAGED" bash -c '. "$1"/common.sh; echo plugin-ran' _ "$G")
+check "" "$out" "공유 훅이 있으면 Claude 플러그인 훅을 건너뛴다"
+out=$(CLAUDE_PROJECT_DIR="$MANAGED" bash -c '. "$1"; echo shared-ran' _ "$MANAGED/.checkride/hooks/lib/common.sh")
+check "shared-ran" "$out" "관리된 .checkride 복사본은 계속 실행한다"
+
+# 실제 공유 훅 스크립트는 lib/common.sh 를 `hooks/<모듈>/../lib` 경로로 source 한다.
+# BASH_SOURCE 에 `..` 가 포함돼도 플러그인 중복 방지 분기가 공유 훅을 건너뛰면 안 된다.
+MANAGED_FULL="$T/managed-full"; mkdir -p "$MANAGED_FULL/.checkride"; touch "$MANAGED_FULL/.checkride/.managed-by-checkride"
+cp -R "$ROOT/plugin/hooks" "$MANAGED_FULL/.checkride/hooks"
+printf '{"session_id":"managed-path","hook_event_name":"UserPromptSubmit","prompt":"hello"}' \
+  | CLAUDE_PROJECT_DIR="$MANAGED_FULL" NGG_STATE="$T/managed-state" "$MANAGED_FULL/.checkride/hooks/no-guess-gate/prompt.sh"
+if [ -s "$T/managed-state/state/managed-path/prompt" ]; then managed_prompt=1; else managed_prompt=0; fi
+check 1 "$managed_prompt" "경로에 /../ 가 있는 공유 훅도 실제 실행된다"
+
 # 4. 없는 키는 조용히 사라지지 않고 키 이름이 나온다.
 out=$(run "NGG_LANG=ko" t no.such.key); check "no.such.key" "$out" "없는 키는 키 이름을 내보낸다"
 

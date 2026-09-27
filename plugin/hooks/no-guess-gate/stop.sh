@@ -26,7 +26,9 @@ ASKRE='(\?[[:space:]]*$|which (one|takes priority|do you)|should I|do you want|w
 if printf '%s' "$last" | grep -qiE "$ASKRE"; then log - "(exempt:question)"; touch "$s/turn_closed"; exit 0; fi
 
 FILE='[A-Za-z0-9_.-]+\.(json|js|jsx|ts|tsx|md|sh|yml|yaml|env|lock|sql|css|scss|py|go|rs)'
-LOCALQ="(this (directory|folder|file|repo|repository|project|codebase|code|config|setting)|the (code|codebase|repo|repository|project|config|current directory)|current directory|in here|이 (디렉터리|폴더|파일|저장소|프로젝트|코드|설정)|여기|현재 (디렉터리|폴더)|코드베이스|저장소|$FILE)"
+# 수식어 없는 "저장소"·"코드베이스"·"여기"는 넣지 않는다. "토스도 별도 저장소니까" 같은 개념 질문이 이 폴더를
+# 묻는 질문으로 걸렸다(2026-09-28). "여기"는 뒤에 파일·테스트 같은 명사가 올 때만 본다. "여기서 말하는"은 빠진다.
+LOCALQ="(this (directory|folder|file|repo|repository|project|codebase|code|config|setting)|the (code|codebase|repo|repository|project|config|current directory)|current directory|in here|이 (디렉터리|폴더|파일|저장소|프로젝트|코드베이스|코드|설정)|현재 (디렉터리|폴더|저장소|프로젝트)|여기(에 있는| 있는|에|의|안의|안에 있는)? [^.?]{0,20}(파일|스크립트|테스트|폴더|디렉터리|코드|설정)|$FILE)"
 PATHRE="((^|[^A-Za-z0-9])/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+|$FILE)"
 # 답이 "여기 있는 파일" 의 상태를 말해도 코드베이스 맥락이다. 명사 없이 쓰인 "Here is …" 는 잡지 않는다(V49 tp-defer).
 HERELOCAL='(\b(files?|scripts?|tests?|folders?|directories|modules?|configs?)\b[^.]{0,20}\bhere\b|(여기|이 디렉터리|이 폴더|이 저장소)(에 있는| 있는|에|의|안의|안에 있는) ?[^.]{0,20}(파일|스크립트|테스트|폴더|디렉터리))'
@@ -62,7 +64,8 @@ jsononly=0; printf '%s' "$last" | sed -E '1s/^[[:space:]]*```(json)?[[:space:]]*
 t=sys.stdin.read().strip()
 sys.exit(0 if t[:1] in "{[" and isinstance(json.loads(t),(dict,list)) else 1)' 2>/dev/null && jsononly=1
 prose=1; { [ "$cannot" -eq 1 ] || [ "$jsononly" -eq 1 ]; } && prose=0
-R2b='(probably|likely|approximately|appears? to|seems? to|presumably|I think|maybe|I guess|my guess|I assume|assuming|no indication|아마|것 같|로 보임|보(인다|입니다|여요|이네요|이는데|이지만)|로 추정|추정됨|가정하면|추측|것으로 판단)'
+# "가정하면"·"assuming"은 넣지 않는다. 전제를 세우는 조건문일 뿐 코드베이스 상태를 추정하는 말이 아니다(2026-09-28).
+R2b='(probably|likely|approximately|appears? to|seems? to|presumably|I think|maybe|I guess|my guess|I assume|no indication|아마|것 같|로 보임|보(인다|입니다|여요|이네요|이는데|이지만)|로 추정|추정됨|추측|것으로 판단)'
 R3='(테스트.{0,6}(통과했|성공했|돌렸|실행했)|검증(했|됐|완료)|동작.{0,4}확인(했|됐)|정상.{0,4}(동작|작동)(함|합니다|한다)|all tests (pass|passed|are passing)|I (ran|executed|checked|verified|confirmed|tested)|works (as expected|correctly))'
 NEG='(cannot|can'"'"'t|unable to|did not|didn'"'"'t|have not|haven'"'"'t|not (run|ran|verified|checked|tested)|without (running|checking|verifying)|하지 않았|안 했|못 했|미실행|미확인|없이는|수 없)'
 NG2='(추측이 아니|추측이 아닌|추측 아니|추정이 아니|추측하지 않|추측한 것이 아니|추측한 게 아니|실측값|실측한|실측이다|not a guess|is not a guess|isn.t a guess|not guessing|rather than guess)'
@@ -70,7 +73,9 @@ v=""
 # 차단 뒤 도구 없이 다시 끝내는 답을 따로 막던 R4 는 뺐다. 공식 Reduce hallucinations 는 뒷받침을 못 찾은
 # 주장을 철회하라고 하므로, 다시 쓴 답도 아래 규칙으로만 판정한다(V49).
 [ "$ntools" -eq 0 ] && [ "$prose" -eq 1 ] && printf '%s' "$prompt" | grep -qiE "$LOCALQ" && v="$v R0"
-[ "$ntools" -eq 0 ] && [ "$jsononly" -eq 0 ] && r1_hit && v="$v R1"
+# R1은 코드베이스 맥락의 경로·파일 상태 단정만 본다. 개념 설명의 "there is no …" 같은 문장을
+# 저장소 사실로 오해하지 않도록, 프롬프트나 답에 로컬 맥락이 있을 때만 적용한다.
+[ "$ntools" -eq 0 ] && [ "$ctx" -eq 1 ] && [ "$jsononly" -eq 0 ] && r1_hit && v="$v R1"
 # R2a 는 코드베이스 맥락(ctx)에서만 건다. 근거 문장이 "BEFORE answering questions about the codebase" 로 범위를 한정한다.
 [ "$ntools" -eq 0 ] && [ "$ctx" -eq 1 ] && [ "$prose" -eq 1 ] && printf '%s' "$resid" | grep -qiE "$R2a" && v="$v R2a"
 # R5: 이 턴에 마지막으로 돌린 Bash 가 실패했는데 검증·성공을 주장한다. R3 은 Bash 0건만 보므로

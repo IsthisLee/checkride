@@ -9,7 +9,7 @@ allowed-tools: Read, Grep, Glob, Bash, Write, Edit, AskUserQuestion
 
 게이트가 여기서 실제로 일하도록 설정한다. **파일을 덮어쓰기 전에 반드시 diff 를 보여 주고 승인을 받는다.**
 
-Codex에서는 이 절차로 `checkride.toml`을 만들어도 자동 게이트가 켜지지 않는다. 해당 설정은 Claude Code의 checkride 훅이 읽는다. Codex에서는 검사 명령과 프로젝트별 기준을 기록하고, 자동 차단이 적용됐다고 말하지 않는다.
+Codex에서도 이 설정을 읽는다. 다만 자동 게이트가 실행되려면 Checkride 플러그인 훅을 설치하고 Codex에서 신뢰하거나, 저장소 관리 훅을 설치한 뒤 저장소 설정과 훅을 신뢰해야 한다. `/hooks` 에서 Checkride 훅이 활성인지 확인하기 전에는 자동 차단이 적용된다고 말하지 않는다.
 
 **내가 쓰는 언어로 답하고,** 설정 파일의 주석도 그 언어로 쓴다.
 
@@ -43,9 +43,15 @@ Willison 의 조언도 같다. "Any time I start a new session with an agent aga
 append_only = "supabase/migrations, db/migrate"
 ```
 
-## 5. 비밀 파일 차단을 제안한다
+## 5. 설정과 훅 코드 보호를 안내한다
 
-Claude Code용으로 `.claude/settings.json` 에 `Read` deny 규칙을 제안한다. 이 설정은 Codex 권한을 바꾸지 않는다고 알린다. 공식 권한 문서의 문장이다. "A `Read` deny rule also blocks the Edit and Write tools on the same path, including creating a new file there. NotebookEdit isn't covered." (번역: `Read` deny 규칙은 같은 경로에 대해 Edit 와 Write 도구도 막으며, 거기에 새 파일을 만드는 것까지 막는다. NotebookEdit 는 해당되지 않는다.) 이 저장소가 NotebookEdit 를 쓴다면 `Edit` deny 도 필요하다고 알린다.
+에이전트가 검사 명령을 바꾸거나 프로젝트 훅을 끄지 못하도록 `checkride.toml`, `.claude/settings.json`, `.codex/hooks.json`, `.checkride/hooks/`를 보호할 방법을 설명한다.
+
+- Claude Code에서는 `Read` deny가 파일 도구의 읽기와 쓰기를 함께 막으므로, 설정을 보호하면서 에이전트가 읽어야 할 `checkride.toml`에는 그대로 적용하지 않는다. 편집만 막으려면 `Edit` deny를 쓰고, 임의 프로세스까지 막아야 하면 OS 샌드박스를 쓴다. 도구 권한 규칙만으로 모든 자식 프로세스를 막는다고 말하지 않는다.
+- Codex의 `sandbox_workspace_write.writable_roots`는 추가 쓰기 허용 경로다. `.checkride/`나 설정 파일을 거부 목록처럼 쓰지 않는다. 강한 경계가 필요하면 `read-only` 샌드박스 등 Codex의 지원 정책으로 설명하고, 작업 디렉터리 전체 쓰기가 필요한 경우 훅 신뢰가 그 경계를 대신하지 않는다고 알린다.
+- 저장소 공유 훅은 실행 코드다. 팀이 코드를 검토하고 커밋한 뒤, 각 팀원이 프로젝트를 신뢰하고 Codex의 `/hooks`에서 현재 훅 정의를 검토·신뢰해야 실행된다. 설정이나 훅 정의가 바뀌면 다시 검토 대상이 될 수 있다.
+
+참고한 공식 문서: [Claude Code 권한 규칙](https://code.claude.com/docs/en/permissions), [Claude Code 훅과 작업공간 신뢰](https://code.claude.com/docs/en/hooks), [Codex 설정](https://developers.openai.com/codex/config-reference), [Codex 훅](https://developers.openai.com/codex/hooks). 확인일: 2026-09-28.
 
 ## 6. 마무리
 

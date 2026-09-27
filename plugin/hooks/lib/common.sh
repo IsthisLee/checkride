@@ -1,5 +1,14 @@
 # SPDX-License-Identifier: MIT
 # shellcheck shell=bash
+# 저장소에 관리 훅을 복사한 경우, 같은 저장소의 플러그인 훅과 중복 실행하지 않는다.
+# 공유본은 .checkride/hooks/lib/common.sh 에서 직접 불리므로 그대로 두고 플러그인 복사본만 건너뛴다.
+if [ -n "${CLAUDE_PROJECT_DIR:-}" ] &&
+   [ -f "$CLAUDE_PROJECT_DIR/.checkride/.managed-by-checkride" ]; then
+  case "${BASH_SOURCE[0]}" in
+    "$CLAUDE_PROJECT_DIR/.checkride/hooks/"*) ;;
+    *) exit 0 ;;
+  esac
+fi
 # Windows 의 파이썬은 stdio 와 파일 기본 인코딩이 UTF-8 이 아니라 레거시 코드페이지다.
 # 한국어가 한 번이라도 지나가면 UnicodeDecodeError 로 훅이 죽는다. 우리 호출에만 UTF-8 을 못 박는다.
 # 전역으로 export 하지 않는 이유: done-gate 가 남의 테스트 명령을 eval 로 돌린다. 그 파이썬까지 바꾸면 안 된다.
@@ -50,17 +59,26 @@ state_root() { printf '%s' "${NGG_STATE:-$1}"; }
 
 # 저장소 루트. 훅 입력의 cwd 는 Claude 가 cd 하면 따라간다(공식 hooks 문서: "follows cd commands").
 # cwd 에서만 checkride.toml 을 찾으면 하위 폴더에 들어간 뒤 설정을 놓치고 완료 게이트가 조용히
-# 통과했다(V39). cwd 에서 위로 올라가며 checkride.toml 이나 .git 이 있는 첫 폴더를 루트로 쓴다.
-# .git 에서 멈추므로 다른 저장소나 워크트리 바깥의 설정을 빌려 쓰지 않는다. 세션을 연 폴더
+# 통과했다(V39). `.git` 이 있는 가장 가까운 폴더를 먼저 찾고, 그 루트의 설정만 쓴다. 하위
+# checkride.toml 은 에이전트가 만들어 실행 명령을 바꾸거나 규칙을 끌 수 있어 무시한다.
+# 저장소가 아닌 독립 폴더에서는 기존 호환성을 위해 가장 가까운 설정을 쓴다. 세션을 연 폴더
 # (CLAUDE_PROJECT_DIR) 위로는 올라가지 않는다. 찾지 못하면 cwd 다. 결과는 NGG_ROOT 에 담는다.
 # 명령 안의 상대 경로는 이 루트가 아니라 cwd 기준으로 풀어야 한다. 파라미터 확장만 쓴다.
 find_root() { local d="${CWD:-$PWD}" p
   NGG_ROOT="$d"
+  local nearest_conf=""
   while :; do
-    if [ -f "$d/checkride.toml" ] || [ -e "$d/.git" ]; then NGG_ROOT="$d"; return 0; fi
-    [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ "$d" = "$CLAUDE_PROJECT_DIR" ] && return 0
+    if [ -e "$d/.git" ]; then NGG_ROOT="$d"; return 0; fi
+    [ -n "$nearest_conf" ] || { [ -f "$d/checkride.toml" ] && nearest_conf="$d"; }
+    if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ "$d" = "$CLAUDE_PROJECT_DIR" ]; then
+      NGG_ROOT="${nearest_conf:-$d}"
+      return 0
+    fi
     p="${d%/*}"; [ -z "$p" ] && p=/
-    [ "$p" = "$d" ] && return 0
+    if [ "$p" = "$d" ]; then
+      [ -n "$nearest_conf" ] && NGG_ROOT="$nearest_conf"
+      return 0
+    fi
     d="$p"
   done; }
 

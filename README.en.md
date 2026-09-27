@@ -73,11 +73,17 @@ If you do not want every teammate to install the plugin, a repository maintainer
 bash "$(find ~/.claude/plugins ~/.codex/plugins -path '*/setup-project-hooks.sh' -print -quit 2>/dev/null)"
 ```
 
-The command copies hooks to `.checkride/hooks/` and merges project hook entries into `.claude/settings.json` and `.codex/hooks.json`, preserving unrelated entries. Runtime state in `.checkride/data/` is ignored by Git. Review and commit the changed files.
+The command copies hooks to `.checkride/hooks/` and merges project hook entries into `.claude/settings.json` and `.codex/hooks.json`. It preserves unrelated settings and formatting and does not duplicate Checkride hooks on rerun. Runtime state and one-time `check allow` values stay in a per-user data directory outside the repository. Read `.checkride/README.md`, review the changed files, and commit them.
 
-Each teammate then opens the repository in their agent tool and reviews/trusts the hooks. Codex requires a trusted project and hook review; changed definitions may require a new approval. Teammates using only repository hooks do not need to install the Checkride plugin. Do not enable plugin hooks at the same time or they will run twice.
+Each teammate trusts the repository in their agent tool and reviews its hooks. Claude Code checks workspace trust before running hooks from project settings in an interactive session. Codex first requires trust for the repository's `.codex/` layer, then hook definitions must be reviewed and trusted in `/hooks`. These are separate trust steps. Codex may request review again when definitions change or a checkout/worktree path differs. `--dangerously-bypass-hook-trust` is for one-off automation, not the team installation procedure. Teammates using only repository hooks do not need to install the Checkride plugin. Plugin hooks skip themselves when repository-managed hooks are present.
 
-This mode makes the repository own the hook code and settings. To update, a maintainer updates the Checkride plugin, reruns the command, reviews the diff, and commits it. Install skills separately if the team also wants Checkride skills.
+With Codex CLI 0.156.1, a fresh Git repository's `.codex/hooks.json` hook did not run under `codex exec --dangerously-bypass-hook-trust`. Codex skips project hooks until the project `.codex/` layer is trusted; the flag bypasses hook-definition trust for one invocation and does not replace project trust. In this repository, after trusting the project and reviewing/trusting the new Checkride hook in `/hooks`, `codex exec` ran a SessionStart project hook without the bypass flag. Automation runners must therefore have project trust and trust for the current hook definition set in advance. Non-interactive execution does not show approval prompts. [Codex hooks documentation](https://developers.openai.com/codex/hooks) (checked 2026-09-28).
+
+This mode makes the repository own the hook code and settings. To update, a maintainer updates the Checkride plugin, reruns the command, reviews the diff, and commits it. Since the script copies executable hook code into the repository, review what the hooks and configured commands do before trusting them. The completion gate runs the repository's `test_command` and `fast_test_command`; review those scripts, package manifests, and test configuration as part of hook review.
+
+Only the Git repository root `checkride.toml` applies. A package-level file cannot override the root test command or disable rules. In a monorepo, use a root aggregate command such as `turbo run test` or `nx affected -t test` and keep package-specific test scripts in their packages. Outside a Git repository, the nearest `checkride.toml` applies.
+
+To reduce agent edits to shared settings, Claude Code supports `Edit` deny rules or OS sandboxing. A `Read` deny also blocks reading and editing, so do not apply it unchanged to `checkride.toml` when the agent needs to inspect it. Codex `sandbox_workspace_write.writable_roots` adds writable paths; it is not a deny list. Tool permission rules are not an OS boundary for arbitrary child processes. If a Codex session must not write to any project files, use its `read-only` sandbox and account for the fact that normal file edits will be unavailable.
 
 #### Claude Code
 
@@ -139,8 +145,10 @@ Each Codex user registers the marketplace once:
 codex plugin marketplace add IsthisLee/checkride
 ```
 
-Codex must trust the repository to load project settings, and users must review and trust the plugin hook definition before it runs.
-Codex hooks connect to `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, and `SubagentStop`. Codex `apply_patch` edits are checked by test integrity and the project guard.
+Codex must trust the repository to load project settings, and users must review and trust hook definitions in `/hooks`. Project trust and hook trust are separate. Changed hooks may need review again, as may checkouts or worktrees whose absolute paths differ.
+Codex hooks connect to `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, and `SubagentStop`. Bash and `apply_patch` changes are checked. Supported MCP/local-function tools are checked when their input exposes a file path; an unrecognized file-writing input is not assumed safe. Confirm current hook trust in Codex's `/hooks` screen.
+Codex's Bash `PostToolUse.tool_response` contains command output without the process exit status. R5, which catches a claim that a failed command passed, therefore does not run in Codex. Claude Code applies R5 through `PostToolUseFailure`.
+When Codex marks a Stop re-entry, Checkride does not rerun the evidence or completion gates. The rewritten answer after the first block is therefore not rechecked. Codex's hook docs publish no retry cap, and OpenAI's implementation tests use the no-reblock pattern to avoid repeated continuation loops. In Claude Code, both gates recheck continuation responses, but Claude Code overrides a later block after eight consecutive continuations and ends the turn. If either tool reaches its continuation limit, the final response may still fail the gate and needs human review.
 
 ### Install skills separately, without plugin hooks
 
@@ -164,19 +172,19 @@ Hook sharing behavior was checked on 2026-09-25: [Claude Code hooks](https://cod
 /checkride:setup-checks
 ```
 
-**Run this and all four gates go to work.** Installing alone gets you the evidence gate and test integrity; the completion gate and the project guard sit idle because they [do not yet know what to block](#two-of-the-four-need-configuration-before-they-do-anything).
+`setup-checks` has `disable-model-invocation: true` and does not run automatically. Invoke `/checkride:setup-checks` in Claude Code or `$setup-checks` in Codex. It configures the root test command and project-guard paths whether the plugin hooks are installed or not.
 
-`/checkride:setup-checks` **actually runs** the check command it detects before writing it down, proposes any folder whose history should not be rewritten, and puts both in `checkride.toml`. It shows you what it is about to write and asks first.
+`setup-checks` writes the test command and append-only paths to the Git repository root `checkride.toml`. In a monorepo, it looks for a root aggregate command and runs it before proposing it. It shows you what it is about to write and asks first.
 
 To pick what gets enforced item by item, use `/checkride:config`. To see what is working and what is idle right now, use `/checkride:status`.
 
 ## Eight commands
 
-All eight work only when **you type them**. Claude never calls one on its own — anything with side effects needs a person to decide the moment.
+All eight work only when **you invoke them**. The model does not call one on its own; anything with side effects needs a person to decide the moment.
 
 | Command | What it does | When to use |
 |---|---|---|
-| `/checkride:setup-checks` | Actually runs the check command to pin it down, picks a folder to protect, and writes both to `checkride.toml` | Once, right after installing |
+| `/checkride:setup-checks` · `$setup-checks` | Runs the check command to pin it down, picks a folder to protect, and writes both to `checkride.toml` | Once, right after installing |
 | `/checkride:config` | Shows what each gate item blocks and where the rule comes from, then lets you pick what to turn off | When a false positive keeps recurring |
 | `/checkride:status` | Measures and reports which gates are working and which are idle, right now | When you want to know what's blocking |
 | `/checkride:spec` | Interviews you before you write code and produces `SPEC.md` | Starting a large feature |
@@ -292,15 +300,15 @@ this session'). (…)
 
 Claude then reads the file or runs the command in the same turn and answers again.
 
-**You can't get stuck.** Per the official docs, Claude Code overrides the hook and ends the turn after 8 consecutive blocks.
+Claude Code overrides a later block and ends the turn after eight consecutive stop-hook continuations. This prevents an endless loop, but the last response may still fail the gate and needs human review.
 
 ## Why it's needed
 
 The models keep getting better, and this failure does not go away. Opus 4.7 and 4.8, Sonnet 5, and Opus 5 landed one after another over a year, yet "all passed" without running the check stayed. It is a matter of habit, not capability, so a person has to ask "did you check?" every time. People eventually forget, and the day they forget is the day something breaks.
 
-Writing the rule into CLAUDE.md is not enough, and the official docs say why: **"Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."** checkride turns that sentence into a mechanism.
+Writing the rule into CLAUDE.md is not enough, and the official docs say why: **"Unlike CLAUDE.md instructions which are advisory, hooks are deterministic and guarantee the action happens."** Checkride implements its evidence and completion rules with custom Stop hooks in Claude Code and Codex. The project and hook definitions must be trusted before they run, and continuation retries remain subject to each tool's limit.
 
-Claude Code itself still has no feature that blocks an ungrounded answer **at the moment the turn ends**. Auto mode blocks dangerous commands before they run, and `/code-review` finds bugs when you call it, but the spot right before an answer leaves is empty. This plugin fills it.
+Claude Code and Codex both provide custom hooks, but neither includes Checkride's evidence and completion rules by default. Checkride connects those rules to each tool's Stop hooks.
 
 Subagents run in the background by default, and the deeper the chain grows, the less a person sees of each turn. An automatic "did you check?" is worth more the less you watch, so checkride runs the same check when a subagent finishes as well (`SubagentStop`).
 
@@ -360,6 +368,10 @@ Hit a false positive? [Open an issue](../../issues/new?template=false-positive.m
 | Off in this repo | `claude plugin disable checkride@checkride --scope project` |
 | Off for me only | Same, with `--scope local` |
 | Semantic judge only | `NGG_JUDGE=0` |
+| Completion gate | `NGG_DONE=0` |
+| Test integrity gate | `NGG_TESTGUARD=0` |
+| Project guard | `NGG_GUARD=0` |
+| Repository profile | `NGG_PROFILE=0` |
 | Pick checks from a table with their sources | `/checkride:config` |
 | One rule or check only | `disabled_rules = "R2b, done.pr"` in `checkride.toml` |
 | Get past one false positive | `check allow ti.skip` on its own line in your next prompt |
@@ -370,6 +382,10 @@ Hit a false positive? [Open an issue](../../issues/new?template=false-positive.m
 Messages follow your locale. `LC_ALL`, `LC_MESSAGES` or `LANG` set to Korean gives Korean; anything else gives English. Pin it per repo with `lang = "ko"` in `checkride.toml`, or for every repo with `NGG_LANG` in the `env` block of `~/.claude/settings.json`. `/checkride:config` lets you pick either. Precedence: `NGG_LANG` env > `checkride.toml` `lang` > locale, so the global value beats a repo's `lang`.
 
 State lives in `~/.claude/plugins/data/checkride-checkride/` and is safe to delete. Add `--keep-data` on uninstall to preserve it.
+
+There is no environment variable that disables the entire evidence gate. Use `disabled_rules` in the repository-root `checkride.toml` to disable individual evidence rules; `NGG_JUDGE=0` only disables semantic classification. The `NGG_*` switches apply in the environment passed to the hooks.
+
+To remove repository-shared hooks, remove their entries from `.claude/settings.json` and `.codex/hooks.json`, the copied `.checkride/hooks/` code, and `.checkride/.managed-by-checkride`. Leaving the marker makes plugin hooks continue to skip themselves.
 
 ## Read more
 

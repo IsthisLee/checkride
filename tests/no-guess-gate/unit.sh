@@ -40,6 +40,9 @@ printf '%s' "$S" | NGG_STATE="$N" "$W/stop.sh" 2>"$T/err"; check 2 $? "도구 0�
 grep -q '\[R0 R1\]' "$T/err"; check 0 $? "stderr에 [R0 R1]"
 isfile "$N/state/events.log"; check 0 $? "NGG_STATE 아래 events.log"
 nodir "$W/state"; check 0 $? "스크립트 폴더에는 state 없음"
+printf '%s' '{"session_id":"t1","hook_event_name":"Stop","stop_hook_active":true,"last_assistant_message":"이 디렉터리에는 package.json 파일이 없다."}' \
+  | NGG_STATE="$N" "$W/stop.sh" 2>"$T/active.err"; check 2 $? "Claude 재진입에서 근거 없는 답을 다시 차단"
+grep -q '\[R0 R1\]' "$T/active.err"; check 0 $? "재진입도 [R0 R1]로 판정"
 
 # 2. 도구 1회 후 통과
 printf '%s' "$R" | NGG_STATE="$N" "$W/pre.sh"; check 0 $? "pre.sh exit 0"
@@ -70,13 +73,13 @@ K="$T/r1"; PE='{"session_id":"t3","hook_event_name":"UserPromptSubmit","prompt":
 SM='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"docs/VERIFICATION.md 절 구성은 실행 명령, 출력, 판정 세 부분으로 적는다. 나중에 고칠 수 있습니다."}'
 SA='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"docs/VERIFICATION.md 파일이 없다."}'
 SB='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"설정은 config/app.json 에 있다."}'
-SC='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"그 파일은 존재하지 않습니다."}'
+SC='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"docs/VERIFICATION.md does not exist."}'
 printf '%s' "$PE" | NGG_STATE="$K" "$W/prompt.sh"
 printf '%s' "$SM" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 경로 언급만(단정 없음) → 통과"
 printf '%s' "$SA" | NGG_STATE="$K" "$W/stop.sh" 2>"$T/e1"; check 2 $? "R1: 경로 + 파일이 없다 → exit 2"
 grep -q '\[R1\]' "$T/e1"; check 0 $? "stderr에 [R1]"
 printf '%s' "$SB" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 2 $? "R1: 경로 + 에 있다 → exit 2"
-printf '%s' "$SC" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 2 $? "R1: 경로 없어도 존재하지 않습니다 → exit 2"
+printf '%s' "$SC" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 2 $? "R1: 영어 경로 부재 단정 → exit 2"
 SD='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"config/app.json이 없다면 백업을 사용한다."}'
 SE='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"config/app.json이 없다고 답했다."}'
 SF='{"session_id":"t3","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"config/app.json이 존재한다면 읽는다."}'
@@ -85,6 +88,14 @@ printf '%s' "$SD" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 없
 printf '%s' "$SE" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 없다고(인용) → 통과"
 printf '%s' "$SF" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 존재한다면(가정) → 통과"
 printf '%s' "$SG" | NGG_STATE="$K" "$W/stop.sh" 2>/dev/null; check 2 $? "R1: 존재하지 않는다 → exit 2"
+KG="$T/r1-generic"
+printf '%s' '{"session_id":"t30","hook_event_name":"UserPromptSubmit","prompt":"Explain what a race condition is."}' | NGG_STATE="$KG" "$W/prompt.sh"
+printf '%s' '{"session_id":"t30","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"There is no single correct schedule for every concurrent program."}' \
+  | NGG_STATE="$KG" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 일반 개념 설명의 'There is no …'는 로컬 파일 주장 아님"
+printf '%s' '{"session_id":"t30","hook_event_name":"UserPromptSubmit","prompt":"Does package.json exist in this directory?"}' | NGG_STATE="$KG" "$W/prompt.sh"
+printf '%s' '{"session_id":"t30","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"There is no package.json file."}' \
+  | NGG_STATE="$KG" "$W/stop.sh" 2>"$T/e30"; check 2 $? "R1: 로컬 package.json 부재 주장은 계속 차단"
+grep -q '\[R0 R1\]' "$T/e30"; check 0 $? "로컬 package.json 부재 판정에 R0·R1"
 
 # 6. R2a는 실측이 가능했는데 안 한 경우에만 건다 (공식 "Allow Claude to say I don't know")
 X="$T/r2a"; PX='{"session_id":"t4","hook_event_name":"UserPromptSubmit","prompt":"이 저장소의 게이트 설계를 설명해줘"}'
@@ -512,5 +523,29 @@ printf '%s' "$PQT" | NGG_STATE="$QT" "$W/prompt.sh"
 mkq() { printf '{"session_id":"t28q","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"%s"}' "$1"; }
 mkq "스킬의 \`SKILL.md\` 를 고치면 즉시 반영된다는 설명이 있습니다." | NGG_STATE="$QT" "$W/stop.sh" 2>/dev/null; check 0 $? "R1: 백틱 안의 파일 이름은 단정이 아니다"
 mkq "docs/VERIFICATION.md 파일이 없습니다." | NGG_STATE="$QT" "$W/stop.sh" 2>/dev/null; check 2 $? "R1: 인용이 아닌 경로 단정은 그대로 막는다"
+
+# 29. 수식어 없는 "저장소"·"코드베이스"·"여기"는 이 작업 폴더를 가리키지 않는다. 다른 회사의 저장소 구조를
+#     묻는 개념 질문이 R0 로, 전제를 세우는 "가정하면" 이 R2b 로 막히던 오탐이다(2026-09-28 EJE 세션 보고).
+GN="$T/generic"
+p29() { printf '{"session_id":"t29","hook_event_name":"UserPromptSubmit","prompt":"%s"}' "$1" | NGG_STATE="$GN" "$W/prompt.sh"; }
+mk29() { printf '{"session_id":"t29","hook_event_name":"Stop","stop_hook_active":false,"last_assistant_message":"%s"}' "$1"; }
+p29 "근데 그러면 토스도 폴리레포라 봐야하나? 백엔드, 프론트가 별도 저장소니까..? 아닌가?"
+mk29 "토스 백엔드의 저장소 구조는 찾지 못했습니다. 그 전제가 맞다고 가정하면 프런트엔드 저장소 하나는 모노레포입니다. EJE는 원래 저장소 세 개였습니다." \
+  | NGG_STATE="$GN" "$W/stop.sh" 2>/dev/null; check 0 $? "보고된 프롬프트: 개념 질문의 저장소 + 가정하면 → 통과(R0·R2b 없음)"
+for q in "코드베이스가 커지면 모노레포가 유리해?" "여기서 말하는 모노레포가 뭐야?"; do
+  p29 "$q"; mk29 "아마 빌드 도구에 달려 있을 것입니다." | NGG_STATE="$GN" "$W/stop.sh" 2>/dev/null; check 0 $? "개념 질문($q)의 추정 → 통과"
+done
+# 답에 경로가 있어 코드베이스 맥락이어도, 전제를 세우는 조건문만으로는 상태 추정이 아니다.
+p29 "모노레포와 폴리레포 차이를 설명해줘"
+mk29 "그 전제가 맞다고 가정하면 apps/web/package.json 하나로 의존성을 관리합니다." | NGG_STATE="$GN" "$W/stop.sh" 2>/dev/null; check 0 $? "R2b: 경로 맥락의 가정하면 → 통과"
+mk29 "Assuming that premise holds, apps/web/package.json manages the dependencies." | NGG_STATE="$GN" "$W/stop.sh" 2>/dev/null; check 0 $? "R2b: 경로 맥락의 assuming → 통과"
+# 대조군. 지시어가 붙은 로컬 질문은 여전히 R0, 로컬 상태의 추정은 여전히 R2b 다.
+for q in "이 저장소에 테스트 파일이 몇 개야?" "여기 테스트 파일이 몇 개야?" "How many test files are in this repo?"; do
+  p29 "$q"; mk29 "테스트 파일은 세 개입니다." | NGG_STATE="$GN" "$W/stop.sh" 2>"$T/e29"; check 2 $? "로컬 질문($q) 도구 없이 답 → exit 2"
+  grep -q '\[R0\]' "$T/e29"; check 0 $? "stderr에 [R0]"
+done
+p29 "이 저장소에 테스트 파일이 몇 개야?"
+mk29 "아마 세 개일 것입니다." | NGG_STATE="$GN" "$W/stop.sh" 2>"$T/e29"; check 2 $? "로컬 질문에 추정으로 답 → exit 2"
+grep -q 'R2b' "$T/e29"; check 0 $? "stderr에 R2b"
 
 echo; echo "실패 ${fail}건"; exit "$fail"

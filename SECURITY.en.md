@@ -10,12 +10,12 @@ Hooks **run shell commands as you.** Installing this plugin means trusting that 
 | ------------------------------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Runs a shell script on every prompt, tool call, and turn end | `hooks/hooks.json` → `hooks/no-guess-gate/*.sh`                 | If a script changes, arbitrary code runs                                     |
 | Reads Claude's full final answer                             | `stop.sh` receives `last_assistant_message` from the hook input | Whatever is in that answer passes through the decision logic                 |
-| Writes prompts, tool names, and verdicts to files            | `${CLAUDE_PLUGIN_DATA}/state/`                                  | The start of the prompt and 80 characters of the answer land in `events.log` |
-| Calls a model (optional)                                     | `judge.py` runs `claude -p --model haiku`                       | The flagged sentences are sent to the model                                  |
+| Writes prompts, tool names, and verdicts to files            | Plugin: `${CLAUDE_PLUGIN_DATA}/state/`; shared hooks: per-user state directory | The start of the prompt and 80 characters of the answer land in `events.log` |
+| Calls a model (optional)                                     | `judge.py` runs Claude Code's `claude -p` or Codex's `codex exec` | Part of the prompt and answer context are sent to that model                  |
 
-**The judge is the only thing that leaves this machine, and it goes through your own Claude Code.** Nothing is sent to any external service. Turn the judge off with `NGG_JUDGE=0`.
+**The optional semantic judge is the only model call.** Claude Code uses `claude -p`; Codex uses `codex exec`. Other hooks run no network commands. Turn the judge off with `NGG_JUDGE=0`.
 
-What `events.log` keeps is part of the prompt and the first 80 characters of the answer. In a repo handling sensitive material, clear `${CLAUDE_PLUGIN_DATA}/state/` periodically or switch the gate off for that repo (`claude plugin disable checkride@checkride --scope project`).
+What `events.log` keeps is part of the prompt and the first 80 characters of the answer. In a repo handling sensitive material, clear the per-user state directory periodically or switch the gate off for that repo (`claude plugin disable checkride@checkride --scope project`).
 
 ## Checking for yourself what you are installing
 
@@ -32,14 +32,14 @@ git tag -v v1.4.1        # should print Good "git" signature
 **Only `plugin/` ships.** It contains 28 files: manifests and a hook adapter for Claude Code and Codex, plus the existing hooks and skills. Tests, docs, and CI never reach the installed copy.
 
 ```bash
-git ls-files plugin | wc -l          # 28
+git ls-files --cached --others --exclude-standard plugin | wc -l  # 30
 cat plugin/hooks/hooks.json          # Claude Code hook events
 cat plugin/hooks/hooks.codex.json    # Codex hook events
 ```
 
 **The `main` branch blocks force-push and deletion.** Code you read yesterday does not quietly change today.
 
-**The attack surface is checked against the code.** `tests/attack-surface.sh` re-verifies this document's promises on every run: no network commands, exactly one model call in `judge.py`, three isolation flags on the judge, the profile never reading `.env` values, no writes to system paths, and a timeout on every hook.
+**The attack surface is checked against the code.** `tests/attack-surface.sh` re-verifies this document's promises on every run: hooks contain no network commands; both model providers are isolated in `judge.py`; the profile never reads `.env` values; hooks write no system paths; and every Claude Code and Codex hook has a timeout.
 
 ## What has already been fixed
 

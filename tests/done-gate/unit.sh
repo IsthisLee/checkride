@@ -27,6 +27,7 @@ empty()  { [ ! -s "$1" ]; }
 newproj() { local p="$T/$1"; mkdir -p "$p"; printf '%s' "$p"; }
 post() { printf '{"session_id":"%s","hook_event_name":"PostToolUse","cwd":"%s","tool_name":"%s","tool_input":{"file_path":"%s"}}' "$1" "$2" "${4:-Edit}" "$3"; }
 stop() { printf '{"session_id":"%s","hook_event_name":"Stop","cwd":"%s","stop_hook_active":false,"last_assistant_message":"고쳤습니다."}' "$1" "$2"; }
+stop_active() { printf '{"session_id":"%s","hook_event_name":"Stop","cwd":"%s","stop_hook_active":true,"last_assistant_message":"고쳤습니다."}' "$1" "$2"; }
 
 # 1. 바꾼 파일이 없으면 검사하지 않는다
 P=$(newproj p1); S="$T/s1"
@@ -54,6 +55,15 @@ printf '%s' "$(post t3 "$P3" "$P3/src/a.ts")" | NGG_STATE="$S3" "$W/post.sh"
 printf '%s' "$(stop t3 "$P3")" | NGG_STATE="$S3" "$W/stop.sh" 2>"$T/e5"; check 2 $? "검사 실패 → exit 2"
 grep -q '완료 게이트' "$T/e5"; check 0 $? "stderr에 완료 게이트 헤더"
 grep -q 'FAIL_MARKER_LINE' "$T/e5"; check 0 $? "stderr에 검사 출력 꼬리"
+
+# 5b. Claude Code가 차단 후 다시 답하면 완료 검사를 다시 돌려야 한다.
+P3B=$(newproj p3b); S3B="$T/s3b"
+printf 'test_command = "echo SHOULD_RUN > marker; exit 1"\n' > "$P3B/checkride.toml"
+printf '%s' "$(post t3b "$P3B" "$P3B/src/a.ts")" | NGG_STATE="$S3B" "$W/post.sh"
+printf '%s' "$(stop_active t3b "$P3B")" | NGG_STATE="$S3B" "$W/stop.sh" 2>"$T/e5b"; check 2 $? "Claude 재진입에서도 실패한 완료 검사를 차단"
+grep -q '완료 게이트' "$T/e5b"; check 0 $? "재진입 차단에 완료 게이트 안내"
+if [ -f "$P3B/marker" ]; then marker_created=1; else marker_created=0; fi
+check 1 "$marker_created" "재진입에서 test_command 를 다시 실행"
 
 # 6. 문서만 고친 턴은 대상이 아니다
 P4=$(newproj p4); S4="$T/s4"

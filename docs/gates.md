@@ -11,6 +11,7 @@ README는 짧게 두고 자세한 내용은 이 문서에 적습니다. 각 게�
   - [R0~R5는 매 턴 다 보지 않습니다](#r0r5는-매-턴-다-보지-않습니다)
   - [규칙을 보기 전에 빠지는 면제](#규칙을-보기-전에-빠지는-면제)
   - [훅 열두 개가 각각 하는 일](#훅-열두-개가-각각-하는-일)
+- [Codex 훅 실행과 신뢰](#codex-훅-실행과-신뢰)
 - [의미 판정기 설정](#의미-판정기-설정)
   - [메시지 언어](#메시지-언어)
   - [왜 내장 `type: "prompt"` 훅을 쓰지 않나](#왜-내장-type-prompt-훅을-쓰지-않나)
@@ -28,7 +29,7 @@ README는 짧게 두고 자세한 내용은 이 문서에 적습니다. 각 게�
 
 ## 개발을 몰라도 되는 설명
 
-Claude Code는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니다. 그런데 가끔 서류를 열어 보지도 않고 "그런 건 없습니다"라고 하고, 검사를 돌리지도 않고 "다 끝냈습니다"라고 합니다.
+Claude Code와 Codex는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니다. 그런데 가끔 파일을 열어 보지도 않고 "그런 건 없습니다"라고 하고, 검사를 돌리지도 않고 "다 끝냈습니다"라고 합니다.
 
 사람이 그러면 "확인은 했어요?"라고 되물으면 됩니다. 문제는 **매번** 되물어야 한다는 점입니다. 사람은 언젠가 깜빡하고, 깜빡한 그날 사고가 납니다.
 
@@ -36,7 +37,9 @@ Claude Code는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니�
 
 ## 언제 무엇이 도나
 
-게이트 네 개와 저장소 프로필은 서로 다른 훅 이벤트에 걸립니다. **Stop(턴 끝)에서 도는 것은 근거 게이트와 완료 게이트 두 개뿐입니다.** 테스트 무결성과 프로젝트 가드는 턴이 끝날 때가 아니라 편집·Bash를 실행하려는 순간에만 막습니다. 배선은 `plugin/hooks/hooks.json`에 있습니다.
+게이트 네 개와 저장소 프로필은 서로 다른 훅 이벤트에 걸립니다. **Stop(턴 끝)에서 도는 것은 근거 게이트와 완료 게이트 두 개뿐입니다.** 테스트 무결성과 프로젝트 가드는 턴이 끝날 때가 아니라 편집·Bash를 실행하려는 순간에만 막습니다. Claude Code 배선은 `plugin/hooks/hooks.json`, Codex 배선은 `plugin/hooks/hooks.codex.json`과 `codex.py`에 있습니다. 프로젝트 훅을 쓸 때는 실행 전에 도구별 신뢰 절차가 필요합니다.
+
+Git 저장소에서는 Git 루트의 `checkride.toml`만 설정으로 읽습니다. 하위 폴더의 파일은 루트 설정을 덮지 않습니다. 모노레포의 패키지별 검사는 루트 `test_command`나 `fast_test_command`에서 저장소의 집계 도구로 위임합니다. Git 저장소가 아닌 독립 폴더에서는 가장 가까운 `checkride.toml`을 읽습니다.
 
 | 이벤트 | 근거 게이트 | 완료 게이트 | 테스트 무결성 | 프로젝트 가드 | 저장소 프로필 |
 |---|---|---|---|---|---|
@@ -54,7 +57,8 @@ Claude Code는 코드를 대신 써 주는 AI 조수입니다. 일은 잘합니�
 
 | 규칙 | 언제 검사하나 |
 |---|---|
-| R0 · R1 | 이 턴에 도구 호출이 0건일 때만 |
+| R0 | 이 턴에 도구 호출이 0건이고 프롬프트가 저장소·파일 질문일 때 |
+| R1 | 이 턴에 도구 호출이 0건이고 프롬프트나 답에 로컬 파일·경로 맥락이 있을 때 |
 | R2a | 도구 호출이 0건이고, 코드베이스 맥락(프롬프트가 저장소·파일을 묻거나, 답에 경로나 "여기 있는 파일" 같은 표현이 있음)일 때만 |
 | R3 | Bash 실행이 0건일 때만 |
 | R5 | 마지막으로 돌린 Bash가 실패(F)했을 때만 |
@@ -94,6 +98,26 @@ Stop 훅은 규칙을 따지기 전에 두 가지를 먼저 봅니다. 하나라
 
 스크립트 경로는 `plugin/hooks/` 기준입니다. 의미 판정기 `judge.py`는 훅이 아닙니다. `stop.sh`가 R2a·R2b만 걸렸을 때 부르는 스크립트입니다.
 
+## Codex 훅 실행과 신뢰
+
+Codex에서는 플러그인을 활성화해 번들 훅을 쓰거나, 저장소 관리자가 `setup-project-hooks.sh`를 실행해 `.codex/hooks.json`과 `.checkride/hooks/`를 커밋할 수 있습니다. `npx skills add`는 스킬만 복사하므로 훅 설치를 대신하지 않습니다.
+
+저장소 공유 훅을 실행하려면 Codex에서 저장소의 `.codex/` 설정 계층을 신뢰하고, `/hooks`에서 Checkride의 현재 훅 정의를 별도로 검토·신뢰해야 합니다. Codex는 신뢰한 훅 정의의 현재 해시를 기록하므로 정의가 달라지면 다시 검토 대상이 됩니다. 체크아웃이나 worktree 경로가 달라져도 훅 경로가 바뀔 수 있습니다. `--dangerously-bypass-hook-trust`는 이미 외부에서 검토한 훅을 한 번 실행할 자동화용이며 팀의 지속적인 신뢰 설정을 대신하지 않습니다. 저장소 설정 신뢰와 훅 정의 신뢰는 별개입니다.
+
+Codex CLI 0.156.1에서 새 Git 저장소의 `.codex/hooks.json`은 `codex exec --dangerously-bypass-hook-trust`로도 실행되지 않았습니다. Codex 공식 문서는 프로젝트 `.codex/` 계층이 신뢰되지 않으면 프로젝트 훅을 불러오지 않는다고 설명합니다. 이 저장소에서는 대화형 Codex의 훅 검토 화면을 열어 새 Checkride SessionStart 훅을 살펴보고 `t`로 신뢰한 뒤, `codex exec`가 위험 우회 플래그 없이 해당 훅을 실행하는 것을 확인했습니다. 따라서 자동화에서는 프로젝트 신뢰와 현재 훅 정의 신뢰를 실행 전에 해당 실행기의 Codex 설정에 저장해야 합니다. 비대화형 실행은 승인 화면을 띄우지 않습니다.
+
+Codex 훅은 기본으로 켜져 있습니다. 활성 설정에서 `[features] hooks = false`면 꺼집니다. Checkride는 `SessionStart`·`UserPromptSubmit`·`PreToolUse`·`PostToolUse`·`Stop`·`SubagentStop`을 연결합니다. Bash 결과와 변경 파일을 기록하고, `apply_patch`는 `tool_input.command`를 읽어 테스트 무결성과 append-only 검사를 적용합니다. 입력이 없거나 지원하지 않는 이동 대상이 있으면 통과시키지 않습니다. 파일 경로를 입력에 표시하는 MCP/local-function 쓰기도 검사합니다. Stop 성공 응답은 Codex 형식의 JSON을 내고 `stop_hook_active`가 참이면 재진입을 건너뜁니다. Codex가 재진입 표시를 보내면 Checkride는 두 게이트를 다시 실행하지 않습니다. 따라서 첫 응답을 차단한 뒤 다시 작성된 답은 재검사하지 않습니다. Codex 훅 문서는 반복 차단의 상한을 정하지 않고, 공식 구현 테스트도 재진입에서는 다시 차단하지 않는 예를 사용합니다. 이는 반복 차단 루프를 피하기 위한 플랫폼 경계입니다.
+
+Codex의 Bash `PostToolUse.tool_response`에는 명령 출력만 있고 프로세스 종료 상태가 없습니다. 따라서 R5는 Codex에서 실행되지 않습니다. Claude Code에서는 `PostToolUseFailure`가 실패 이벤트와 실패 정보를 제공하므로 R5를 적용할 수 있습니다. Codex가 종료 상태를 안정적인 훅 입력으로 제공하면 어댑터에 R5 기록을 추가할 수 있습니다.
+
+Claude Code에서는 `stop_hook_active` 재진입 답변도 근거·완료 게이트가 다시 검사합니다. Claude Code는 Stop 훅이 여덟 번 연속 턴을 이어 간 뒤 다음 차단을 덮어쓰고 턴을 끝냅니다. 상한에 이르면 마지막 답이 게이트를 통과하지 못했을 수 있으므로 사용자가 확인해야 합니다.
+
+`setup-project-hooks.sh`는 실행 가능한 훅 스크립트를 저장소에 복사합니다. 관리자는 생성된 `.checkride/README.md`를 읽고 훅 코드와 JSON 설정을 검토한 뒤 커밋해야 합니다. 완료 게이트가 실행하는 `test_command`와 `fast_test_command`도 저장소가 제공하는 코드입니다. Claude Code의 공식 문서는 명령 훅이 사용자의 전체 권한으로 실행된다고 밝히므로, 에이전트 도구의 샌드박스가 훅 프로세스에도 적용된다고 가정하지 마세요. Codex 실행 환경은 사용하는 Codex 버전의 샌드박스 설정을 따로 확인해야 합니다.
+
+공유 훅의 `check allow` 기록과 그 밖의 세션 상태는 저장소 밖의 사용자 데이터 경로에 둡니다. 저장소 에이전트가 `.checkride/`를 편집해 일회 허용을 위조하거나 런타임 로그를 커밋하는 일을 막기 위한 것입니다.
+
+공식 근거(2026-09-28 확인): [Codex 훅의 위치·신뢰·tool_response 계약](https://developers.openai.com/codex/hooks), [Codex 실행기의 Bash PostToolUse 응답 생성](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/context.rs#L2147-L2160), [Codex 실행기의 PostToolUse 호출 조건](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/registry.rs#L3122-L3188), [Codex 플러그인 훅](https://developers.openai.com/plugins/build/plugins), [Codex Stop 재진입 테스트](https://github.com/openai/codex/blob/main/codex-rs/core/tests/suite/hooks.rs#L2667-L2694), [Claude Code 훅의 작업공간 신뢰와 권한](https://code.claude.com/docs/en/hooks), [Claude Code 권한과 샌드박스 경계](https://code.claude.com/docs/en/permissions).
+
 ## 의미 판정기 설정
 
 근거 게이트는 R2a·R2b만 걸렸을 때 작은 모델에게 그 문장이 의견인지 상태 주장인지 묻습니다. 판정기는 풀어 줄 수만 있고 새로 막지는 못합니다. 규칙과 면제는 [README](../README.md#무엇이-막히나)에 있습니다.
@@ -101,9 +125,11 @@ Stop 훅은 규칙을 따지기 전에 두 가지를 먼저 봅니다. 하나라
 | 환경변수 | 기본값 | 뜻 |
 |---|---|---|
 | `NGG_JUDGE` | `1` | `0`이면 판정을 아예 하지 않습니다 |
-| `NGG_JUDGE_MODEL` | `haiku` | 판정 모델입니다. 분류 한 번이라 큰 모델이 필요 없지만 바꿀 수 있습니다 |
+| `NGG_JUDGE_MODEL` | Claude Code: `haiku`; Codex: 현재 Codex 기본 모델 | 판정 모델입니다. 값을 주면 Claude Code 또는 Codex CLI에 지정합니다 |
 | `NGG_JUDGE_CMD` | (없음) | 판정 명령 전체를 다른 것으로 바꿉니다. 이 값을 주면 모델 설정은 무시됩니다 |
 | `NGG_JUDGE_TIMEOUT` | `40` | 초 |
+
+Claude Code에서는 `claude -p`가 기본 `haiku`로 한 번 판정합니다. Codex에서는 어댑터가 `codex exec`를 호출하고, `NGG_JUDGE_MODEL`을 비우면 Codex CLI의 기본 모델을 사용합니다. 이 호출은 사용자 설정과 훅을 읽지 않고, 저장소 밖 임시 폴더·읽기 전용 샌드박스·빈 stdin으로 실행합니다. Codex CLI를 찾지 못하거나 판정이 실패·시간초과하면 원래 차단을 유지합니다.
 
 ### 메시지 언어
 
@@ -324,12 +350,12 @@ append-only 경로: supabase/migrations
 
 ## 커맨드 여덟 개
 
-게이트는 저절로 돌지만, 언제 할지와 비용을 사용자가 정해야 하는 일은 커맨드로 둡니다. 전부 **사용자가 직접 쳐야만** 돕니다(`disable-model-invocation: true`). 공식 문서가 그렇게 권합니다. "Use `disable-model-invocation: true` for workflows with side effects that you want to trigger manually."
+게이트는 저절로 돌지만, 언제 할지와 비용을 사용자가 정해야 하는 일은 커맨드로 둡니다. 전부 `disable-model-invocation: true`이므로 자동 호출되지 않습니다. Claude Code에서는 `/checkride:<이름>`, Codex에서는 `$<이름>`으로 사용자가 직접 부릅니다. 공식 문서는 부작용이 있는 작업을 사용자가 직접 시작하도록 이 설정을 권합니다. "Use `disable-model-invocation: true` for workflows with side effects that you want to trigger manually." (번역: 부작용이 있는 작업은 사용자가 직접 시작하도록 하려면 `disable-model-invocation: true`를 쓰세요.)
 
 | 커맨드 | 하는 일 |
 |---|---|
 | `/checkride:spec` | 큰 기능 전에 `AskUserQuestion`으로 사용자를 인터뷰해 `SPEC.md`를 씁니다 |
-| `/checkride:setup-checks` | 검사 명령을 실제로 돌려 보고 `checkride.toml`에 확정합니다. 기준선·append-only·비밀 파일 차단도 제안합니다 |
+| `/checkride:setup-checks` · `$setup-checks` | 루트 검사 명령을 실제로 돌려 `checkride.toml`에 확정합니다. 기준선·append-only·설정과 훅 코드 보호를 제안합니다 |
 | `/checkride:tdd` | 실패 테스트 먼저, RED 확인, 최소 구현 순서로 진행합니다 |
 | `/checkride:finish` | 검사·린트를 돌리고 커밋·푸시·PR 을 만듭니다. PR 본문에 돌린 명령과 출력을 근거로 넣습니다 |
 | `/checkride:handoff` | 다음 세션이 읽을 인수인계를 씁니다 |

@@ -47,4 +47,6 @@ run tp-path    BLOCK "Do not run anything. Reply with exactly: 'The bug is in sr
 wait
 for w in "$R"/*/; do [ -f "$w/row.txt" ] && cat "$w/row.txt"; done | sort -k2
 # 케이스 수는 row.txt 개수다. 디렉터리를 세면 run() 이 만드는 lib/ 까지 세어 하나 더 나온다.
-echo; echo "총 $(find "$R" -name row.txt | wc -l | tr -d ' ')케이스 / 실패 $(cat "$R"/*/row.txt | grep -c '❌')건"
+fail=$(cat "$R"/*/row.txt | grep -c '❌' || true)
+echo; echo "총 $(find "$R" -name row.txt | wc -l | tr -d ' ')케이스 / 실패 ${fail}건"
+exit "$fail"

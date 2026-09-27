@@ -18,6 +18,7 @@
 | [모델에게 "확인하라"고 지시하지 않고, 나온 답을 밖에서 대조합니다](#3-근거-없는-주장은-턴이-끝나는-순간에-검사합니다) | Opus 5는 스스로 검증하므로, 검증 지시를 넣으면 과잉 검증으로 토큰만 늘고 품질은 그대로라고 공식 가이드가 안내합니다. 밖에서 대조하면 규칙에 걸린 턴에만 비용이 듭니다 | [[8]](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5) |
 | [기여자용 커밋 가드에 husky 를 쓰지 않습니다](#7-커밋-가드에-husky-를-쓰지-않습니다) | husky 도 같은 `core.hooksPath` 를 같은 `.git/config` 에 써서 전달되지 않는 성질은 그대로인데, 이 저장소에는 `package.json` 이 없어 Node 런타임 요구만 새로 생깁니다 | 실측, [[15]](https://typicode.github.io/husky/get-started.html) |
 | [설정을 `userConfig` 가 아니라 저장소 루트 파일로 받습니다](#8-설정을-userconfig-가-아니라-저장소-루트-파일로-받습니다) | 공식 수단인 `userConfig` 의 값은 사용자 전역 설정에만 저장되어 저장소마다 다를 수 없고 풀 리퀘스트에도 드러나지 않습니다. 검사 명령과 끈 규칙은 팀이 공유해야 하는 값입니다 | [[16]](https://code.claude.com/docs/en/plugins-reference) |
+| [`checkride.toml`은 Git 저장소 루트에서만 읽습니다](#9-checkride-toml은-git-저장소-루트에서만-읽습니다) | 하위 설정은 에이전트가 만든 실행 명령이나 규칙 변경으로 저장소 정책을 덮을 수 있습니다. 모노레포별 검사 차이는 루트의 집계 명령으로 위임합니다 | 실측, 판단 |
 
 ## 1. 부탁하지 않고 훅으로 강제합니다
 
@@ -289,8 +290,7 @@ file:.git/config	.husky/_
 읽어야 합니다. 이 경로 자체는 막히지 않지만, 위의 저장 위치 문제를 해결해 주지는 않습니다.
 
 **그래서 저장소 루트의 `checkride.toml` 을 씁니다.** 파일이 저장소에 커밋되므로 클론과 함께 전달되고, 값을 바꾸면
-diff 에 남아 풀 리퀘스트에서 보이며, 하위 폴더에서 세션을 열어도 `common.sh` 의 `find_root` 가 위로 올라가
-찾습니다.
+diff 에 남아 풀 리퀘스트에서 보이며, 하위 폴더에서 세션을 열어도 `common.sh` 의 `find_root` 가 Git 루트를 찾습니다.
 
 **대가는 파서입니다.** 온전한 TOML 파서를 쓰지 않고 한 줄에 키 하나만 읽습니다. macOS 의 기본 파이썬이 3.9.6
 이고 `tomllib` 이 3.11 부터 들어와서, `import tomllib` 이 `ModuleNotFoundError` 로 죽기 때문입니다(실측
@@ -299,6 +299,14 @@ diff 에 남아 풀 리퀘스트에서 보이며, 하위 폴더에서 세션을 
 
 **언어만은 예외로 두 경로를 둡니다.** 게이트 메시지 언어는 저장소가 아니라 읽는 사람의 성질이라, 저장소의 `lang`
 과 전역 `NGG_LANG` 을 모두 두고 환경변수가 이기게 했습니다. `/checkride:config` 가 둘 중 어디에 쓸지 묻습니다.
+
+## 9. `checkride.toml`은 Git 저장소 루트에서만 읽습니다
+
+훅이 `cwd`에서 가장 가까운 `checkride.toml`을 고르면 에이전트가 하위 패키지에 설정 파일을 만든 뒤 그 위치에서 작업해 루트 정책을 바꿀 수 있습니다. 특히 `test_command`와 `fast_test_command`는 완료 게이트가 실행하는 명령이고, `disabled_rules`와 `append_only`는 다른 게이트의 동작을 바꿉니다. 에이전트가 실행 중에 만든 미커밋 설정을 저장소 정책으로 신뢰하지 않습니다.
+
+모노레포에서도 패키지마다 다른 검사를 둘 필요가 있습니다. 그 차이는 Git 루트의 `package.json`이나 모노레포 러너 명령에서 각 패키지의 `test` 스크립트로 위임할 수 있습니다. 예를 들면 `turbo run test`와 `nx affected -t test`입니다. 그래서 하위 `checkride.toml`은 병합하거나 우선 적용하지 않습니다. Git 저장소가 아닌 독립 폴더에서는 가장 가까운 설정을 유지합니다.
+
+이 결정은 2026-09-28에 보고된 EJE-Platform 재적용 사례와 모노레포 보충 의견을 검토해 내렸습니다. 회귀 검사는 `tests/lib/unit.sh`에 있고 실행 결과는 [검증 기록](VERIFICATION.md)의 V70에 남깁니다.
 
 ## 출처
 

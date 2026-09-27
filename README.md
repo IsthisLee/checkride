@@ -79,11 +79,17 @@ Claude Code 세션 안에서 다음 두 줄을 입력하면 됩니다.
 bash "$(find ~/.claude/plugins ~/.codex/plugins -path '*/setup-project-hooks.sh' -print -quit 2>/dev/null)"
 ```
 
-이 명령은 `.checkride/hooks/`에 훅 코드를 넣고, 기존 항목을 보존하면서 `.claude/settings.json`과 `.codex/hooks.json`에 프로젝트 훅을 등록합니다. `.checkride/data/`는 로컬 상태 디렉터리로 Git에서 제외합니다. 생성·수정된 파일을 검토한 뒤 저장소에 커밋합니다.
+이 명령은 `.checkride/hooks/`에 훅 코드를 넣고 `.claude/settings.json`과 `.codex/hooks.json`에 프로젝트 훅을 병합합니다. 설정 파일의 다른 키와 서식은 유지하고, 재실행해도 Checkride 훅을 중복 등록하지 않습니다. 런타임 상태와 `check allow` 일회 허용 값은 저장소 밖의 사용자 데이터 디렉터리에 두므로 Git에 올라가지 않습니다. `.checkride/README.md`의 설치·갱신 안내를 읽고, 생성·수정된 파일을 검토한 뒤 저장소에 커밋합니다.
 
-그다음 팀원은 저장소를 각 도구에서 열고 훅 정의를 승인하면 됩니다. Codex는 저장소를 신뢰해야 하고 훅 정의를 검토·신뢰해야 실행합니다. 내용이 바뀌면 다시 승인해야 할 수 있습니다. 이 저장소 훅만 쓸 팀원은 Checkride 플러그인을 설치하지 않아도 됩니다. 플러그인 훅과 저장소 훅을 동시에 켜면 중복 실행되므로 하나만 사용하세요.
+그다음 팀원은 저장소를 각 도구에서 신뢰한 뒤 훅을 검토해야 합니다. Claude Code는 대화형 세션에서 저장소 설정의 훅을 실행하기 전에 작업공간 신뢰를 확인합니다. Codex는 먼저 저장소의 `.codex/` 설정 계층을 신뢰해야 하고, `/hooks`에서 새 훅 정의를 검토·신뢰해야 실행합니다. 이 두 신뢰 확인은 서로 다른 단계입니다. 훅 정의가 바뀌거나 경로가 다른 체크아웃·worktree를 열면 Codex가 다시 검토를 요구할 수 있습니다. `--dangerously-bypass-hook-trust`는 자동화에서 한 번 신뢰 검사를 건너뛰는 용도이지 팀 설치 절차가 아닙니다. 이 저장소 훅만 쓸 팀원은 Checkride 플러그인을 설치하지 않아도 됩니다. 저장소 관리 훅이 있으면 플러그인 훅은 자동으로 건너뛰므로 둘이 중복 실행되지 않습니다.
 
-이 경로는 훅 코드와 설정을 저장소가 소유합니다. 업데이트할 때 관리자가 Checkride 플러그인을 갱신한 뒤 위 명령을 다시 실행하고, 변경을 검토·커밋해야 합니다. Checkride 스킬을 함께 쓰려면 스킬을 별도로 설치합니다.
+Codex CLI 0.156.1에서 새 Git 저장소의 `.codex/hooks.json`이 `codex exec --dangerously-bypass-hook-trust`에서도 실행되지 않는 것을 확인했습니다. Codex는 프로젝트 `.codex/` 계층을 신뢰하지 않으면 프로젝트 훅을 읽지 않습니다. 이 플래그는 훅 정의 신뢰만 한 번 우회하며 프로젝트 신뢰를 대신하지 않습니다. 반대로 이 저장소를 신뢰하고 `/hooks`에서 새 Checkride 훅을 검토·신뢰한 뒤에는 `codex exec`가 별도 우회 플래그 없이 SessionStart 프로젝트 훅을 실행했습니다. 자동화 실행기에도 프로젝트 신뢰와 현재 훅 정의 신뢰가 미리 저장되어 있어야 합니다. 비대화형 실행은 승인 화면을 띄우지 않습니다. [Codex 훅 문서](https://developers.openai.com/codex/hooks) (확인일: 2026-09-28).
+
+이 경로는 훅 코드와 설정을 저장소가 소유합니다. 업데이트할 때 관리자가 Checkride 플러그인을 갱신한 뒤 위 명령을 다시 실행하고, 변경을 검토·커밋해야 합니다. 이 스크립트는 실행 가능한 훅 코드를 저장소에 복사하므로 반드시 내용을 검토한 뒤 신뢰하세요. 완료 게이트의 `test_command`와 `fast_test_command`도 저장소에서 제공한 명령을 실행합니다. 팀에서 공유하기 전에 그 스크립트·패키지 매니페스트·테스트 설정이 훅 실행 환경에서 무엇을 하는지 검토해야 합니다.
+
+`checkride.toml`은 Git 저장소 루트 파일만 적용됩니다. 하위 패키지별 설정이 루트의 검사 명령이나 규칙을 덮지 않습니다. 모노레포에서는 루트 명령에 `turbo run test`, `nx affected -t test`처럼 전체 또는 영향받은 패키지의 검사를 위임하고, 실제 검사 스크립트는 각 패키지에 둡니다. Git 저장소가 아닌 독립 폴더에서는 가장 가까운 `checkride.toml`을 읽습니다.
+
+공유 설정에서 에이전트의 규칙 변경을 줄이려면 Claude Code의 `Edit` deny 또는 OS 샌드박스를 검토할 수 있습니다. `Read` deny는 읽기와 편집을 함께 막으므로 `checkride.toml`처럼 에이전트가 읽어야 할 파일에 그대로 적용하지 마세요. Codex의 `sandbox_workspace_write.writable_roots`는 쓰기 허용 경로를 추가하는 설정이지 거부 목록이 아닙니다. 어느 도구의 편집 권한 규칙도 임의 자식 프로세스를 전부 막는 OS 경계와 같다고 보지 마세요. Codex에서 모든 작업 파일 쓰기를 막아야 한다면 `read-only` 샌드박스를 쓰되, 그 세션에서는 에이전트의 일반 파일 수정도 제한됩니다.
 
 #### Claude Code
 
@@ -145,8 +151,10 @@ enabled = true
 codex plugin marketplace add IsthisLee/checkride
 ```
 
-Codex가 프로젝트 설정을 읽으려면 해당 저장소를 신뢰해야 하며, 플러그인 훅 정의도 사용자 검토·신뢰 승인을 거쳐야 실행됩니다.
-Codex 훅은 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`에 연결됩니다. `apply_patch` 편집은 테스트 무결성과 프로젝트 가드의 검사 대상입니다.
+Codex가 프로젝트 설정을 읽으려면 해당 저장소를 신뢰해야 하며, 훅 정의도 `/hooks`에서 검토·신뢰해야 실행됩니다. `.codex/config.toml`의 프로젝트 신뢰와 훅 정의 신뢰는 별개입니다. 변경된 훅은 다시 검토 대상이 될 수 있고, checkout/worktree마다 절대 경로가 달라지면 별도로 승인해야 할 수 있습니다.
+Codex 훅은 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`에 연결됩니다. Bash와 `apply_patch`의 변경은 검사하고, 지원되는 파일 변경 인자를 가진 MCP/local-function 도구는 경로를 알아낼 수 있는 입력만 검사합니다. 파일 경로를 해석할 수 없는 도구는 자동으로 안전하다고 간주하지 않습니다. 현재 훅 신뢰 상태는 Codex의 `/hooks` 화면에서 확인하세요.
+Codex의 Bash `PostToolUse.tool_response`에는 명령 출력만 있고 종료 상태가 없습니다. 따라서 마지막 실패 명령 뒤 성공을 주장하는 R5는 Codex에서 실행되지 않습니다. Claude Code에서는 `PostToolUseFailure` 이벤트로 이 규칙을 적용합니다.
+Codex가 Stop 재진입 표시를 보내면 Checkride는 근거·완료 게이트를 다시 실행하지 않습니다. 따라서 첫 응답이 차단된 뒤 다시 쓴 답은 재검사되지 않습니다. Codex 훅 문서에는 재시도 상한이 없고, OpenAI의 구현 테스트는 재진입에서 다시 차단하지 않는 패턴을 씁니다. 이는 반복 차단 루프를 피하기 위한 플랫폼 경계입니다. Claude Code에서는 재진입 답변도 다시 검사하지만, 여덟 번 연속 턴을 이어 간 뒤에는 다음 차단을 덮어쓰고 턴을 끝냅니다. 어느 도구든 반복 상한에 도달한 마지막 답은 게이트를 통과하지 못했을 수 있으므로 사용자가 확인해야 합니다.
 
 ### 스킬만 별도 설치
 
@@ -170,19 +178,19 @@ npx skills add IsthisLee/checkride -a claude-code -a codex
 /checkride:setup-checks
 ```
 
-**이것을 돌려야 게이트 네 개가 다 일합니다.** 설치만 하면 근거 게이트와 테스트 무결성은 바로 막지만, 완료 게이트와 프로젝트 가드는 [무엇을 막아야 할지 몰라](#넷-중-둘은-설정이-있어야-일합니다) 놀고 있습니다.
+이 커맨드는 `disable-model-invocation: true`로 설정되어 있어 자동 호출되지 않습니다. Claude Code에서는 `/checkride:setup-checks`, Codex에서는 `$setup-checks`로 사용자가 직접 실행합니다. 게이트 설치 여부와 별개로 완료 게이트가 검사할 루트 명령과 프로젝트 가드가 지킬 경로를 설정합니다.
 
-`/checkride:setup-checks`는 이 저장소의 검사 명령을 **실제로 돌려 보고** 확정하고, 이력을 지켜야 할 폴더가 있으면 제안한 뒤, 그 둘을 `checkride.toml`에 적습니다. 파일을 쓰기 전에 무엇을 적을지 보여 주고 물어봅니다.
+`setup-checks`는 Git 저장소 루트의 `checkride.toml`에 검사 명령과 append-only 경로를 씁니다. 모노레포에서는 루트의 전체/변경 패키지 실행 명령을 찾아 실제로 돌려 보고 제안합니다. 파일을 쓰기 전에 무엇을 적을지 보여 주고 물어봅니다.
 
 무엇을 강제할지 항목마다 고르려면 `/checkride:config`를, 지금 무엇이 일하고 무엇이 놀고 있는지 보려면 `/checkride:status`를 씁니다.
 
 ## 커맨드 여덟 개
 
-전부 **직접 쳐야만** 돕니다. Claude가 알아서 부르지 않습니다. 부작용이 있는 일은 시점을 사람이 정해야 하기 때문입니다.
+전부 **사용자가 직접 불러야만** 돕니다. 모델이 알아서 호출하지 않습니다. 부작용이 있는 일은 시점을 사람이 정해야 하기 때문입니다.
 
 | 커맨드 | 하는 일 | 언제 쓰나 |
 |---|---|---|
-| `/checkride:setup-checks` | 검사 명령을 실제로 돌려 확정하고 지킬 폴더를 정해 `checkride.toml`에 씁니다 | 설치 직후 한 번 |
+| `/checkride:setup-checks` · `$setup-checks` | 검사 명령을 실제로 돌려 확정하고 지킬 폴더를 정해 `checkride.toml`에 씁니다 | 설치 직후 한 번 |
 | `/checkride:config` | 게이트 항목마다 무엇을 막고 어디서 온 규칙인지 보여 주고, 끌 것을 고릅니다 | 오탐이 반복될 때 |
 | `/checkride:status` | 지금 어느 게이트가 일하고 어느 게이트가 노는지 전부 실측해 보고합니다 | 무엇이 막혔는지 궁금할 때 |
 | `/checkride:spec` | 코드를 쓰기 전에 인터뷰해서 `SPEC.md`를 씁니다 | 큰 기능에 착수할 때 |
@@ -296,13 +304,13 @@ Claude는 이런 메시지를 받습니다.
 
 그리고 Claude는 같은 턴 안에서 파일을 읽거나 명령을 돌린 뒤 다시 답합니다.
 
-**무한정 갇히는 일은 없습니다.** 공식 문서에 나온 대로, 8회 연속 차단되면 Claude Code가 훅을 무시하고 턴을 끝냅니다.
+Claude Code는 여덟 번 연속 턴을 이어 간 뒤 다음 차단을 덮어쓰고 턴을 끝냅니다. 따라서 무한 반복되지는 않지만, 상한에 이르면 마지막 답이 게이트를 통과하지 못했을 수 있으므로 사용자가 확인해야 합니다.
 
 ## 왜 필요한가
 
 모델은 갈수록 좋아지는데도 이 실패만은 사라지지 않습니다. Opus 4.7·4.8, Sonnet 5, Opus 5가 한 해 동안 차례로 나왔지만, 검사를 돌리지도 않고 "다 통과했습니다"라고 답하는 일은 그대로 남았습니다. 이 실패가 능력의 문제가 아니라 습관의 문제이기 때문입니다. 그래서 사람이 매번 "확인했어?"라고 되물어야 하는데, 사람은 언젠가 그것을 잊어버리고, 잊은 날에 사고가 납니다.
 
-CLAUDE.md에 규칙을 적어 두는 것만으로는 부족합니다. 공식 문서가 그 이유를 이렇게 밝힙니다. **"권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다."** checkride는 이 문장을 실제 장치로 옮겨 놓은 것입니다.
+CLAUDE.md에 규칙을 적어 두는 것만으로는 부족합니다. 공식 문서가 그 이유를 이렇게 밝힙니다. **"권고에 그치는 CLAUDE.md 지시와 달리, 훅은 결정적이고 그 동작이 반드시 일어나게 보장한다."** Checkride는 Claude Code와 Codex의 사용자 정의 Stop 훅으로 근거·완료 규칙을 구현합니다. 프로젝트와 훅 정의를 신뢰해야 실행되며, 재시도는 각 도구의 상한을 따릅니다.
 
 Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순간에** 막아 주는 기능이 아직 없습니다. auto 모드는 위험한 명령을 실행하기 전에 막고, `/code-review`는 사용자가 불렀을 때 버그를 찾습니다. 그러나 답이 사용자에게 나가기 직전을 지키는 자리는 비어 있습니다. 이 플러그인이 그 자리를 채웁니다.
 
@@ -370,6 +378,10 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 | 이 저장소에서만 끄기                 | `claude plugin disable checkride@checkride --scope project` |
 | 나만 끄기                            | 같은 명령에 `--scope local`                                 |
 | 의미 판정만 끄기                     | `NGG_JUDGE=0`                                               |
+| 완료 게이트 전체 끄기                 | `NGG_DONE=0`                                                |
+| 테스트 무결성 게이트 전체 끄기         | `NGG_TESTGUARD=0`                                           |
+| 프로젝트 가드 전체 끄기                | `NGG_GUARD=0`                                               |
+| 저장소 프로필 끄기                    | `NGG_PROFILE=0`                                              |
 | 검사 항목을 표로 보고 고르기         | `/checkride:config`. 항목마다 출처를 보여 주고 고른 것만 끕니다 |
 | 규칙·검사 하나만 끄기                | `checkride.toml`에 `disabled_rules = "R2b, done.pr"`           |
 | 오탐 한 건만 넘기기                  | 다음 프롬프트에 한 줄로 `check allow ti.skip`               |
@@ -380,6 +392,10 @@ Claude Code 자체에는 근거 없이 끝나는 답을 **턴이 끝나는 순�
 메시지 언어는 로케일을 따릅니다. `LC_ALL`·`LC_MESSAGES`·`LANG`이 한국어면 한국어로, 그 밖의 경우에는 영어로 나옵니다. 저장소마다 `checkride.toml`에 `lang = "ko"`로 고정할 수 있고, 모든 저장소에 한 번에 적용하려면 `~/.claude/settings.json`의 `env`에 `NGG_LANG`을 넣습니다. `/checkride:config`에서 둘 중 어디에 쓸지 고를 수 있습니다. 우선순위는 `NGG_LANG` 환경변수 &gt; `checkride.toml`의 `lang` &gt; 로케일 순이라, 전역 값이 저장소의 `lang`보다 앞섭니다.
 
 플러그인 상태는 `~/.claude/plugins/data/checkride-checkride/`에 있고, 지워도 됩니다. 상태를 남기려면 제거할 때 `--keep-data`를 붙입니다.
+
+근거 게이트 전체를 끄는 환경변수는 없습니다. 규칙별로 끄려면 저장소 루트 `checkride.toml`의 `disabled_rules`를 쓰고, `NGG_JUDGE=0`은 R2a/R2b 의견 판정만 끕니다. 위 `NGG_*` 스위치들은 훅에 전달된 실행 환경에 적용됩니다.
+
+위 표의 훅 비활성화와 별개로, 저장소 공유 설치는 `.claude/settings.json`, `.codex/hooks.json`, `.checkride/hooks/`를 제거해야 중단됩니다. `.checkride/.managed-by-checkride` 표식이 남으면 Checkride 플러그인 훅은 계속 건너뛰므로 저장소 공유 설치를 제거할 때 이 표식도 정리하세요.
 
 ## 더 읽기
 

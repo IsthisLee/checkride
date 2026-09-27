@@ -19,7 +19,7 @@ af="$(state_root "$d")/state/$SESSION_ID/allow"; : > "$af" 2>/dev/null
 case "$PROMPT" in *[Aa][Ll][Ll][Oo][Ww]*)
   set -f
   for n in $(printf '%s\n' "$PROMPT" | grep -iE '^[[:space:]]*check[[:space:]]+allow[[:space:]]' \
-      | sed -E 's/^[[:space:]]*[Gg][Rr][Oo][Uu][Nn][Dd][Ee][Dd][[:space:]]+[Aa][Ll][Ll][Oo][Ww]//' \
+      | sed -E 's/^[[:space:]]*[Cc][Hh][Ee][Cc][Kk][[:space:]]+[Aa][Ll][Ll][Oo][Ww]//' \
       | tr ',' ' ' | LC_ALL=C tr '[:upper:]' '[:lower:]'); do
     case " $NGG_ITEMS " in *" $n "*) echo "$n" >> "$af";; esac
   done
