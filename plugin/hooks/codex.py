@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HOOKS = ROOT / "hooks"
 STOP_RETRY_LIMIT = 8
+TRANSCRIPT_DELTA_LIMIT = 1024 * 1024
 
 
 def fail(message):
@@ -272,14 +273,73 @@ def snapshot_file(event):
     return Path(STATE) / "state" / (EVENT.get("session_id") or "") / "pending" / f"{name}.json"
 
 
+def transcript_snapshot(event):
+    raw_path = event.get("transcript_path")
+    turn_id = event.get("turn_id")
+    if not isinstance(raw_path, str) or not raw_path or not isinstance(turn_id, str) or not turn_id:
+        return None
+    try:
+        path = Path(raw_path).resolve(strict=True)
+        if not path.is_file():
+            return None
+        return {"path": str(path), "offset": path.stat().st_size, "turn_id": turn_id}
+    except (OSError, RuntimeError):
+        return None
+
+
 def save_snapshot(event):
     current = git_snapshot(event)
-    if current is None:
+    snapshot = {}
+    if current is not None:
+        root, before = current
+        snapshot.update({"root": str(root), "before": before})
+    transcript = transcript_snapshot(event)
+    if transcript is not None:
+        snapshot["transcript"] = transcript
+    if not snapshot:
         return
-    root, before = current
     path = snapshot_file(event)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"root": str(root), "before": before}), encoding="utf-8")
+    path.write_text(json.dumps(snapshot), encoding="utf-8")
+
+
+def transcript_bash_status(event):
+    # ponytail: concurrent, ephemeral, lagging, or large transcript deltas stay unknown; Codex exposes no stable call ID here.
+    try:
+        pending = json.loads(snapshot_file(event).read_text(encoding="utf-8"))
+        saved = pending["transcript"]
+        command = event["tool_input"]["command"]
+        turn_id = event["turn_id"]
+        path = Path(event["transcript_path"]).resolve(strict=True)
+        if (not isinstance(command, str) or not command or turn_id != saved["turn_id"]
+                or str(path) != saved["path"] or type(saved["offset"]) is not int
+                or saved["offset"] < 0 or not path.is_file()):
+            return "?"
+        with path.open("rb") as stream:
+            size = os.fstat(stream.fileno()).st_size
+            if size <= saved["offset"] or size - saved["offset"] > TRANSCRIPT_DELTA_LIMIT:
+                return "?"
+            stream.seek(saved["offset"])
+            appended = stream.read()
+        if not appended.endswith(b"\n"):
+            return "?"
+        executions = []
+        for line in appended.decode("utf-8").splitlines():
+            if not line:
+                continue
+            row = json.loads(line)
+            payload = row.get("payload") if isinstance(row, dict) else None
+            if isinstance(payload, dict) and payload.get("type") == "CommandExecution":
+                executions.append(payload)
+        if len(executions) != 1:
+            return "?"
+        argv = executions[0].get("command")
+        code = executions[0].get("exit_code")
+        if not isinstance(argv, list) or not argv or argv[-1] != command or type(code) is not int:
+            return "?"
+        return "S" if code == 0 else "F"
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError):
+        return "?"
 
 
 def record_bash_changes(event):
@@ -293,7 +353,7 @@ def record_bash_changes(event):
     except OSError:
         pass
     current = git_snapshot(event)
-    if before is None or current is None:
+    if before is None or current is None or not isinstance(before.get("before"), dict):
         root = git_root(event) or Path(event.get("cwd") or os.getcwd()).resolve()
         record_changed([str(root / "__checkride_unknown_change__.sh")])
         return
@@ -401,14 +461,12 @@ elif mode == "pre-patch":
             block(run("test-integrity/pre.sh", synthetic(path, old, new)))
         block(run("project-guard/pre.sh", synthetic(path, old, new)))
 elif mode == "post-bash":
-    # Codex's Bash tool_response contains output, not process metadata. The
-    # transcript is explicitly not a stable hook interface, so record unknown.
     root = Path(STATE) / "state" / EVENT.get("session_id", "")
     if EVENT.get("agent_id"):
         root /= "agent-" + EVENT["agent_id"]
     root.mkdir(parents=True, exist_ok=True)
     with (root / "bashseq").open("a") as stream:
-        stream.write("?")
+        stream.write(transcript_bash_status(EVENT))
     record_bash_changes(EVENT)
 elif mode == "post-patch":
     try:
