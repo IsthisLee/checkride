@@ -247,24 +247,28 @@ Q="$T/bash-repo"; mkrepo "$Q"
 printf 'before\n' > "$Q/app.py"
 git -C "$Q" add app.py
 git -C "$Q" -c user.name=Checkride -c user.email=checkride@example.invalid commit -qm init
-python3 - "$T/bash-pre.json" "$Q" <<'PY'
+python3 - "$T/bash-pre.json" "$Q" "$T/bash-success.jsonl" <<'PY'
 import json, sys
-json.dump({"session_id":"bash-success","cwd":sys.argv[2],"tool_use_id":"bash-ok",
+open(sys.argv[3], "w", encoding="utf-8").close()
+json.dump({"session_id":"bash-success","turn_id":"turn-success","cwd":sys.argv[2],
+           "tool_use_id":"bash-ok","transcript_path":sys.argv[3],
            "hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"true"}},
           open(sys.argv[1],"w"))
 PY
 run_event "$T/bash-pre.json" "$T/bash-state" pre-bash >/dev/null 2>"$T/bash-pre.err"; r=$?
 check 0 "$r" "Codex Bash 호출 전 검사가 스냅샷을 저장한다"
 printf 'after\n' > "$Q/app.py"
-python3 - "$T/bash-post.json" "$Q" <<'PY'
+printf '%s\n' '{"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","true"],"exit_code":0,"status":"completed"}}' >> "$T/bash-success.jsonl"
+python3 - "$T/bash-post.json" "$Q" "$T/bash-success.jsonl" <<'PY'
 import json, sys
-json.dump({"session_id":"bash-success","cwd":sys.argv[2],"tool_use_id":"bash-ok",
+json.dump({"session_id":"bash-success","turn_id":"turn-success","cwd":sys.argv[2],
+           "tool_use_id":"bash-ok","transcript_path":sys.argv[3],
            "hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"true"},
            "tool_response":"saved app.py"}, open(sys.argv[1],"w"))
 PY
 run_event "$T/bash-post.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-post.err"; r=$?
-check 0 "$r" "Codex Bash 출력만 있는 응답을 처리한다"
-check '?' "$(cat "$T/bash-state/state/bash-success/bashseq")" "종료 상태가 없는 Bash 결과를 중립 기호로 기록한다"
+check 0 "$r" "Codex Bash transcript 성공 결과를 처리한다"
+check S "$(cat "$T/bash-state/state/bash-success/bashseq")" "새 transcript 레코드의 0 종료 코드를 성공으로 기록한다"
 python3 - "$Q/app.py" "$T/bash-state/state/bash-success/changed" <<'PY'
 import pathlib, sys
 expected = pathlib.Path(sys.argv[1]).resolve()
@@ -292,6 +296,138 @@ PY
 run_event "$T/bash-unknown.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-unknown.err"; r=$?
 check 0 "$r" "상태를 알 수 없는 Codex Bash 응답도 처리한다"
 check '?' "$(cat "$T/bash-state/state/bash-unknown/bashseq")" "알 수 없는 결과를 중립 기호로 기록한다"
+
+# Codex transcript 는 PreToolUse 이후 새로 기록된 단일 실행만 정확한 명령과 맞춰 쓴다.
+python3 - "$T/bash-failed.jsonl" "$T/bash-failed-pre.json" "$T/bash-failed-post.json" "$Q" <<'PY'
+import json, sys
+transcript, pre, post, cwd = sys.argv[1:]
+open(transcript, "w", encoding="utf-8").close()
+common = {"session_id":"bash-transcript-failed", "turn_id":"turn-failed",
+          "cwd":cwd, "tool_name":"Bash", "tool_input":{"command":"false"},
+          "transcript_path":transcript}
+with open(pre, "w", encoding="utf-8") as f:
+    json.dump({**common, "tool_use_id":"bash-failed", "hook_event_name":"PreToolUse"}, f)
+with open(post, "w", encoding="utf-8") as f:
+    json.dump({**common, "tool_use_id":"bash-failed", "hook_event_name":"PostToolUse",
+               "tool_response":""}, f)
+PY
+run_event "$T/bash-failed-pre.json" "$T/bash-state" pre-bash >/dev/null 2>"$T/bash-failed-pre.err"; r=$?
+check 0 "$r" "Codex Bash 사전 훅이 transcript 기준점을 저장한다"
+printf '%s\n' '{"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","false"],"exit_code":17,"status":"failed"}}' >> "$T/bash-failed.jsonl"
+run_event "$T/bash-failed-post.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-failed-post.err"; r=$?
+check 0 "$r" "Codex transcript 의 실패 실행 결과를 처리한다"
+check F "$(cat "$T/bash-state/state/bash-transcript-failed/bashseq")" "새 transcript 레코드의 비영 종료 코드를 실패로 기록한다"
+python3 - "$T/bash-failed-stop.json" "$Q" <<'PY'
+import json, sys
+json.dump({"session_id":"bash-transcript-failed","turn_id":"turn-failed","cwd":sys.argv[2],
+           "hook_event_name":"Stop","stop_hook_active":False,
+           "last_assistant_message":"테스트를 실행했고 전부 통과했습니다."}, open(sys.argv[1],"w"))
+PY
+NGG_JUDGE=0 run_event "$T/bash-failed-stop.json" "$T/bash-state" stop >"$T/bash-failed-stop.out" 2>"$T/bash-failed-stop.err"; r=$?
+check 2 "$r" "Codex transcript Bash 실패 뒤 성공 주장을 R5 가 차단한다"
+grep -q 'R5' "$T/bash-failed-stop.err"; check 0 "$?" "Codex Stop 응답에서 R5 사유를 알린다"
+python3 - "$T/bash-failed-pre2.json" "$T/bash-failed-post2.json" "$T/bash-failed.jsonl" "$Q" <<'PY'
+import json, sys
+pre, post, transcript, cwd = sys.argv[1:]
+common = {"session_id":"bash-transcript-failed", "turn_id":"turn-failed",
+          "cwd":cwd, "tool_name":"Bash", "tool_input":{"command":"true"},
+          "transcript_path":transcript, "tool_use_id":"bash-recovered"}
+with open(pre, "w", encoding="utf-8") as f:
+    json.dump({**common, "hook_event_name":"PreToolUse"}, f)
+with open(post, "w", encoding="utf-8") as f:
+    json.dump({**common, "hook_event_name":"PostToolUse"}, f)
+PY
+run_event "$T/bash-failed-pre2.json" "$T/bash-state" pre-bash >/dev/null 2>"$T/bash-failed-pre2.err"; r=$?
+check 0 "$r" "Codex 재시도 Bash 호출의 transcript 기준점을 저장한다"
+printf '%s\n' '{"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","true"],"exit_code":0,"status":"completed"}}' >> "$T/bash-failed.jsonl"
+run_event "$T/bash-failed-post2.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-failed-post2.err"; r=$?
+check 0 "$r" "Codex 재시도 성공 transcript 를 처리한다"
+check FS "$(cat "$T/bash-state/state/bash-transcript-failed/bashseq")" "실패 뒤 새 Bash 성공을 순서대로 기록한다"
+
+python3 - "$T/bash-ambiguous.jsonl" "$T/bash-ambiguous-pre.json" "$T/bash-ambiguous-post.json" "$Q" <<'PY'
+import json, sys
+transcript, pre, post, cwd = sys.argv[1:]
+open(transcript, "w", encoding="utf-8").close()
+common = {"session_id":"bash-transcript-ambiguous", "turn_id":"turn-ambiguous",
+          "cwd":cwd, "tool_name":"Bash", "tool_input":{"command":"false"},
+          "transcript_path":transcript}
+with open(pre, "w", encoding="utf-8") as f:
+    json.dump({**common, "tool_use_id":"bash-ambiguous", "hook_event_name":"PreToolUse"}, f)
+with open(post, "w", encoding="utf-8") as f:
+    json.dump({**common, "tool_use_id":"bash-ambiguous", "hook_event_name":"PostToolUse"}, f)
+PY
+run_event "$T/bash-ambiguous-pre.json" "$T/bash-state" pre-bash >/dev/null 2>"$T/bash-ambiguous-pre.err"; r=$?
+check 0 "$r" "모호성 검사 전 Codex Bash 훅을 준비한다"
+printf '%s\n' \
+  '{"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","false"],"exit_code":1,"status":"failed"}}' \
+  '{"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","false"],"exit_code":0,"status":"completed"}}' >> "$T/bash-ambiguous.jsonl"
+run_event "$T/bash-ambiguous-post.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-ambiguous-post.err"; r=$?
+check 0 "$r" "Codex transcript 의 복수 실행 레코드를 처리한다"
+check '?' "$(cat "$T/bash-state/state/bash-transcript-ambiguous/bashseq")" "복수 실행 레코드의 결과를 추측하지 않는다"
+
+python3 - "$T/bash-stale.jsonl" "$T/bash-stale-pre.json" "$T/bash-stale-post.json" "$Q" <<'PY'
+import json, sys
+transcript, pre, post, cwd = sys.argv[1:]
+with open(transcript, "w", encoding="utf-8") as f:
+    f.write('{"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","false"],"exit_code":17,"status":"failed"}}\\n')
+common = {"session_id":"bash-transcript-stale", "turn_id":"turn-stale",
+          "cwd":cwd, "tool_name":"Bash", "tool_input":{"command":"false"},
+          "transcript_path":transcript}
+with open(pre, "w", encoding="utf-8") as f:
+    json.dump({**common, "tool_use_id":"bash-stale", "hook_event_name":"PreToolUse"}, f)
+with open(post, "w", encoding="utf-8") as f:
+    json.dump({**common, "tool_use_id":"bash-stale", "hook_event_name":"PostToolUse"}, f)
+PY
+run_event "$T/bash-stale-pre.json" "$T/bash-state" pre-bash >/dev/null 2>"$T/bash-stale-pre.err"; r=$?
+check 0 "$r" "오래된 transcript 레코드 검사 전 Codex Bash 훅을 준비한다"
+run_event "$T/bash-stale-post.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-stale-post.err"; r=$?
+check 0 "$r" "새 결과가 없는 Codex Bash 응답을 처리한다"
+check '?' "$(cat "$T/bash-state/state/bash-transcript-stale/bashseq")" "PreToolUse 이전의 실패 결과를 새 실행으로 오인하지 않는다"
+
+python3 - "$T/bash-mismatch.jsonl" "$T/bash-mismatch-pre.json" "$T/bash-mismatch-post.json" "$Q" <<'PY'
+import json, sys
+transcript, pre, post, cwd = sys.argv[1:]
+open(transcript, "w", encoding="utf-8").close()
+common = {"session_id":"bash-transcript-mismatch", "turn_id":"turn-mismatch",
+          "cwd":cwd, "tool_name":"Bash", "tool_input":{"command":"false"},
+          "transcript_path":transcript, "tool_use_id":"bash-mismatch"}
+with open(pre, "w", encoding="utf-8") as f:
+    json.dump({**common, "hook_event_name":"PreToolUse"}, f)
+with open(post, "w", encoding="utf-8") as f:
+    json.dump({**common, "hook_event_name":"PostToolUse"}, f)
+PY
+run_event "$T/bash-mismatch-pre.json" "$T/bash-state" pre-bash >/dev/null 2>"$T/bash-mismatch-pre.err"; r=$?
+check 0 "$r" "명령 일치 검사 전 Codex Bash 훅을 준비한다"
+printf '%s\n' '{"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","true"],"exit_code":0,"status":"completed"}}' >> "$T/bash-mismatch.jsonl"
+run_event "$T/bash-mismatch-post.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-mismatch-post.err"; r=$?
+check 0 "$r" "Codex transcript 의 다른 명령 레코드를 처리한다"
+check '?' "$(cat "$T/bash-state/state/bash-transcript-mismatch/bashseq")" "요청한 명령과 다른 transcript 결과를 분류하지 않는다"
+
+python3 - "$T/bash-large.jsonl" "$T/bash-large-pre.json" "$T/bash-large-post.json" "$Q" <<'PY'
+import json, sys
+transcript, pre, post, cwd = sys.argv[1:]
+open(transcript, "w", encoding="utf-8").close()
+common = {"session_id":"bash-transcript-large", "turn_id":"turn-large",
+          "cwd":cwd, "tool_name":"Bash", "tool_input":{"command":"false"},
+          "transcript_path":transcript, "tool_use_id":"bash-large"}
+with open(pre, "w", encoding="utf-8") as f:
+    json.dump({**common, "hook_event_name":"PreToolUse"}, f)
+with open(post, "w", encoding="utf-8") as f:
+    json.dump({**common, "hook_event_name":"PostToolUse"}, f)
+PY
+run_event "$T/bash-large-pre.json" "$T/bash-state" pre-bash >/dev/null 2>"$T/bash-large-pre.err"; r=$?
+check 0 "$r" "대량 transcript 검사 전 Codex Bash 훅을 준비한다"
+python3 - "$T/bash-large.jsonl" <<'PY'
+import json, sys
+with open(sys.argv[1], "a", encoding="utf-8") as f:
+    json.dump({"type":"response_item","payload":{"type":"AgentMessage","message":"x"*(1024*1024)}}, f)
+    f.write("\n")
+    json.dump({"type":"response_item","payload":{"type":"CommandExecution","command":["/bin/bash","-c","false"],"exit_code":17}}, f)
+    f.write("\n")
+PY
+run_event "$T/bash-large-post.json" "$T/bash-state" post-bash >/dev/null 2>"$T/bash-large-post.err"; r=$?
+check 0 "$r" "Codex의 대량 transcript 응답을 처리한다"
+check '?' "$(cat "$T/bash-state/state/bash-transcript-large/bashseq")" "1 MiB 를 넘는 transcript 는 분류하지 않는다"
 
 mkdir -p "$T/bin"; cat > "$T/bin/bash" <<'SH'
 #!/bin/sh

@@ -7,7 +7,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 ## 검사 명령
 
 - `tests/lib/unit.sh` — 메시지 카탈로그 31건. 두 언어의 키가 맞는지, 언어 결정 순서(NGG_LANG · checkride.toml lang · 로케일)가 맞는지, Git 루트·독립 폴더의 설정 경계를 지키는지 본다.
-- `tests/codex/unit.sh` — Codex 훅 어댑터 53건. 입력 계약, `apply_patch`, MCP 파일 도구, Bash 전후 파일 기록, 종료 상태가 빠진 출력의 중립 처리, 사용자별 상태, 중복 실행 방지, Codex 판정기 명령, Stop 재진입·프롬프트 보존·반복 상태 정리 오류를 본다. 모델을 부르지 않는다.
+- `tests/codex/unit.sh` — Codex 훅 어댑터 73건. 입력 계약, `apply_patch`, MCP 파일 도구, Bash 전후 파일 기록, transcript 종료 상태의 정확·모호·오래된·대량 입력 처리, 사용자별 상태, 중복 실행 방지, Codex 판정기 명령, Stop 재진입·프롬프트 보존·반복 상태 정리 오류를 본다. 모델을 부르지 않는다.
 - `tests/no-guess-gate/unit.sh` — 근거 게이트 194건. 모델을 부르지 않는다.
 - `tests/done-gate/unit.sh` — 완료 게이트 86건. PR 본문 근거 23건 포함.
 - `tests/test-integrity/unit.sh` — 테스트 무결성 69건.
@@ -16,7 +16,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `tests/setup/unit.sh` — 활성화·공유 설치 스크립트와 상태 경로 71건. 남이 잡은 `core.hooksPath` 를 덮지 않고, 프로젝트 설정을 멱등하게 갱신하는지 본다.
 - `tests/skills-unit.sh` — 스킬 정의 5건.
 - `tests/attack-surface.sh` — SECURITY.md가 적은 공격면과 코드가 맞는지 13건.
-- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선, 옛 이름 잔존 21건.  **합계 596건.**
+- `tests/invariants.sh` — 매니페스트·CHANGELOG·문서의 숫자, 셸 인용, 하네스의 카탈로그 복사, 메시지 키 커버리지, `setup.sh` 배선, 옛 이름 잔존 21건.  **합계 616건.**
 - `tests/doc-counts.sh` — 이 파일이 적은 각 검사의 건수가 실제와 같은지 1건. **단위 테스트를 실제로 돌려 센다.**
   `tests/invariants.sh` 안에 넣으면 그것이 자기 자신을 불러 재귀가 되고, `check` 호출 수를 정적으로 세는 것은
   루프·함수 때문에 맞지 않는다(실측: 근거 게이트는 호출 7곳에 실제 170건). 그래서 전체 검사의 맨 끝에 둔다.
@@ -53,7 +53,7 @@ Claude Code 공식 best practices와 검증된 문서의 권고를 **훅으로 �
 - `plugin/hooks/hooks.json` — Claude Code의 SessionStart · UserPromptSubmit · PreToolUse(넷) · PostToolUse · Stop(둘) · SubagentStop 배선. 상태는 `${CLAUDE_PLUGIN_DATA}`.
 - `plugin/.codex-plugin/plugin.json` · `plugin/hooks/hooks.codex.json` · `plugin/hooks/codex.py` — Codex 플러그인 매니페스트, Codex 이벤트 배선, Codex `apply_patch`·지원되는 MCP 파일 도구를 기존 테스트 무결성·프로젝트 가드에 연결하는 어댑터. 저장소별 상태는 사용자 데이터 경로를 쓰며, Codex 훅 설치는 `npx skills add`와 별도다.
 - `plugin/setup-project-hooks.sh` — 플러그인 훅을 대상 저장소의 `.checkride/hooks/`로 복사하고 Claude Code·Codex 프로젝트 훅 설정에 병합한다. 팀원이 플러그인을 설치하지 않고 저장소 훅을 승인해 쓰는 배포 경로다.
-- `plugin/hooks/no-guess-gate/bashres.sh` — Claude Code의 `PostToolUse`·`PostToolUseFailure`(Bash)에서 이 턴의 Bash 결과를 `S`/`F`로 남긴다. R5가 마지막 글자만 본다. Codex의 `PostToolUse.tool_response`에는 Bash 출력만 있고 종료 상태가 없어 `?`를 기록하며, Codex에서는 R5가 작동하지 않는다.
+- `plugin/hooks/no-guess-gate/bashres.sh` — Claude Code의 `PostToolUse`·`PostToolUseFailure`(Bash)에서 이 턴의 Bash 결과를 `S`/`F`로 남긴다. Codex 어댑터는 `PreToolUse`에서 transcript 위치를 저장하고, `PostToolUse`에서 그 뒤 추가된 단일 `CommandExecution`의 명령과 종료 코드를 정확히 맞추면 `S`/`F`를 남긴다. transcript가 없거나 늦거나 모호하면 `?`를 기록한다. Codex transcript 형식은 안정된 훅 계약이 아니므로 이 경로는 보수적인 최선 노력 방식이다.
 - `plugin/hooks/lib/common.sh` — 모든 훅이 공유하는 입력 파서와 메시지 함수 `t`·`tn`, 항목 끄기(`item_off`)와 한 번 허용(`allow_once`). 허용 목록은 `no-guess-gate/prompt.sh`가 사용자 프롬프트에서만 적는다. `no-guess-gate/pre.sh`는 도구 호출마다 돌아 파라미터 확장만 쓰는 빠른 경로가 따로 있다.
 - `plugin/hooks/lib/msg.sh` — 사람과 모델에게 나가는 문장 62개를 한국어와 영어로 담는다. 차단이 일어날 때만 읽는다. **훅 안에 문장을 직접 쓰지 않는다.** 한쪽 언어에만 넣으면 `tests/lib/unit.sh`가 잡는다.
 - `plugin/hooks/no-guess-gate/stop.sh` — 규칙 R0~R5와 면제 다섯. `judge.py`가 R0·R2a·R2b만 걸렸을 때 답 전체의 로컬 상태 주장 여부 또는 걸린 문장의 성격을 묻는다. R1·R3·R5는 판정기로 풀지 않는다. Claude Code 판정 기본은 haiku, Codex 판정 기본은 Codex CLI 설정 모델이다(`NGG_JUDGE_MODEL`로 지정 가능).
